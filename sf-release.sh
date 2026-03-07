@@ -22,13 +22,13 @@ fi
 
 readonly RELEASE_BASE="release"
 readonly RELEASE_DIR="${RELEASE_BASE}/${BRANCH_NAME}"
-readonly TEMPLATE_DEPLOY="${RELEASE_BASE}/deploy-template.txt"
-readonly TEMPLATE_REMOVE="${RELEASE_BASE}/remove-template.txt"
+readonly TEMPLATE_DEPLOY="$HOME/sf-tools/templates/deploy-template.txt"
+readonly TEMPLATE_REMOVE="$HOME/sf-tools/templates/remove-template.txt"
 readonly DEPLOY_LIST="${RELEASE_DIR}/deploy-target.txt"
 readonly REMOVE_LIST="${RELEASE_DIR}/remove-target.txt"
 readonly DEPLOY_XML="${RELEASE_DIR}/package.xml"
 readonly REMOVE_XML="${RELEASE_DIR}/destructiveChanges.xml"
-readonly LOG_FILE="./sf-release.log"
+readonly LOG_FILE="./logs/sf-release.log"
 
 readonly CLR_INFO='\033[36m'
 readonly CLR_SUCCESS='\033[32m'
@@ -78,6 +78,8 @@ done
 # ------------------------------------------------------------------------------
 # 2. 共通エンジン
 # ------------------------------------------------------------------------------
+# ログディレクトリが存在しない場合は作成する
+mkdir -p "$(dirname "$LOG_FILE")"
 : > "$LOG_FILE"
 
 log() {
@@ -202,7 +204,7 @@ phase_generate_manifest() {
     return 0
 }
 
-# 【最重要：バグ修正箇所】オプションを確実に配列へ追加
+# オプションを確実に配列へ追加
 phase_release() {
     local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML")
 
