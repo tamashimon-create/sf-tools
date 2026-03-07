@@ -1,0 +1,24 @@
+# ==============================================================================
+# デプロイ対象リスト (deploy-target.txt)
+# ==============================================================================
+# Salesforceへリリース（追加・更新）したいファイルのパスを1行ずつ記述してください。
+# 空行や、行頭に '#' がある行は無視されます。
+#
+# 【記述例（VS Codeの「相対パスのコピー」を使うと便利です）】
+# ---------------------------------------------------------
+# ▼ Apexクラス・トリガー（.cls を指定するだけで関連するXMLも処理されます）
+# force-app/main/default/classes/AccountTriggerHandler.cls
+# force-app/main/default/triggers/AccountTrigger.trigger
+#
+# ▼ カスタムオブジェクトと項目
+# force-app/main/default/objects/Custom__c/Custom__c.object-meta.xml
+# force-app/main/default/objects/Account/fields/NewStatus__c.field-meta.xml
+#
+# ▼ フロントエンド (LWC / Aura)
+# force-app/main/default/lwc/myCustomComponent
+#
+# ▼ その他（権限セット、レイアウトなど）
+# force-app/main/default/permissionsets/Sales_User.permissionset-meta.xml
+# force-app/main/default/layouts/Account-Custom_Account_Layout.layout-meta.xml
+# ---------------------------------------------------------
+
