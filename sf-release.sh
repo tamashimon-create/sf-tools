@@ -5,6 +5,14 @@
 # 概要: デプロイ対象のテキストリストからマニフェスト(XML)を自動生成し、
 #       Salesforce組織へのリリース（または検証）を安全かつ確実に行うツール。
 # 互換性: Windows (Git Bash), Mac (Zsh/Bash), Linux (Bash) 完全対応
+#
+# 【実行時オプション】
+#   (デフォルト動作) : 検証モード(Dry-Run)で実行し、ブラウザで状況画面を開きます。
+#
+#   -r, --release    : 検証ではなく、実際に組織への本番リリースを実行します。
+#   -n, --no-open    : ブラウザを開かずにバックグラウンドで実行します。
+#   -f, --force      : コンフリクト検知を無効化し、強制上書き(--ignore-conflicts)します。
+#   -j, --json       : sfコマンドの出力をJSON形式にします（CI/CDの機械読み取り用）。
 # ==============================================================================
 
 # 異常終了時も含め、プロセスID($$)付きの一時ファイルを確実に削除
@@ -36,18 +44,19 @@ readonly CLR_ERR='\033[31m'
 readonly CLR_CMD='\033[34m'
 readonly CLR_RESET='\033[0m'
 
-IS_VALIDATE_MODE=0
+# 初期値を「安全側（検証＆ブラウザ起動）」に設定
+IS_VALIDATE_MODE=1
+OPEN_BROWSER=1
 IGNORE_CONFLICTS=0
 OUTPUT_JSON=0
-OPEN_BROWSER=0
 
-# オプション解析（結合フラグ -vfj 等に対応）
+# オプション解析
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --validate) IS_VALIDATE_MODE=1 ;;
-        --force)    IGNORE_CONFLICTS=1 ;;
-        --json)     OUTPUT_JSON=1 ;;
-        --open)     OPEN_BROWSER=1 ;;
+        --release) IS_VALIDATE_MODE=0 ;;
+        --no-open) OPEN_BROWSER=0 ;;
+        --force)   IGNORE_CONFLICTS=1 ;;
+        --json)    OUTPUT_JSON=1 ;;
         --*)
             echo -e "${CLR_ERR}❌ [INIT]${CLR_RESET} 不明なオプションです: $1" >&2
             exit 1
@@ -56,10 +65,10 @@ while [[ "$#" -gt 0 ]]; do
             flags="${1#-}"
             for (( i=0; i<${#flags}; i++ )); do
                 case "${flags:$i:1}" in
-                    v) IS_VALIDATE_MODE=1 ;;
+                    r) IS_VALIDATE_MODE=0 ;;
+                    n) OPEN_BROWSER=0 ;;
                     f) IGNORE_CONFLICTS=1 ;;
                     j) OUTPUT_JSON=1 ;;
-                    o) OPEN_BROWSER=1 ;;
                     *) 
                         echo -e "${CLR_ERR}❌ [INIT]${CLR_RESET} 不明なオプションです: -${flags:$i:1}" >&2
                         exit 1 
@@ -117,7 +126,7 @@ exec_wrapper() {
     rm -f "$tmp_exit"
 
     local is_success=0
-    # フェイルセーフ：終了コードが1でもJSON内に成功ステータスがあれば救済 [cite: 2, 4]
+    # フェイルセーフ：終了コードが1でもJSON内に成功ステータスがあれば救済
     if [ "$status" -eq 0 ]; then
         is_success=1
     elif grep -qE "successfully wrote|Status: Succeeded|Deployed Source|Successfully deployed|\"status\": 0" "$tmp_out"; then
@@ -211,14 +220,17 @@ phase_release() {
     [ -f "$REMOVE_XML" ] && deploy_cmd+=("--pre-destructive-changes" "$REMOVE_XML")
     [ "$IGNORE_CONFLICTS" -eq 1 ] && deploy_cmd+=("--ignore-conflicts")
     
-    # ここでフラグをチェックし、確実にコマンド配列へ追加する
+    # デフォルトで --dry-run を適用し、本番リリース時のみ警告を出す
     if [ "$IS_VALIDATE_MODE" -eq 1 ]; then
-        log "INFO" "RELEASE" "🚨 検証モード (Dry-Run) オプションを適用します"
+        log "INFO" "RELEASE" "🧪 検証モード (Dry-Run) で実行します"
         deploy_cmd+=("--dry-run")
+    else
+        log "INFO" "RELEASE" "🚨 本番環境へのリリースを実行します！"
     fi
 
+    # デフォルトでブラウザを開く
     if [ "$OPEN_BROWSER" -eq 1 ]; then
-        log "INFO" "RELEASE" "🌐 リリース状況画面をブラウザで起動..."
+        log "INFO" "RELEASE" "🌐 リリース状況画面をブラウザで起動します..."
         sf org open --target-org "$TARGET_ORG" --path "lightning/setup/DeployStatus/home" > /dev/null 2>&1 &
         log "INFO" "RELEASE" "⏳ 描画待機（5秒）"
         sleep 5
