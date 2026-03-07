@@ -172,6 +172,13 @@ phase_git_sync() {
 echo "-------------------------------------------------------" >&2
 log "INFO" "INIT" "非同期同期処理を開始 (Target: $TARGET_ORG, Branch: $BRANCH_NAME)"
 
+# mainブランチ以外での実行をブロックする安全装置
+if [ "$BRANCH_NAME" != "main" ]; then
+    log "ERROR" "INIT" "このツールは 'main' ブランチでのみ実行可能です。処理を中断します。"
+    echo "-------------------------------------------------------" >&2
+    exit 1
+fi
+
 # 各フェーズを順次実行
 if ! phase_git_update; then log "ERROR" "GIT" "失敗"; exit 1; fi
 log "SUCCESS" "GIT" "完了"
