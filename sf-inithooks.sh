@@ -6,32 +6,30 @@
 # 設置場所: ~/sf-tools/init-hooks.sh
 # ==============================================================================
 
-# ターミナル出力用のカラー装飾定義（環境に応じて自動切替）
-if [ -t 2 ]; then
-    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
+# ------------------------------------------------------------------------------
+# 0. 共通の初期処理
+# ------------------------------------------------------------------------------
+# カラー定義
+if [ -t 1 ]; then
     readonly CLR_INFO='\033[36m'
     readonly CLR_SUCCESS='\033[32m'
     readonly CLR_ERR='\033[31m'
-    readonly CLR_CMD='\033[34m'
+    readonly CLR_PROMPT='\033[33m'
     readonly CLR_RESET='\033[0m'
 else
-    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
-    readonly CLR_INFO=''
-    readonly CLR_SUCCESS=''
-    readonly CLR_ERR=''
-    readonly CLR_CMD=''
-    readonly CLR_RESET=''
+    readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
 
-echo "-------------------------------------------------------"
-echo -e "${CLR_INFO}▶️  Gitフックのセットアップを開始します...${CLR_RESET}"
-
-# カレントディレクトリがGitリポジトリかチェック
-if [ ! -d ".git" ]; then
-    echo -e "${CLR_ERR}❌ ここはGitリポジトリのルートディレクトリではありません。${CLR_RESET}"
-    echo "Salesforceプロジェクトのルート（.gitフォルダがある階層）に移動してから実行してください。"
+# 実行ディレクトリのバリデーション
+CURRENT_DIR_NAME=$(basename "$PWD")
+if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
+    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
     exit 1
 fi
+
+echo "======================================================="
+echo -e "${CLR_INFO}⚓ Gitフックの初期化(Init Hooks)を開始します...${CLR_RESET}"
+echo "======================================================="
 
 # ラッパースクリプトの生成先
 HOOK_DEST=".git/hooks/pre-push"

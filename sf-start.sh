@@ -5,9 +5,9 @@
 # 役割: 環境構築(install) -> 同期(inithooks) -> 接続(login) -> 起動(vscode)
 # ==============================================================================
 
-# 一時ファイルのクリーンアップ
-trap 'rm -f ./login_out_$$.tmp 2>/dev/null' EXIT
-
+# ------------------------------------------------------------------------------
+# 0. 共通の初期処理
+# ------------------------------------------------------------------------------
 # カラー定義
 if [ -t 1 ]; then
     readonly CLR_INFO='\033[36m'
@@ -19,25 +19,33 @@ else
     readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
 
+# 実行ディレクトリのバリデーション
+CURRENT_DIR_NAME=$(basename "$PWD")
+if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
+    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
+    exit 1
+fi
+
 echo "======================================================="
 echo -e "${CLR_INFO}🚀 開発タスクのスタートアップを開始します...${CLR_RESET}"
 echo "======================================================="
+
+# 一時ファイルのクリーンアップ
+trap 'rm -f ./login_out_$$.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 1. ツール環境の自動更新 (最優先)
 # ------------------------------------------------------------------------------
 # プロジェクト側に sf-install.sh がある場合は、まずそれを実行して共通ツールを最新にする
-echo -e "▶️  [1/5] ツール環境の整合性をチェック中..."
 if [ -f "./sf-install.sh" ]; then
-    if ! bash "./sf-install.sh"; then
-        echo -e "${CLR_ERR}❌ ツールの更新に失敗しました。処理を中断します。${CLR_RESET}"
-        exit 1
-    fi
+    echo -e "▶️  [1/4] 環境の整合性をチェック中..."
+    bash "./sf-install.sh" > /dev/null 2>&1
     
     # Gitフックの初期化も確実に行う
     if [ -x "$HOME/sf-tools/sf-inithooks.sh" ]; then
-        "$HOME/sf-tools/sf-inithooks.sh"
+        "$HOME/sf-tools/sf-inithooks.sh" > /dev/null 2>&1
     fi
+    echo -e "▶️  環境チェック: ${CLR_SUCCESS}完了${CLR_RESET}"
 fi
 
 # ------------------------------------------------------------------------------
@@ -49,23 +57,23 @@ if [ -n "$BRANCH_NAME" ]; then
     mkdir -p "$RELEASE_DIR"
     [ ! -f "${RELEASE_DIR}/deploy-target.txt" ] && cp "$HOME/sf-tools/templates/deploy-template.txt" "${RELEASE_DIR}/deploy-target.txt" 2>/dev/null
     [ ! -f "${RELEASE_DIR}/remove-target.txt" ] && cp "$HOME/sf-tools/templates/remove-template.txt" "${RELEASE_DIR}/remove-target.txt" 2>/dev/null
-    echo -e "▶️  [2/5] ブランチ (${CLR_INFO}${BRANCH_NAME}${CLR_RESET}) の準備が完了しました。"
+    echo -e "▶️  現在のブランチ: ${CLR_INFO}${BRANCH_NAME}${CLR_RESET}"
 fi
 
 # ------------------------------------------------------------------------------
 # 3. Salesforce 接続確認（スマート判定 ＆ 強制リセット対応）
 # ------------------------------------------------------------------------------
-echo -e "\n▶️  [3/5] Salesforce 接続状況を確認中..."
+echo -e "\n▶️  [2/4] Salesforce 接続状況を確認中..."
 
 SKIP_LOGIN=0
 
 # FORCE_RELOGIN フラグが立っていない場合のみ、既存の接続をチェック
 if [ "$FORCE_RELOGIN" != "1" ]; then
-    # jqに依存せず、WindowsのGit Bashでも安定動作するawkでエイリアスを取得
-    # `sf config get target-org` の出力（ヘッダー付きテーブル）から値のみを抽出
-    CURRENT_ALIAS=$(sf config get target-org 2>/dev/null | awk 'NR > 2 {print $2}')
+    DISPLAY_JSON=$(sf org display --json 2>/dev/null || echo "")
+    CURRENT_ALIAS=$(echo "$DISPLAY_JSON" | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
+    CURRENT_ID=$(echo "$DISPLAY_JSON" | grep '"id"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
 
-    if [ -n "$CURRENT_ALIAS" ]; then
+    if [ -n "$CURRENT_ALIAS" ] && [ "$CURRENT_ALIAS" != "null" ] && [[ "$CURRENT_ID" == 00D* ]]; then
         echo -e "${CLR_SUCCESS}✅ 組織 (${CURRENT_ALIAS}) に接続済みです。${CLR_RESET}"
         ORG_ALIAS="$CURRENT_ALIAS"
         SKIP_LOGIN=1
@@ -93,22 +101,19 @@ fi
 # ------------------------------------------------------------------------------
 # 4. VS Code 設定の同期
 # ------------------------------------------------------------------------------
-echo -e "\n▶️  [4/5] VS Code の設定を同期中..."
 mkdir -p .sfdx .sf
 echo '{"target-org": "'"$ORG_ALIAS"'"}' > .sf/config.json
 echo '{"defaultusername": "'"$ORG_ALIAS"'"}' > .sfdx/sfdx-config.json
 sf config set target-org="$ORG_ALIAS" >/dev/null 2>&1
-echo -e "${CLR_SUCCESS}✅ 既定の組織を '${ORG_ALIAS}' に設定しました。${CLR_RESET}"
+sleep 2
 
 # ------------------------------------------------------------------------------
 # 5. VS Code 起動
 # ------------------------------------------------------------------------------
-echo -e "\n▶️  [5/5] VS Code を起動中..."
+echo -e "\n▶️  [3/4] VS Code を起動中..."
 if command -v code >/dev/null 2>&1; then
     code .
     echo -e "${CLR_SUCCESS}✅ 起動しました。${CLR_RESET}"
-else
-    echo -e "💡 'code' コマンドが見つかりません。VS Code を手動で開いてください。"
 fi
 
 echo "======================================================="

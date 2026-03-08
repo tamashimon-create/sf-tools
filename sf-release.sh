@@ -16,6 +16,31 @@
 #   -j, --json       : sfコマンドの出力をJSON形式にします（CI/CDの機械読み取り用）。
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# 0. 共通の初期処理
+# ------------------------------------------------------------------------------
+# カラー定義
+if [ -t 1 ]; then
+    readonly CLR_INFO='\033[36m'
+    readonly CLR_SUCCESS='\033[32m'
+    readonly CLR_ERR='\033[31m'
+    readonly CLR_PROMPT='\033[33m'
+    readonly CLR_RESET='\033[0m'
+else
+    readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
+fi
+
+# 実行ディレクトリのバリデーション
+CURRENT_DIR_NAME=$(basename "$PWD")
+if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
+    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
+    exit 1
+fi
+
+echo "======================================================="
+echo -e "${CLR_INFO}📦 リリース・検証処理を開始します...${CLR_RESET}"
+echo "======================================================="
+
 # 【安全性】スクリプト終了時（異常終了やCtrl+Cによる中断も含む）に、
 # プロセスID($$)が付与された一時ファイルを確実に削除し、ディレクトリを汚さないようにする
 trap 'rm -f ./cmd_output_$$.tmp ./cmd_exit_$$.tmp 2>/dev/null' EXIT
