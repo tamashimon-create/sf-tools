@@ -30,16 +30,16 @@ else
     readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
 
+echo "======================================================="
+echo -e "${CLR_INFO}📦 リリース・検証処理を開始します...${CLR_RESET}"
+echo "======================================================="
+
 # 実行ディレクトリのバリデーション
 CURRENT_DIR_NAME=$(basename "$PWD")
 if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
     echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
     exit 1
 fi
-
-echo "======================================================="
-echo -e "${CLR_INFO}📦 リリース・検証処理を開始します...${CLR_RESET}"
-echo "======================================================="
 
 # 【安全性】スクリプト終了時（異常終了やCtrl+Cによる中断も含む）に、
 # プロセスID($$)が付与された一時ファイルを確実に削除し、ディレクトリを汚さないようにする

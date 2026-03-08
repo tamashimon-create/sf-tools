@@ -20,16 +20,16 @@ else
     readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
 
+echo "======================================================="
+echo -e "${CLR_INFO}⚓ Gitフックの初期化(Init Hooks)を開始します...${CLR_RESET}"
+echo "======================================================="
+
 # 実行ディレクトリのバリデーション
 CURRENT_DIR_NAME=$(basename "$PWD")
 if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
     echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
     exit 1
 fi
-
-echo "======================================================="
-echo -e "${CLR_INFO}⚓ Gitフックの初期化(Init Hooks)を開始します...${CLR_RESET}"
-echo "======================================================="
 
 # ラッパースクリプトの生成先
 HOOK_DEST=".git/hooks/pre-push"

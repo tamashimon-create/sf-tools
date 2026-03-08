@@ -23,16 +23,16 @@ else
     readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
 
+echo "======================================================="
+echo -e "${CLR_INFO}🔄 メタデータ同期（Sandbox -> Git）を開始します...${CLR_RESET}"
+echo "======================================================="
+
 # 実行ディレクトリのバリデーション
 CURRENT_DIR_NAME=$(basename "$PWD")
 if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
     echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
     exit 1
 fi
-
-echo "======================================================="
-echo -e "${CLR_INFO}🔄 メタデータ同期（Sandbox -> Git）を開始します...${CLR_RESET}"
-echo "======================================================="
 
 # 【安全性】スクリプト終了時に一時ファイルを確実に削除する（プロセスID $$ を利用して競合防止）
 trap 'rm -rf "$DELTA_DIR" ./cmd_output_$$.tmp 2>/dev/null' EXIT
