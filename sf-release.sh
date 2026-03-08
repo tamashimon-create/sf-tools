@@ -45,12 +45,22 @@ readonly REMOVE_XML="${RELEASE_DIR}/destructiveChanges.xml"
 # ログファイルは専用の logs フォルダに集約する
 readonly LOG_FILE="./logs/sf-release.log"
 
-# ターミナル出力用のカラー装飾定義
-readonly CLR_INFO='\033[36m'
-readonly CLR_SUCCESS='\033[32m'
-readonly CLR_ERR='\033[31m'
-readonly CLR_CMD='\033[34m'
-readonly CLR_RESET='\033[0m'
+# ターミナル出力用のカラー装飾定義（環境に応じて自動切替）
+if [ -t 2 ]; then
+    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
+    readonly CLR_INFO='\033[36m'
+    readonly CLR_SUCCESS='\033[32m'
+    readonly CLR_ERR='\033[31m'
+    readonly CLR_CMD='\033[34m'
+    readonly CLR_RESET='\033[0m'
+else
+    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
+    readonly CLR_INFO=''
+    readonly CLR_SUCCESS=''
+    readonly CLR_ERR=''
+    readonly CLR_CMD=''
+    readonly CLR_RESET=''
+fi
 
 # 【重要】デフォルト値を「安全側（検証する＆ブラウザを開く）」に設定
 IS_VALIDATE_MODE=1
