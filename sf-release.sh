@@ -20,13 +20,11 @@
 # ------------------------------------------------------------------------------
 # 0. 共通の初期処理
 # ------------------------------------------------------------------------------
-# カラー定義
+# ターミナル出力用のカラー定義（標準出力用）
+# 実行環境がインタラクティブなターミナルの場合のみ色を有効化し、ログファイル等を汚さないようにする
 if [ -t 1 ]; then
-    readonly CLR_INFO='\033[36m'
-    readonly CLR_SUCCESS='\033[32m'
-    readonly CLR_ERR='\033[31m'
-    readonly CLR_PROMPT='\033[33m'
-    readonly CLR_RESET='\033[0m'
+    readonly CLR_INFO='\033[36m'; readonly CLR_SUCCESS='\033[32m';
+    readonly CLR_ERR='\033[31m'; readonly CLR_PROMPT='\033[33m'; readonly CLR_RESET='\033[0m'
 else
     readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
 fi
@@ -36,14 +34,15 @@ echo -e "${CLR_INFO}📦 リリース・検証処理を開始します...${CLR_R
 echo "======================================================="
 
 # 実行ディレクトリのバリデーション
+# プロジェクトルート（force-から始まるディレクトリ）以外での誤実行による事故を防止します
 CURRENT_DIR_NAME=$(basename "$PWD")
 if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
     echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
     exit 1
 fi
 
-# 【安全性】スクリプト終了時（異常終了やCtrl+Cによる中断も含む）に、
-# プロセスID($$)が付与された一時ファイルを確実に削除し、ディレクトリを汚さないようにする
+# 【安全性】スクリプト終了時に、プロセスID($$)が付与された一時ファイルを確実にクリーンアップする
+# 正常終了時はもちろん、Ctrl+Cによる中断やエラー時にも作業ディレクトリを汚さないためのマナーです
 trap 'rm -f ./cmd_output_$$.tmp ./cmd_exit_$$.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
@@ -241,6 +240,10 @@ phase_generate_manifest() {
             # 有効なパス（空行・コメント以外）であれば配列に格納
             [[ -n "$clean_line" ]] && [[ "$clean_line" != \#* ]] && ref+=("--source-dir" "$clean_line")
         done < "$list"
+        
+        # ★TortoiseGit でのサイレントエラー対策★
+        # whileループの最後の行が空行等で false になった場合でも、関数としては「成功(0)」を返すように明示する
+        return 0 
     }
     
     process_list "$DEPLOY_LIST" deploy_args || return 1
