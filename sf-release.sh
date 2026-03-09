@@ -82,6 +82,7 @@ OUTPUT_JSON=0
 # 引数解析ループ：指定されたオプションに応じてフラグを切り替える
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --validate|--dry-run) IS_VALIDATE_MODE=1 ;; # 検証モードを明示的に指定
         --release|-r) IS_VALIDATE_MODE=0 ;; # 明示的に指定した場合のみ本番リリースを許可
         --no-open|-n) OPEN_BROWSER=0 ;;      # CI環境などブラウザがない環境で利用
         --force|-f)   IGNORE_CONFLICTS=1 ;;  # 複数人開発でのコンフリクトを強制上書き

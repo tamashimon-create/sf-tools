@@ -33,20 +33,34 @@ fi
 # ------------------------------------------------------------------------------
 # 1. フックファイルの生成
 # ------------------------------------------------------------------------------
-HOOK_DEST=".git/hooks/pre-push"
+readonly HOOK_DEST=".git/hooks/pre-push"
+# ラッパースクリプト内に埋め込む、このツールが生成したことを示す識別子
+readonly HOOK_MARKER="# 自動生成されたラッパースクリプト: sf-tools の pre-push フックを呼び出します"
 
-# ヒアドキュメントを使用して .git/hooks/pre-push を作成
-cat << 'EOF' > "$HOOK_DEST"
+# --- 安全装置: 既存フックの上書きを防止 ---
+# ファイルが存在し、かつそれがsf-tools製でない（マーカーがない）場合は、ユーザーのカスタムフックと判断して処理を中断
+if [ -f "$HOOK_DEST" ] && ! grep -qF "$HOOK_MARKER" "$HOOK_DEST"; then
+    echo -e "${CLR_ERR}❌ 警告: 独自の pre-push フックが既に存在します。${CLR_RESET}"
+    echo "sf-tools のフックを有効にするには、既存のフックをバックアップしてから再度実行してください。"
+    echo "ファイル: $HOOK_DEST"
+    echo "-------------------------------------------------------"
+    exit 1
+fi
+
+# --- ラッパースクリプトの書き込み ---
+cat << EOF > "$HOOK_DEST"
 #!/bin/bash
-# 自動生成されたラッパースクリプト: sf-tools の pre-push フックを呼び出します
+$HOOK_MARKER
 
-HOOK_SCRIPT="$HOME/sf-tools/hooks/pre-push"
+HOOK_SCRIPT="\$HOME/sf-tools/hooks/pre-push"
 
 if [ -f "$HOOK_SCRIPT" ]; then
-    bash "$HOOK_SCRIPT" "$@"
+    # 実体が存在すれば実行し、その終了コードをそのままGitに返す
+    bash "\$HOOK_SCRIPT" "\$@"
     exit $?
 else
-    echo "⚠️ [PRE-PUSH] sf-tools のフックスクリプトが見つかりません: $HOOK_SCRIPT" >&2
+    echo "⚠️ [PRE-PUSH] sf-tools のフックスクリプトが見つかりません: \$HOOK_SCRIPT" >&2
+    echo "検証をスキップして Push を継続します。" >&2
     exit 0
 fi
 EOF
