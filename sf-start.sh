@@ -40,13 +40,13 @@ trap 'rm -f ./login_out_$$.tmp 2>/dev/null' EXIT
 if [ -f "./sf-install.sh" ]; then
     echo -e "▶️  [1/4] 環境の整合性をチェック中..."
     bash "./sf-install.sh" > /dev/null 2>&1
-    
-    # Gitフックの初期化も確実に行う
-    if [ -x "$HOME/sf-tools/sf-inithooks.sh" ]; then
-        "$HOME/sf-tools/sf-inithooks.sh" > /dev/null 2>&1
-    fi
-    echo -e "▶️  環境チェック: ${CLR_SUCCESS}完了${CLR_RESET}"
 fi
+
+# Gitフックの初期化も確実に行う
+if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
+"$HOME/sf-tools/sf-hook.sh" > /dev/null 2>&1
+fi
+echo -e "▶️  環境チェック: ${CLR_SUCCESS}完了${CLR_RESET}"
 
 # ------------------------------------------------------------------------------
 # 2. フォルダ構成の準備
