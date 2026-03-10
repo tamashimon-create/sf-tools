@@ -10,14 +10,20 @@
 # ------------------------------------------------------------------------------
 # ターミナル出力用のカラー定義
 # 実行環境がインタラクティブなターミナルの場合のみ色を有効化し、ログファイル等を汚さないようにする
-if [ -t 1 ]; then
+if [ -t 2 ]; then
+    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
     readonly CLR_INFO='\033[36m'
     readonly CLR_SUCCESS='\033[32m'
     readonly CLR_ERR='\033[31m'
-    readonly CLR_PROMPT='\033[33m'
+    readonly CLR_CMD='\033[34m'
     readonly CLR_RESET='\033[0m'
 else
-    readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_ERR=''; readonly CLR_PROMPT=''; readonly CLR_RESET=''
+    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
+    readonly CLR_INFO=''
+    readonly CLR_SUCCESS=''
+    readonly CLR_ERR=''
+    readonly CLR_CMD=''
+    readonly CLR_RESET=''
 fi
 
 echo "======================================================="
