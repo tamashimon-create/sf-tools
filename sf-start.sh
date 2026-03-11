@@ -6,62 +6,60 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 0. 共通の初期処理
+# 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
-# カラー定義 (標準出力用)
-if [ -t 2 ]; then
-    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
-    readonly CLR_INFO='\033[36m'
-    readonly CLR_SUCCESS='\033[32m'
-    readonly CLR_ERR='\033[31m'
-    readonly CLR_CMD='\033[34m'
-    readonly CLR_RESET='\033[0m'
-else
-    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
-    readonly CLR_INFO=''
-    readonly CLR_SUCCESS=''
-    readonly CLR_ERR=''
-    readonly CLR_CMD=''
-    readonly CLR_RESET=''
-fi
+readonly SCRIPT_NAME=$(basename "$0" .sh)
+readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_MODE="NEW"         # 実行のたびにログをリセット
+readonly SILENT_EXEC=1          # コマンドの標準出力はログファイルのみに記録
 
-echo "======================================================="
-echo -e "${CLR_INFO}🚀 開発タスクのスタートアップを開始します...${CLR_RESET}"
-echo "======================================================="
+# ------------------------------------------------------------------------------
+# 2. 共通ライブラリの読み込み
+# ------------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
-# 実行ディレクトリのバリデーション
-# プロジェクトルート（force-から始まるディレクトリ）以外での誤実行による事故を防止します
-CURRENT_DIR_NAME=$(basename "$PWD")
-if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
-    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
+if [[ ! -f "$COMMON_LIB" ]]; then
+    echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
-
-# 【安全性】スクリプト終了時に、プロセスID($$)が付与された一時ファイルを確実にクリーンアップする
-# 正常終了時はもちろん、Ctrl+Cによる中断やエラー時にも作業ディレクトリを汚さないためのマナーです
-trap 'rm -f ./login_out_$$.tmp 2>/dev/null' EXIT
+source "$COMMON_LIB"
 
 # ------------------------------------------------------------------------------
-# 1. ツール環境の自動更新 (最優先)
+# 3. 初期チェック
 # ------------------------------------------------------------------------------
-echo -e "\n▶️ ツール環境の自動更新を開始します..."
+# プロジェクトディレクトリ（force-で始まる）にいるか確認
+check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
+
+log "HEADER" "" "開発タスクのスタートアップを開始します..."
+
+DELTA_DIR="./temp_delta_$$"
+trap 'rm -rf "$DELTA_DIR" ./cmd_out_*.tmp 2>/dev/null' EXIT
+
+# ------------------------------------------------------------------------------
+# 4. ツール環境の自動更新 (最優先)
+# ------------------------------------------------------------------------------
+log "INFO" "INIT" "ツール環境の自動更新を開始します..."
 
 # プロジェクト側に sf-install.sh がある場合は、まずそれを実行して共通ツールを最新にする
 if [ -f "./sf-install.sh" ]; then
-    echo -e "▶️  sf-tools 最新化"
+    log "INFO" "INIT" "sf-tools を最新化します"
     bash "./sf-install.sh" > /dev/null 2>&1
 fi
 
 # Gitフックの初期化も確実に行う
 if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
-    echo -e "▶️  Gitフック有効化"
+    log "INFO" "INIT" "Gitフック有効化します"
+
     "$HOME/sf-tools/sf-hook.sh" > /dev/null 2>&1
 fi
-echo -e "▶️  環境最新化: ${CLR_SUCCESS}完了${CLR_RESET}"
+log "SUCCESS" "INIT" "ツール環境の自動更新を完了しました"
 
 # ------------------------------------------------------------------------------
-# 2. フォルダ構成の準備
+# 5. フォルダ構成の準備
 # ------------------------------------------------------------------------------
+log "INFO" "ENV" "リリース管理用のディレクトリを自動生成します..."
+
 # 現在のGitブランチ名を取得し、リリース管理用のディレクトリを自動生成します
 BRANCH_NAME=$(git symbolic-ref --short HEAD 2>/dev/null)
 if [ -n "$BRANCH_NAME" ]; then
@@ -69,14 +67,14 @@ if [ -n "$BRANCH_NAME" ]; then
     mkdir -p "$RELEASE_DIR"
     [ ! -f "${RELEASE_DIR}/deploy-target.txt" ] && cp "$HOME/sf-tools/templates/deploy-template.txt" "${RELEASE_DIR}/deploy-target.txt" 2>/dev/null
     [ ! -f "${RELEASE_DIR}/remove-target.txt" ] && cp "$HOME/sf-tools/templates/remove-template.txt" "${RELEASE_DIR}/remove-target.txt" 2>/dev/null
-    echo -e "▶️  現在のブランチ: ${CLR_INFO}${BRANCH_NAME}${CLR_RESET}"
+    log "INFO" "INIT" "現在のブランチ:${BRANCH_NAME}"
 fi
+log "SUCCESS" "ENV" "リリース管理用のディレクトリを作成しました"
 
 # ------------------------------------------------------------------------------
-# 3. Salesforce 接続確認（スマート判定 ＆ 強制リセット対応）
+# 6. Salesforce 接続確認（スマート判定 ＆ 強制リセット対応）
 # ------------------------------------------------------------------------------
-echo -e "\n▶️ Salesforce 接続状況を確認中..."
-
+log "INFO" "LOGIN" "Salesforce 接続確認中..."
 SKIP_LOGIN=0
 
 # パターンA: 既存の接続情報を確認（sf-startswitch.sh からの呼び出しでない場合）
@@ -89,7 +87,7 @@ if [ "$FORCE_RELOGIN" != "1" ]; then
 
     # 有効なエイリアスと本番/Sandbox組織ID(00Dから始まる)が取得できた場合、ログイン済みと判断
     if [ -n "$CURRENT_ALIAS" ] && [ "$CURRENT_ALIAS" != "null" ] && [[ "$CURRENT_ID" == 00D* ]]; then
-        echo -e "${CLR_SUCCESS}✅ 組織 (${CURRENT_ALIAS}) に接続済みです。${CLR_RESET}"
+        log "INFO" "LOGIN" "組織 (${CURRENT_ALIAS}) に接続済みです。"
         ORG_ALIAS="$CURRENT_ALIAS"
         SKIP_LOGIN=1
     fi
@@ -107,20 +105,23 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
     sf alias unset vscodeOrg >/dev/null 2>&1
 
     # Webブラウザ経由でのログインフローを開始し、デフォルト組織として設定
-    echo -e "ブラウザでログインして接続を許可してください..."
-    TMP_LOGIN="./login_out_$$.tmp"
-    sf org login web --set-default --alias "$ORG_ALIAS" 2>&1 | tee "$TMP_LOGIN"
+    log "INFO" "LOGIN" "ブラウザでログインして接続を許可してください..."
+    sf org login web --set-default --alias "$ORG_ALIAS" 2>&1 | tee "$DELTA_DIR"
 
-    if grep -qi "successfully authorized" "$TMP_LOGIN"; then
-        echo -e "${CLR_SUCCESS}✅ 接続完了！${CLR_RESET}"
+    if grep -qi "successfully authorized" "$DELTA_DIR"; then
+        log "INFO" "LOGIN" "接続完了！"
+
     else
-        echo -e "${CLR_ERR}❌ 接続失敗。${CLR_RESET}"
+        log "INFO" "LOGIN" "接続失敗。"
     fi
 fi
+log "INFO" "SUCCESS" "Salesforce に接続しました"
 
 # ------------------------------------------------------------------------------
-# 4. VS Code 設定の同期
+# 4. VS Code 設定の同期＆起動
 # ------------------------------------------------------------------------------
+log "INFO" "VSCode" "VSCode 起動中..."
+
 # VS CodeのSalesforce拡張機能が参照する設定ファイル(.sf/config.json, .sfdx/sfdx-config.json)を更新
 mkdir -p .sfdx .sf
 echo '{"target-org": "'"$ORG_ALIAS"'"}' > .sf/config.json
@@ -131,14 +132,10 @@ sleep 2
 # ------------------------------------------------------------------------------
 # 5. VS Code 起動
 # ------------------------------------------------------------------------------
-echo -e "\n▶️ VSCode を起動中..."
+log "INFO" "VSCode" "VSCode を起動中..."
 # 'code' コマンドが利用可能であれば、現在のプロジェクトフォルダをVS Codeで開く
 if command -v code >/dev/null 2>&1; then
     code .
-    echo -e "${CLR_SUCCESS}✅ 起動しました。${CLR_RESET}"
+    log "INFO" "VSCode" "VSCode を起動しました。"
 fi
-
-echo "======================================================="
-echo -e "${CLR_SUCCESS}🎉 準備が整いました。開発を開始してください。${CLR_RESET}"
-echo "======================================================="
 exit 0
