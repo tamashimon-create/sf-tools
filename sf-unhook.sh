@@ -1,53 +1,78 @@
 #!/bin/bash
-
 # ==============================================================================
-# プログラム名: sf-unhook.sh
-# 概要: カレントディレクトリのGitプロジェクトから、Salesforce検証フックを削除（無効化）する
+# sf-unhook.sh - Salesforce検証フック (pre-push) の無効化スクリプト
+# ------------------------------------------------------------------------------
+# [処理概要]
+#   1. カレントプロジェクトが force-* ディレクトリか確認
+#   2. .git/hooks/pre-push ファイルが存在する場合、削除する
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 0. 共通の初期処理
+# 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
-# カラー定義
-if [ -t 2 ]; then
-    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
-    readonly CLR_INFO='\033[36m'
-    readonly CLR_SUCCESS='\033[32m'
-    readonly CLR_ERR='\033[31m'
-    readonly CLR_CMD='\033[34m'
-    readonly CLR_RESET='\033[0m'
-else
-    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
-    readonly CLR_INFO=''
-    readonly CLR_SUCCESS=''
-    readonly CLR_ERR=''
-    readonly CLR_CMD=''
-    readonly CLR_RESET=''
-fi
+readonly SCRIPT_NAME=$(basename "$0" .sh)
+readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_MODE="NEW"         # 実行のたびにログをリセット
+readonly SILENT_EXEC=1          # コマンドの標準出力はログファイルのみに記録
 
-echo "======================================================="
-echo -e "${CLR_INFO}⚓ Git Hook (pre-push) の無効化を開始します...${CLR_RESET}"
-echo "======================================================="
+# ------------------------------------------------------------------------------
+# 2. 共通ライブラリの読み込み
+# ------------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
-# 実行ディレクトリのバリデーション
-CURRENT_DIR_NAME=$(basename "$PWD")
-if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
-    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
+if [[ ! -f "$COMMON_LIB" ]]; then
+    echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
+source "$COMMON_LIB" 
 
 # ------------------------------------------------------------------------------
-# 1. フックファイルの削除
+# 3. 定数定義
 # ------------------------------------------------------------------------------
-HOOK_DEST=".git/hooks/pre-push"
+readonly HOOK_DEST=".git/hooks/pre-push"
 
-if [ -f "$HOOK_DEST" ]; then
-    rm -f "$HOOK_DEST"
-    echo -e "${CLR_SUCCESS}✅ sf-unhook: pre-push フックを【無効化】しました。${CLR_RESET}"
-    echo "次回以降の git push 時には、Salesforce 組織への検証は行われません。"
-else
-    echo -e "${CLR_INFO}▶️  フックはすでに無効化されています（ファイルが存在しません）。${CLR_RESET}"
-fi
+# ------------------------------------------------------------------------------
+# 4. 各作業フェーズの定義
+# ------------------------------------------------------------------------------
+
+# 【CHECKフェーズ】ディレクトリの検証
+phase_check_environment() {
+    log "INFO" "CHECK" "実行環境を確認中..." 
+
+    # プロジェクトディレクトリ確認
+    check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。" 
+
+    # .git ディレクトリの存在確認
+    if [[ ! -d ".git" ]]; then
+        die "Gitリポジトリのルートで実行してください（.git ディレクトリが見つかりません）。" 
+    fi
+
+    return $RET_OK 
+}
+
+# 【REMOVEフェーズ】フックファイルの削除
+phase_remove_hook() {
+    if [[ -f "$HOOK_DEST" ]]; then
+        log "INFO" "REMOVE" "Git Hook を削除中..." 
+        run "REMOVE" rm -f "$HOOK_DEST" 
+        log "SUCCESS" "REMOVE" "pre-push フックを無効化しました。" 
+    else
+        log "INFO" "REMOVE" "フックはすでに無効化されています（ファイルが存在しません）。" 
+    fi
+    return $RET_OK 
+}
+
+# ------------------------------------------------------------------------------
+# 5. メイン実行フロー
+# ------------------------------------------------------------------------------
+log "HEADER" "" "Git Hook (pre-push) の無効化を開始します" 
+
+phase_check_environment || die "初期チェックに失敗しました。" 
+phase_remove_hook || die "フックの削除に失敗しました。" 
 
 echo "-------------------------------------------------------"
-exit 0
+log "INFO" "NOTE" "次回以降の git push 時には、自動検証は行われません。" 
+log "HEADER" "" "処理が完了しました" 
+
+exit $RET_OK

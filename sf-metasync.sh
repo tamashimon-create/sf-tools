@@ -14,8 +14,8 @@
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
-readonly LOG_MODE="NEW"      # 実行のたびにログをリセット
-readonly SILENT_EXEC=1       # コマンドの標準出力はログファイルのみに記録
+readonly LOG_MODE="NEW"         # 実行のたびにログをリセット
+readonly SILENT_EXEC=1          # コマンドの標準出力はログファイルのみに記録
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -24,7 +24,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
-    echo "❌ [FATAL ERROR] Library not found: $COMMON_LIB" >&2
+    echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
 source "$COMMON_LIB"
@@ -35,7 +35,7 @@ source "$COMMON_LIB"
 # プロジェクトディレクトリ（force-で始まる）にいるか確認
 check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
 
-log "HEADER" "" "🔄 メタデータ同期（Sandbox -> Git）を開始します"
+log "HEADER" "" "メタデータ同期（Sandbox -> Git）を開始します"
 
 # 一時ファイルおよび一時ディレクトリの自動削除設定
 DELTA_DIR="./temp_delta_$$"
@@ -128,5 +128,4 @@ else
     die "Gitへの同期中にエラーが発生しました。"
 fi
 
-log "HEADER" "" "🎉 すべての工程が正常に完了しました"
 exit $RET_OK
