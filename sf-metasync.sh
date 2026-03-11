@@ -1,225 +1,111 @@
 #!/bin/bash
-
 # ==============================================================================
-# プログラム名: sf-metasync.sh
-# 概要: Salesforce組織の最新メタデータを取得し、Gitリポジトリへ自動コミット・Pushする
-# 
-# 運用想定: 
-#   1. 手動実行による環境同期
-#   2. cronやGitHub Actions等による「Sandboxの変更を毎日自動でGitに保存する」定期実行
+# sf-metasync.sh - SalesforceメタデータのGit自動同期スクリプト (最終確定版)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 0. 共通の初期処理
+# 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
-# カラー定義 (標準出力用)
-if [ -t 2 ]; then
-    # 本物のターミナル(Git Bash等)で実行されている場合は色をつける
-    readonly CLR_INFO='\033[36m'
-    readonly CLR_SUCCESS='\033[32m'
-    readonly CLR_ERR='\033[31m'
-    readonly CLR_CMD='\033[34m'
-    readonly CLR_RESET='\033[0m'
-else
-    # TortoiseGitなどのGUIツールやパイプ処理時は色をつけない（文字化け防止）
-    readonly CLR_INFO=''
-    readonly CLR_SUCCESS=''
-    readonly CLR_ERR=''
-    readonly CLR_CMD=''
-    readonly CLR_RESET=''
-fi
+readonly SCRIPT_NAME=$(basename "$0" .sh)
+readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_MODE="NEW"
+readonly SILENT_EXEC=1
 
-echo "======================================================="
-echo -e "${CLR_INFO}🔄 メタデータ同期（Sandbox -> Git）を開始します...${CLR_RESET}"
-echo "======================================================="
+# ------------------------------------------------------------------------------
+# 2. 共通ライブラリの読み込み
+# ------------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
-# 実行ディレクトリのバリデーション
-CURRENT_DIR_NAME=$(basename "$PWD")
-if [[ ! "$CURRENT_DIR_NAME" =~ ^force- ]]; then
-    echo -e "${CLR_ERR}❌ エラー: このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}"
+if [[ ! -f "$COMMON_LIB" ]]; then
+    echo "❌ [FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
-
-# 【安全性】スクリプト終了時に一時ファイルを確実に削除する
-trap 'rm -rf "$DELTA_DIR" ./cmd_output_$$.tmp 2>/dev/null' EXIT
+source "$COMMON_LIB"
 
 # ------------------------------------------------------------------------------
-# 1. 設定項目 と 動的ターゲット判定
+# 3. 初期チェック
 # ------------------------------------------------------------------------------
-TARGET_ORG=""
+check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
 
-# パターンA: 環境変数 (GitHub Actionsのsecrets等) が設定されているか確認
-if [ -n "$SF_TARGET_ORG" ]; then
-    TARGET_ORG="$SF_TARGET_ORG"
-    echo -e "▶️  接続先判定: ${CLR_SUCCESS}${TARGET_ORG}${CLR_RESET} (環境変数 SF_TARGET_ORG より)"
-fi
+log "HEADER" "" "🔄 メタデータ同期（Sandbox -> Git）を開始します"
 
-# パターンB: 環境変数がない場合、ローカルの接続情報を自動取得
-if [ -z "$TARGET_ORG" ]; then
-    DISPLAY_JSON=$(sf org display --json 2>/dev/null || echo "")
-    CURRENT_ALIAS=$(echo "$DISPLAY_JSON" | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
-    
-    if [ -n "$CURRENT_ALIAS" ] && [ "$CURRENT_ALIAS" != "null" ]; then
-        TARGET_ORG="$CURRENT_ALIAS"
-        echo -e "▶️  接続先判定: ${CLR_SUCCESS}${TARGET_ORG}${CLR_RESET} (ローカル接続より自動取得)"
-    fi
-fi
+# 一時ファイルの掃除設定
+trap 'rm -rf "$DELTA_DIR" ./cmd_out_*.tmp 2>/dev/null' EXIT
 
-if [ -z "$TARGET_ORG" ]; then
-    echo -e "${CLR_ERR}❌ エラー: 同期元の組織エイリアスを特定できません。${CLR_RESET}" >&2
-    exit 1
-fi
+# ------------------------------------------------------------------------------
+# 4. 固有設定
+# ------------------------------------------------------------------------------
+TARGET_ORG=$(get_target_org) || die "接続先組織を特定できませんでした。"
+log "INFO" "INIT" "接続先組織: ${TARGET_ORG}"
 
-# 現在のGitブランチ名の取得
-BRANCH_NAME=$(git symbolic-ref --short HEAD 2>/dev/null || echo "unknown-branch")
+BRANCH_NAME=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
 
-# コミットメッセージ
-readonly COMMIT_MSG="定期更新 (Salesforceの変更を自動反映)"
-
-# 【並列実行対応】プロセスIDを付与した一時ディレクトリ名
+# ★ コミットメッセージを日本語に復元
+readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 readonly DELTA_DIR="./temp_delta_$$"
-
-# ログ出力先
-readonly LOG_FILE="./logs/sf-metaasync.log"
-
-# 定期的に全件取得（リフレッシュ）する重要なメタデータ種別
-readonly METADATA_TYPES=(
-    ApexClass
-    ApexPage
-    LightningComponentBundle
-    CustomObject
-    CustomField
-    Layout
-    FlexiPage
-    Flow
-    PermissionSet
-    CustomLabels
-)
+readonly METADATA_TYPES=(ApexClass ApexPage LightningComponentBundle CustomObject CustomField Layout FlexiPage Flow PermissionSet CustomLabels)
 
 # ------------------------------------------------------------------------------
-# 2. 共通エンジン（ログ管理とコマンド実行制御）
+# 5. 各作業フェーズの定義
 # ------------------------------------------------------------------------------
-mkdir -p "$(dirname "$LOG_FILE")"
-: > "$LOG_FILE"
 
-log() {
-    local level=$1 stage=$2 message=$3
-    local ts=$(date +'%Y-%m-%d %H:%M:%S')
-
-    printf "[%s] [%s] [%s] %s\n" "$ts" "$level" "$stage" "$message" >> "$LOG_FILE"
-
-    case "$level" in
-        "INFO")    echo -e "${CLR_INFO}▶️ [$stage]${CLR_RESET} $message" >&2 ;;
-        "SUCCESS") echo -e "${CLR_SUCCESS}✅ [$stage]${CLR_RESET} $message" >&2 ;;
-        "ERROR")   echo -e "${CLR_ERR}❌ [$stage]${CLR_RESET} $message" >&2 ;;
-        "CMD")     echo -e "${CLR_CMD}   > Command:${CLR_RESET} $message" >&2 ;;
-    esac
-}
-
-exec_wrapper() {
-    local stage=$1; shift
-    local cmd=("$@")
-    local tmp_out="./cmd_output_$$.tmp"
-
-    [[ "${cmd[0]}" == "sf" ]] && cmd+=("--json")
-    log "CMD" "$stage" "${cmd[*]}"
-
-    "${cmd[@]}" > "$tmp_out" 2>&1
-    local status=$?
-
-    if [ $status -eq 0 ] || grep -qE "nothing to commit|Already up to date|No local changes|\"status\": 0" "$tmp_out"; then
-        echo "Command executed successfully." >> "$LOG_FILE"
-        rm -f "$tmp_out"
-        return 0
-    fi
-
-    cat "$tmp_out" >> "$LOG_FILE"
-    rm -f "$tmp_out"
-    return 1
-}
-
-# ------------------------------------------------------------------------------
-# 3. 作業フェーズ定義
-# ------------------------------------------------------------------------------
 phase_git_update() {
-    log "INFO" "GIT" "現在の作業を待避し、リモートの最新状態へリベース中..."
-    exec_wrapper "GIT" git stash
-    exec_wrapper "GIT" git fetch origin
-    if ! exec_wrapper "GIT" git pull origin "$BRANCH_NAME" --rebase; then
-        exec_wrapper "GIT" git rebase --abort
-        return 1
+    log "INFO" "GIT" "リモートの最新状態を取り込んでいます..."
+    run "GIT" git stash
+    run "GIT" git fetch origin
+    if ! run "GIT" git pull origin "$BRANCH_NAME" --rebase; then
+        run "GIT" git rebase --abort
+        return $RET_NG
     fi
-    return 0
+    return $RET_OK
 }
 
 phase_analyze_delta() {
-    log "INFO" "DELTA" "前回のコミットからの変更箇所を特定中..."
-    exec_wrapper "DELTA" mkdir -p "$DELTA_DIR"
-    exec_wrapper "DELTA" sf sgd source delta --from "origin/$BRANCH_NAME" --to HEAD --output-dir "$DELTA_DIR"
+    log "INFO" "DELTA" "前回の同期からの変更箇所(SGD)を解析中..."
+    mkdir -p "$DELTA_DIR"
+    run "DELTA" sf sgd source delta --from "origin/$BRANCH_NAME" --to HEAD --output-dir "$DELTA_DIR"
 }
 
 phase_retrieve_metadata() {
-    if [ -f "$DELTA_DIR/package/package.xml" ]; then
-        log "INFO" "RETRIEVE" "特定された差分ファイルをダウンロード中..."
-        exec_wrapper "RETRIEVE" sf project retrieve start --manifest "$DELTA_DIR/package/package.xml" --target-org "$TARGET_ORG" --ignore-conflicts
+    if [[ -f "$DELTA_DIR/package/package.xml" ]]; then
+        log "INFO" "RETRIEVE" "SGDで特定された差分ファイルをダウンロード中..."
+        run "RETRIEVE" sf project retrieve start --manifest "$DELTA_DIR/package/package.xml" --target-org "$TARGET_ORG" --ignore-conflicts
     fi
-
-    log "INFO" "RETRIEVE" "主要メタデータ（Apex/Flow/Layout等）をリフレッシュ中..."
-    exec_wrapper "RETRIEVE" sf project retrieve start --metadata "${METADATA_TYPES[@]}" --target-org "$TARGET_ORG" --ignore-conflicts
+    log "INFO" "RETRIEVE" "主要メタデータの整合性をチェック中..."
+    run "RETRIEVE" sf project retrieve start --metadata "${METADATA_TYPES[@]}" --target-org "$TARGET_ORG" --ignore-conflicts
 }
 
 phase_git_sync() {
-    log "INFO" "SYNC" "GitリポジトリへコミットおよびPush中..."
-    
-    if ! exec_wrapper "SYNC" git add -A; then return 1; fi
-
-    if git diff-index --quiet HEAD --; then
-        return 2 # 変更なし
-    fi
-
-    if ! exec_wrapper "SYNC" git commit -m "$COMMIT_MSG"; then return 1; fi
-
-    if ! exec_wrapper "SYNC" git push origin "$BRANCH_NAME"; then
-        log "INFO" "SYNC" "Push失敗。最新を取り込んで再試行..."
-        exec_wrapper "SYNC" git pull origin "$BRANCH_NAME" --rebase
-        exec_wrapper "SYNC" git push origin "$BRANCH_NAME"
-    fi
+    log "INFO" "SYNC" "Gitリポジトリへ反映中..."
+    run "SYNC" git add -A || return $RET_NG
+    if git diff-index --quiet HEAD --; then return $RET_NO_CHANGE; fi
+    run "SYNC" git commit -m "$COMMIT_MSG" || return $RET_NG
+    run "SYNC" git push origin "$BRANCH_NAME"
 }
 
 # ------------------------------------------------------------------------------
-# 4. メインフロー制御
+# 6. メイン実行フロー
 # ------------------------------------------------------------------------------
-echo "-------------------------------------------------------" >&2
-log "INFO" "INIT" "非同期同期処理を開始 (Target: $TARGET_ORG, Branch: $BRANCH_NAME)"
-
-if [ "$BRANCH_NAME" != "main" ]; then
-    log "ERROR" "INIT" "このツールは 'main' ブランチでのみ実行可能です。処理を中断します。"
-    echo "-------------------------------------------------------" >&2
-    exit 1
-fi
-
-if ! phase_git_update; then log "ERROR" "GIT" "失敗"; exit 1; fi
+phase_git_update      || die "Git更新に失敗しました。"
 log "SUCCESS" "GIT" "完了"
 
-if ! phase_analyze_delta; then log "ERROR" "DELTA" "失敗"; exit 1; fi
+phase_analyze_delta   || die "差分解析(SGD)に失敗しました。"
 log "SUCCESS" "DELTA" "完了"
 
-if ! phase_retrieve_metadata; then log "ERROR" "RETRIEVE" "失敗"; exit 1; fi
+phase_retrieve_metadata || die "メタデータの取得に失敗しました。"
 log "SUCCESS" "RETRIEVE" "完了"
 
 phase_git_sync
 RES=$?
 
-if [ $RES -eq 0 ]; then
-    log "SUCCESS" "SYNC" "完了 (リポジトリを更新しました)"
-elif [ $RES -eq 2 ]; then
-    log "INFO" "SYNC" "Salesforce組織に変更は検出されませんでした"
-    log "SUCCESS" "SYNC" "完了"
+if [[ $RES -eq $RET_OK ]]; then
+    log "SUCCESS" "SYNC" "完了: リポジトリを最新に更新しました。"
+elif [[ $RES -eq $RET_NO_CHANGE ]]; then
+    log "SUCCESS" "SYNC" "完了: Salesforce組織側に変更はありませんでした。"
 else
-    log "ERROR" "SYNC" "失敗"
-    exit 1
+    die "Gitへの同期中にエラーが発生しました。"
 fi
 
-log "SUCCESS" "FINISH" "すべての工程が正常に完了しました"
-echo "-------------------------------------------------------" >&2
-exit 0
+log "HEADER" "" "🎉 すべての工程が正常に完了しました"
+exit $RET_OK
