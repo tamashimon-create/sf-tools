@@ -156,6 +156,7 @@ force-tama/
 | 🔀 `sf-restart.sh` | 接続先組織の切り替え | 別の Sandbox・組織へ乗り換えるとき |
 | 🪝 `sf-hook.sh` | pre-push フックのインストール | プロジェクト参加時・フックを有効化したいとき |
 | ✂️ `sf-unhook.sh` | pre-push フックの削除 | フックを一時的に無効化したいとき |
+| ⬆️ `sf-upgrade.sh` | Git / Salesforce CLI のアップデート | ツールを最新版に更新したいとき |
 
 ---
 
@@ -409,6 +410,23 @@ bash sf-restart.sh
 
 ---
 
+### ⬆️ sf-upgrade.sh — 開発ツールのアップデート
+
+```bash
+bash ~/sf-tools/sf-upgrade.sh
+```
+
+Git と Salesforce CLI を最新バージョンにアップデートします。
+
+| ツール | コマンド |
+|:---|:---|
+| Git | `git update-git-for-windows` |
+| Salesforce CLI | `sf update --no-prompt` |
+
+> 💡 **Node.js** は Windows インストーラーで手動アップデートしてください。
+
+---
+
 ### 🪝 sf-hook.sh / ✂️ sf-unhook.sh — Git フック管理
 
 ```bash
@@ -474,6 +492,7 @@ force-app/main/default/objects/MyObject__c
 | `sf-release.sh` / `sf-deploy.sh` | `./logs/sf-release.log` |
 | `sf-metasync.sh` | `./logs/sf-metasync.log` |
 | `sf-restart.sh` | `./logs/sf-restart.log` |
+| `sf-upgrade.sh` | `./logs/sf-upgrade.log` |
 
 > 💡 ログは実行ごとにリセットされます（`LOG_MODE=NEW`）。
 > エラー発生時はまずこのログを確認してください。
@@ -498,7 +517,8 @@ sf-tools/
 ├── sf-metasync.sh             # 🔄 Salesforce→Git メタデータ自動同期
 ├── sf-restart.sh              # 🔀 接続先組織の切り替え
 ├── sf-hook.sh                 # 🪝 pre-push フックのインストール
-└── sf-unhook.sh               # ✂️ pre-push フックの削除
+├── sf-unhook.sh               # ✂️ pre-push フックの削除
+└── sf-upgrade.sh              # ⬆️ Git / Salesforce CLI のアップデート
 ```
 
 ---

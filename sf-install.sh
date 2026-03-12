@@ -8,6 +8,7 @@
 # 【動作】
 #   1. ~/sf-tools を git pull で最新化
 #   2. プロジェクト側のラッパースクリプト (sf-start.sh / sf-restart.sh) を生成
+#   3. Git / Node.js / Salesforce CLI をアップデート
 #
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
@@ -77,6 +78,40 @@ EOF
     return $RET_OK
 }
 
+# 【TOOLS】開発ツールのアップデート
+phase_update_tools() {
+    log "INFO" "開発ツールのアップデートを開始します..."
+
+    # Git
+    log "INFO" "Git をアップデートします..."
+    if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
+        run git update-git-for-windows --yes \
+            || log "WARNING" "Git のアップデートに失敗しました（続行します）"
+    else
+        log "INFO" "Git のアップデートはパッケージマネージャーで行ってください（スキップ）"
+    fi
+
+    # Node.js (npm 経由でアップデート)
+    log "INFO" "Node.js / npm をアップデートします..."
+    if command -v npm >/dev/null 2>&1; then
+        run npm install -g npm@latest \
+            || log "WARNING" "npm のアップデートに失敗しました（続行します）"
+    else
+        log "WARNING" "npm が見つかりません。Node.js のインストールを確認してください。"
+    fi
+
+    # Salesforce CLI
+    log "INFO" "Salesforce CLI をアップデートします..."
+    if command -v sf >/dev/null 2>&1; then
+        run sf update \
+            || log "WARNING" "Salesforce CLI のアップデートに失敗しました（続行します）"
+    else
+        log "WARNING" "sf コマンドが見つかりません。Salesforce CLI のインストールを確認してください。"
+    fi
+
+    return $RET_OK
+}
+
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
@@ -85,5 +120,8 @@ log "SUCCESS" "sf-tools を最新化しました。"
 
 phase_generate_wrappers || die "ラッパースクリプトの生成に失敗しました。"
 log "SUCCESS" "ラッパースクリプトを生成しました。"
+
+phase_update_tools
+log "SUCCESS" "開発ツールのアップデートが完了しました。"
 
 exit $RET_OK
