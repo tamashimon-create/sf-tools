@@ -195,7 +195,7 @@ run() {
     local is_success=$RET_NG
     # A. 変更なし（NothingToDeploy）の検知
     if grep -qE "NothingToDeploy|No local changes to deploy" "$tmp_out"; then
-        log "INFO" "デプロイ対象の変更がないためスキップされました。"
+        log "WARNING" "組織との差分が検出されませんでした (NothingToDeploy)。ローカルのソースはすでに組織と一致しています。"
         is_success=$RET_NO_CHANGE
     # B. 成功判定（終了コード優先、Salesforce CLI の非ゼロ成功に備えて出力も確認）
     elif [[ $status -eq 0 ]] || grep -qE "Success|successfully|Succeeded|Deployed|Successfully|status\": 0" "$tmp_out"; then
