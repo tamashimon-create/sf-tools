@@ -1,10 +1,10 @@
 #!/bin/bash
 # ==============================================================================
-# sf-unhook.sh - Salesforce検証フック (pre-push) の無効化スクリプト
-# ------------------------------------------------------------------------------
-# [処理概要]
-#   1. カレントプロジェクトが force-* ディレクトリか確認
-#   2. .git/hooks/pre-push ファイルが存在する場合、削除する
+# sf-unhook.sh - pre-push フックのアンインストールスクリプト
+# ==============================================================================
+# sf-hook.sh がインストールした pre-push フックを削除します。
+# sf-tools が管理するフックでない場合（手動で設置されたフック等）は
+# 誤削除を防ぐためスキップします。
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -12,8 +12,8 @@
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
-readonly LOG_MODE="NEW"         # 実行のたびにログをリセット
-readonly SILENT_EXEC=1          # コマンドの標準出力はログファイルのみに記録
+readonly LOG_MODE="NEW"
+readonly SILENT_EXEC=1
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -25,54 +25,68 @@ if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
-source "$COMMON_LIB" 
+source "$COMMON_LIB"
 
 # ------------------------------------------------------------------------------
 # 3. 定数定義
 # ------------------------------------------------------------------------------
+# 削除対象: カレントプロジェクトの Git フックファイル
 readonly HOOK_DEST=".git/hooks/pre-push"
 
+# SF_HOOK_MARKER は lib/common.sh で定義済み
+
 # ------------------------------------------------------------------------------
-# 4. 各作業フェーズの定義
+# 4. フェーズ定義
 # ------------------------------------------------------------------------------
 
-# 【CHECKフェーズ】ディレクトリの検証
+# 【CHECK】実行環境の検証
 phase_check_environment() {
-    log "INFO" "CHECK" "実行環境を確認中..." 
+    log "INFO" "実行環境を確認中..."
 
-    # プロジェクトディレクトリ確認
-    check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。" 
+    # force-* ディレクトリ内でのみ実行を許可
+    check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。"
 
-    # .git ディレクトリの存在確認
+    # Git リポジトリのルートであることを確認
     if [[ ! -d ".git" ]]; then
-        die "Gitリポジトリのルートで実行してください（.git ディレクトリが見つかりません）。" 
+        die "Gitリポジトリのルートで実行してください（.git ディレクトリが見つかりません）。"
     fi
 
-    return $RET_OK 
+    return $RET_OK
 }
 
-# 【REMOVEフェーズ】フックファイルの削除
+# 【REMOVE】フックファイルの削除
 phase_remove_hook() {
-    if [[ -f "$HOOK_DEST" ]]; then
-        log "INFO" "REMOVE" "Git Hook を削除中..." 
-        run "REMOVE" rm -f "$HOOK_DEST" 
-        log "SUCCESS" "REMOVE" "pre-push フックを無効化しました。" 
-    else
-        log "INFO" "REMOVE" "フックはすでに無効化されています（ファイルが存在しません）。" 
+    # フックファイルが存在しない場合はすでに無効化済み
+    if [[ ! -f "$HOOK_DEST" ]]; then
+        log "INFO" "フックはすでに無効化されています（ファイルが存在しません）。"
+        return $RET_OK
     fi
-    return $RET_OK 
+
+    # sf-tools が管理するフックでない場合は誤削除を防ぐためスキップ
+    if ! grep -qF "$SF_HOOK_MARKER" "$HOOK_DEST" 2>/dev/null; then
+        log "WARNING" "sf-tools が管理するフックではないためスキップしました: $HOOK_DEST"
+        return $RET_OK
+    fi
+
+    log "INFO" "Git Hook を削除中..."
+    run rm "$HOOK_DEST" || return $RET_NG
+    log "SUCCESS" "pre-push フックを無効化しました。"
+
+    return $RET_OK
 }
 
 # ------------------------------------------------------------------------------
 # 5. メイン実行フロー
 # ------------------------------------------------------------------------------
-log "HEADER" "" "Git Hook (pre-push) の無効化を開始します" 
+log "HEADER" "Git Hook (pre-push) の無効化を開始します"
 
-phase_check_environment || die "初期チェックに失敗しました。" 
-phase_remove_hook || die "フックの削除に失敗しました。" 
+phase_check_environment || die "初期チェックに失敗しました。"
+log "SUCCESS" "環境確認完了。"
+
+phase_remove_hook || die "フックの削除に失敗しました。"
 
 echo "-------------------------------------------------------"
-log "INFO" "NOTE" "次回以降の git push 時には、自動検証は行われません。" 
-log "HEADER" "" "処理が完了しました" 
+log "INFO" "次回以降の git push 時には、自動検証は行われません。"
+log "HEADER" "処理が完了しました"
 
 exit $RET_OK
