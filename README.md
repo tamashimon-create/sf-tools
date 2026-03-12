@@ -136,7 +136,6 @@ force-tama/
 │   └── main/
 │       ├── deploy-target.txt      # ⭐ main ブランチのデプロイ対象リスト
 │       └── remove-target.txt      # ⭐ main ブランチの削除対象リスト
-├── sf-install.sh                  # ⭐ sf-tools を最新化するインストーラ（sf-start.sh から自動呼び出し）
 ├── sf-start.sh                    # ⭐ sf-tools/sf-start.sh へのショートカット
 └── sf-restart.sh                  # ⭐ sf-tools/sf-restart.sh へのショートカット
 ```

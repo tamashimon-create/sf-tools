@@ -65,7 +65,7 @@ sf-tools/
 ## スクリプト別の処理概要
 
 ### sf-start.sh
-1. `sf-install.sh`（プロジェクト側）で sf-tools を最新化
+1. `~/sf-tools/sf-install.sh` で sf-tools を最新化
 2. `sf-hook.sh` で pre-push フックを有効化
 3. 現在のブランチに対応する `release/<branch>/` ディレクトリを作成
 4. `sf org display` で接続確認 → 未接続なら `sf org login web` でログイン
