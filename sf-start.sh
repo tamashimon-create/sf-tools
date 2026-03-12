@@ -44,10 +44,10 @@ trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
 # ------------------------------------------------------------------------------
 log "INFO" "ツール環境の自動更新を開始します..."
 
-# プロジェクト側の sf-install.sh で sf-tools 本体を最新化
-if [ -f "./sf-install.sh" ]; then
+# sf-install.sh で sf-tools 本体を最新化
+if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
     log "INFO" "sf-tools を最新化します"
-    run bash "./sf-install.sh" || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
+    run bash "$HOME/sf-tools/sf-install.sh" || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
 fi
 
 # pre-push フックを確実に有効化
