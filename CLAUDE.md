@@ -26,7 +26,7 @@ sf-tools/
 ├── sf-metasync.sh         # Salesforce メタデータを組織から取得して Git へ自動同期
 ├── sf-hook.sh             # pre-push フックをプロジェクトにインストール
 ├── sf-unhook.sh           # pre-push フックを削除
-└── sf-startswitch.sh      # 接続先組織を切り替える（FORCE_RELOGIN=1 で sf-start.sh 呼出）
+└── sf-restart.sh          # 接続先組織を切り替える（FORCE_RELOGIN=1 で sf-start.sh 呼出）
 ```
 
 ## 共通ライブラリ (lib/common.sh)

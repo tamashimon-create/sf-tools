@@ -21,7 +21,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=1
+readonly SILENT_EXEC=0
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -141,6 +141,12 @@ phase_generate_manifest() {
 
     process_list "$DEPLOY_LIST" deploy_args || return $RET_NG
     process_list "$REMOVE_LIST" remove_args || return $RET_NG
+
+    # デプロイ対象がゼロの場合は sf CLI に渡す前に早期終了
+    if [[ ${#deploy_args[@]} -eq 0 && ${#remove_args[@]} -eq 0 ]]; then
+        log "WARNING" "デプロイ対象がありません。${DEPLOY_LIST} または ${REMOVE_LIST} にパスを記入してください。"
+        return $RET_NO_CHANGE
+    fi
 
     # 追加/変更用の package.xml 生成
     if [[ ${#deploy_args[@]} -gt 0 ]]; then

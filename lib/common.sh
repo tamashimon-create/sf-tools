@@ -42,14 +42,23 @@ mkdir -p "$(dirname "$LOG_FILE")"
 [[ "${LOG_MODE:-}" == "NEW" ]] && : > "$LOG_FILE"
 
 # ------------------------------------------------------------------------------
-# 3. カラー定義
+# 3. カラー定義（端末非対応環境では空文字に設定して制御コードの混入を防ぐ）
 # ------------------------------------------------------------------------------
-readonly CLR_INFO='\033[36m'    # シアン    (情報・進行中)
-readonly CLR_SUCCESS='\033[32m' # グリーン  (成功・完了)
-readonly CLR_WARNING='\033[33m' # イエロー  (警告)
-readonly CLR_ERR='\033[31m'     # レッド    (エラー)
-readonly CLR_PROMPT='\033[35m'  # マゼンタ  (ユーザー入力要求)
-readonly CLR_RESET='\033[0m'    # リセット
+if [ -t 2 ]; then
+    readonly CLR_INFO='\033[36m'    # シアン    (情報・進行中)
+    readonly CLR_SUCCESS='\033[32m' # グリーン  (成功・完了)
+    readonly CLR_WARNING='\033[33m' # イエロー  (警告)
+    readonly CLR_ERR='\033[31m'     # レッド    (エラー)
+    readonly CLR_PROMPT='\033[35m'  # マゼンタ  (ユーザー入力要求)
+    readonly CLR_RESET='\033[0m'    # リセット
+else
+    readonly CLR_INFO=''
+    readonly CLR_SUCCESS=''
+    readonly CLR_WARNING=''
+    readonly CLR_ERR=''
+    readonly CLR_PROMPT=''
+    readonly CLR_RESET=''
+fi
 
 # ------------------------------------------------------------------------------
 # 4. log - 画面とログファイルへの統合出力
@@ -112,7 +121,7 @@ log() {
             ERROR)
                 echo -e "${CLR_ERR}[ERROR] ${message}${CLR_RESET}" >&2 ;;
             CMD)
-                echo "   > Command: ${message}" >&2 ;;
+                echo "> Command: ${message}" >&2 ;;
             *)
                 echo -e "${message}" >&2 ;;
         esac
@@ -186,7 +195,7 @@ run() {
     local is_success=$RET_NG
     # A. 変更なし（NothingToDeploy）の検知
     if grep -qE "NothingToDeploy|No local changes to deploy" "$tmp_out"; then
-        log "INFO" "デプロイ対象の変更がないためスキップされました。"
+        log "WARNING" "組織との差分が検出されませんでした (NothingToDeploy)。ローカルのソースはすでに組織と一致しています。"
         is_success=$RET_NO_CHANGE
     # B. 成功判定（終了コード優先、Salesforce CLI の非ゼロ成功に備えて出力も確認）
     elif [[ $status -eq 0 ]] || grep -qE "Success|successfully|Succeeded|Deployed|Successfully|status\": 0" "$tmp_out"; then

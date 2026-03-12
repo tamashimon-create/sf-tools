@@ -36,7 +36,7 @@ bash sf-start.sh
 3. Salesforce 組織への接続確認（未接続の場合はブラウザログイン）
 4. VS Code 設定の同期と起動
 
-接続する組織を切り替える場合は `sf-startswitch.sh` を使います。
+接続する組織を切り替える場合は `sf-restart.sh` を使います。
 
 ## 3. スクリプト一覧
 
@@ -47,7 +47,7 @@ bash sf-start.sh
 | `sf-metasync.sh` | **メタデータ同期スクリプト。** 組織の最新メタデータを取得し、Git リポジトリへ自動コミット・プッシュします。 |
 | `sf-hook.sh` | Git の `pre-push` フックを現在のプロジェクトにインストールします。 |
 | `sf-unhook.sh` | `pre-push` フックを無効化（削除）します。 |
-| `sf-startswitch.sh` | 接続先の Salesforce 組織を切り替えます。 |
+| `sf-restart.sh` | 接続先の Salesforce 組織を切り替えます。 |
 | `hooks/pre-push` | `git push` 時に `sf-release.sh` の検証モードを自動実行するフック本体です。 |
 
 ## 4. ワークフロー詳細
@@ -128,7 +128,7 @@ sf-tools/
 ├── sf-metasync.sh
 ├── sf-hook.sh
 ├── sf-unhook.sh
-└── sf-startswitch.sh
+└── sf-restart.sh
 ```
 
 ## 7. 設計思想

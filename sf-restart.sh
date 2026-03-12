@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# sf-startswitch.sh - 接続組織の切り替えスクリプト
+# sf-restart.sh - 接続組織の切り替えスクリプト
 # ==============================================================================
 # ローカルの接続設定をクリアし、FORCE_RELOGIN=1 で sf-start.sh を呼び出すことで
 # 別の Salesforce 組織への強制再ログインを行います。
@@ -13,7 +13,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=1
+readonly SILENT_EXEC=0
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
