@@ -82,7 +82,7 @@ log "INFO" "Salesforce 接続確認中..."
 SKIP_LOGIN=0
 
 # パターンA: 接続済みの場合はログインをスキップ
-#   FORCE_RELOGIN=1（sf-startswitch.sh 経由）の場合はこのブロックを飛ばして強制ログイン
+#   FORCE_RELOGIN=1（sf-restart.sh 経由）の場合はこのブロックを飛ばして強制ログイン
 if [ "$FORCE_RELOGIN" != "1" ]; then
     DISPLAY_JSON=$(run sf org display --json 2>/dev/null || echo "")
     CURRENT_ALIAS=$(echo "$DISPLAY_JSON" | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
