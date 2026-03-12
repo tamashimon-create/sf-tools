@@ -224,15 +224,15 @@ force-app/main/default/classes/MyClass.cls-meta.xml
 force-app/main/default/lwc/myComponent
 ```
 
-**Step 2**: 検証（Dry-Run）で安全確認。
+**Step 2**: push（コマンド・VS Code・TortoiseGit など方法は問わない）→ pre-push フックが検証（Dry-Run）を自動実行。
 
-```bash
-bash ~/sf-tools/sf-release.sh
+```
+[PRE-PUSH] Salesforce 組織への検証(Dry-Run)を自動開始します...
+  ↓ 検証成功 → そのまま push 継続 ✅
+  ↓ 検証失敗 → push を自動中断 🛑（./logs/sf-release.log に詳細）
 ```
 
-**Step 3**: `git push` → GitHub 上でプルリクエストを作成し、レビューを依頼。
-
-> 💡 `git push` 時に pre-push フックが Dry-Run を自動実行。エラーがあれば push を自動中断します。
+**Step 3**: GitHub 上でプルリクエストを作成し、レビューを依頼。
 
 ---
 
@@ -240,11 +240,7 @@ bash ~/sf-tools/sf-release.sh
 
 **Step 4**: PR がレビュー承認されたら `development` ブランチへマージ。
 
-**Step 5**: 結合 Sandbox へリリースして動作確認。
-
-```bash
-bash ~/sf-tools/sf-release.sh --release
-```
+**Step 5**: マージをトリガーに GitHub Actions が自動で結合 Sandbox へリリース。動作確認を行う。
 
 ---
 
@@ -252,11 +248,7 @@ bash ~/sf-tools/sf-release.sh --release
 
 **Step 6**: 結合確認が完了したら `staging` ブランチへのプルリクエストを作成・レビュー・マージ。
 
-**Step 7**: ステージング Sandbox へリリースして最終確認。
-
-```bash
-bash ~/sf-tools/sf-release.sh --release
-```
+**Step 7**: マージをトリガーに GitHub Actions が自動でステージング Sandbox へリリース。最終確認を行う。
 
 ---
 
@@ -264,11 +256,7 @@ bash ~/sf-tools/sf-release.sh --release
 
 **Step 8**: ステージング確認完了後、`main` ブランチへのプルリクエストを作成・レビュー・マージ。
 
-**Step 9**: 本番組織へリリース。
-
-```bash
-bash ~/sf-tools/sf-release.sh --release
-```
+**Step 9**: マージをトリガーに GitHub Actions が自動で本番組織へリリース。
 
 ---
 
