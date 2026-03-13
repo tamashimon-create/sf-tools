@@ -48,6 +48,18 @@ trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
 # 4. 定数定義
 # ------------------------------------------------------------------------------
 readonly TARGET_DIR="$HOME/sf-tools"
+readonly UPDATE_STAMP_FILE="$HOME/.sf-tools-last-update"
+readonly UPDATE_INTERVAL_SEC=86400  # 24時間（秒）
+
+# _is_tool_update_needed - 前回のツールアップデートから一定時間が経過しているか判定
+# 戻り値: 0=実行が必要 / 1=スキップ可
+_is_tool_update_needed() {
+    [[ ! -f "$UPDATE_STAMP_FILE" ]] && return 0
+    local last_update elapsed
+    last_update=$(stat -c "%Y" "$UPDATE_STAMP_FILE" 2>/dev/null || echo 0)
+    elapsed=$(( $(date +%s) - last_update ))
+    [[ $elapsed -ge $UPDATE_INTERVAL_SEC ]]
+}
 
 # ------------------------------------------------------------------------------
 # 5. フェーズ定義
@@ -80,45 +92,60 @@ EOF
 
 # 【TOOLS】開発ツールのアップデート
 phase_update_tools() {
-    log "INFO" "開発ツールのアップデートを開始します..."
+    # ── ① ツールアップデート（前回から 24 時間経過時のみ実行） ──
+    if _is_tool_update_needed; then
+        log "INFO" "開発ツールのアップデートを開始します..."
 
-    # Git
-    log "INFO" "Git をアップデートします..."
-    if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
-        run git update-git-for-windows --yes \
-            || log "WARNING" "Git のアップデートに失敗しました（続行します）"
+        # Git
+        log "INFO" "Git をアップデートします..."
+        if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
+            run git update-git-for-windows --yes \
+                || log "WARNING" "Git のアップデートに失敗しました（続行します）"
+        else
+            log "INFO" "Git のアップデートはパッケージマネージャーで行ってください（スキップ）"
+        fi
+
+        # Node.js (npm 経由でアップデート)
+        log "INFO" "Node.js / npm をアップデートします..."
+        if command -v npm >/dev/null 2>&1; then
+            run npm install -g npm@latest \
+                || log "WARNING" "npm のアップデートに失敗しました（続行します）"
+        else
+            log "WARNING" "npm が見つかりません。Node.js のインストールを確認してください。"
+        fi
+
+        # Salesforce CLI
+        log "INFO" "Salesforce CLI をアップデートします..."
+        if command -v sf >/dev/null 2>&1; then
+            run sf update \
+                || log "WARNING" "Salesforce CLI のアップデートに失敗しました（続行します）"
+        else
+            log "WARNING" "sf コマンドが見つかりません。Salesforce CLI のインストールを確認してください。"
+        fi
+
+        # Git マージドライバー (ours) の登録
+        log "INFO" "Git マージドライバー (ours) を登録します..."
+        run git config merge.ours.driver true \
+            || log "WARNING" "Git マージドライバーの登録に失敗しました（続行します）"
+
+        touch "$UPDATE_STAMP_FILE"
+        log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
     else
-        log "INFO" "Git のアップデートはパッケージマネージャーで行ってください（スキップ）"
+        local last_update elapsed_h
+        last_update=$(stat -c "%Y" "$UPDATE_STAMP_FILE" 2>/dev/null || echo 0)
+        elapsed_h=$(( ( $(date +%s) - last_update ) / 3600 ))
+        log "INFO" "開発ツールは ${elapsed_h} 時間前にアップデート済みのためスキップします（間隔: $((UPDATE_INTERVAL_SEC / 3600))h）。"
     fi
 
-    # Node.js (npm 経由でアップデート)
-    log "INFO" "Node.js / npm をアップデートします..."
-    if command -v npm >/dev/null 2>&1; then
-        run npm install -g npm@latest \
-            || log "WARNING" "npm のアップデートに失敗しました（続行します）"
-    else
-        log "WARNING" "npm が見つかりません。Node.js のインストールを確認してください。"
-    fi
-
-    # Salesforce CLI
-    log "INFO" "Salesforce CLI をアップデートします..."
-    if command -v sf >/dev/null 2>&1; then
-        run sf update \
-            || log "WARNING" "Salesforce CLI のアップデートに失敗しました（続行します）"
-    else
-        log "WARNING" "sf コマンドが見つかりません。Salesforce CLI のインストールを確認してください。"
-    fi
-
-    # Git マージドライバー (ours) の登録
-    log "INFO" "Git マージドライバー (ours) を登録します..."
-    run git config merge.ours.driver true \
-        || log "WARNING" "Git マージドライバーの登録に失敗しました（続行します）"
-
-    # Prettier（プロジェクトローカルの npm パッケージ）
+    # ── ② npm install（package-lock.json が node_modules より新しい場合のみ実行） ──
     if [[ -f "./package.json" ]]; then
-        log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
-        run npm install \
-            || log "WARNING" "npm install に失敗しました（続行します）"
+        if [[ ! -d "./node_modules" ]] || [[ "./package-lock.json" -nt "./node_modules" ]]; then
+            log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
+            run npm install \
+                || log "WARNING" "npm install に失敗しました（続行します）"
+        else
+            log "INFO" "npm パッケージは最新です。npm install をスキップします。"
+        fi
     else
         log "INFO" "package.json が見つかりません。npm install をスキップします。"
     fi
