@@ -124,12 +124,32 @@ phase_generate_manifest() {
     local remove_args=()
 
     # 補助関数: リストファイルを走査し、コメント・空行を除外して sf コマンド用引数を組み立てる
+    # セクション:
+    #   [files]   → --source-dir <パス>    ファイルパス指定（デフォルト）
+    #   [members] → --metadata <種別:名前>  メンバー名指定
     process_list() {
         local list=$1; shift; local -n ref=$1
+        local section="files"
         while IFS= read -r line || [[ -n "$line" ]]; do
             local clean_line
             clean_line=$(echo "$line" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-            [[ -n "$clean_line" && "$clean_line" != \#* ]] && ref+=("--source-dir" "$clean_line")
+
+            # セクション区切りの検出
+            if [[ "$clean_line" == "[files]" ]]; then
+                section="files"; continue
+            elif [[ "$clean_line" == "[members]" ]]; then
+                section="members"; continue
+            fi
+
+            # コメント・空行をスキップ
+            [[ -z "$clean_line" || "$clean_line" == \#* ]] && continue
+
+            # セクションに応じた引数を追加
+            if [[ "$section" == "files" ]]; then
+                ref+=("--source-dir" "$clean_line")
+            else
+                ref+=("--metadata" "$clean_line")
+            fi
         done < "$list"
         # TortoiseGit でのサイレントエラー対策:
         # while ループ最終行が空行で false になっても関数として成功を返す
@@ -147,7 +167,10 @@ phase_generate_manifest() {
 
     # 追加/変更用の package.xml 生成
     if [[ ${#deploy_args[@]} -gt 0 ]]; then
-        log "INFO" "デプロイ対象（${#deploy_args[@]}件）を検出"
+        local files_count members_count
+        files_count=$(printf '%s\n' "${deploy_args[@]}" | grep -c "^--source-dir$" || true)
+        members_count=$(printf '%s\n' "${deploy_args[@]}" | grep -c "^--metadata$" || true)
+        log "INFO" "デプロイ対象を検出 (ファイル: ${files_count}件 / メンバー: ${members_count}件)"
         run sf project generate manifest "${deploy_args[@]}" --output-dir "$RELEASE_DIR" --name "package.xml" --json || return $RET_NG
     else
         # 対象ゼロでも CLI エラーを防ぐために最小構成の XML を作成
