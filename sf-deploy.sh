@@ -3,7 +3,7 @@
 # ==============================================================================
 # sf-deploy.sh - 本番リリース実行スクリプト（sf-release.sh のラッパー）
 # ==============================================================================
-# sf-release.sh を --release オプション付きで呼び出します。
+# sf-release.sh を --release --force オプション付きで呼び出します。
 # 追加オプションはそのまま sf-release.sh へ引き渡されます。
 #
 # 【固定オプション】
@@ -16,34 +16,40 @@
 #   -t, --target ALIAS  : 接続先組織のエイリアスを明示的に指定します
 # ==============================================================================
 
-CLR_INFO='\033[36m'; CLR_RESET='\033[0m'
-echo "-------------------------------------------------------" >&2
-echo -e "${CLR_INFO}>> 強制デプロイを開始します (sf-deploy.sh)${CLR_RESET}" >&2
-echo "-------------------------------------------------------" >&2
+# ------------------------------------------------------------------------------
+# 1. 共通ライブラリの必須設定
+# ------------------------------------------------------------------------------
+readonly SCRIPT_NAME=$(basename "$0" .sh)
+readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_MODE="NEW"
+readonly SILENT_EXEC=0
 
+# ------------------------------------------------------------------------------
+# 2. 共通ライブラリの読み込み
+# ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
+
+if [[ ! -f "$COMMON_LIB" ]]; then
+    echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
+    exit 1
+fi
+source "$COMMON_LIB"
+
+# ------------------------------------------------------------------------------
+# 3. 初期チェック
+# ------------------------------------------------------------------------------
+log "HEADER" "強制デプロイを開始します (${SCRIPT_NAME}.sh)"
+
 RELEASE_SH="${SCRIPT_DIR}/sf-release.sh"
+[[ -f "$RELEASE_SH" ]] || die "スクリプトが見つかりません: ${RELEASE_SH}"
 
-if [[ ! -f "$RELEASE_SH" ]]; then
-    CLR_ERR='\033[31m'; CLR_RESET='\033[0m'
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}  FATAL ERROR: sf-deploy.sh${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}  スクリプトが見つかりません: ${RELEASE_SH}${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    exit 1
-fi
-
-CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+CURRENT_BRANCH=$(run git symbolic-ref --short HEAD 2>/dev/null)
 if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "staging" || "$CURRENT_BRANCH" == "development" ]]; then
-    CLR_ERR='\033[31m'; CLR_RESET='\033[0m'
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}  実行禁止: sf-deploy.sh${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}  main / staging / development ブランチでは実行できません。${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}  現在のブランチ: ${CURRENT_BRANCH}${CLR_RESET}" >&2
-    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
-    exit 1
+    die "main / staging / development ブランチでは実行できません。現在のブランチ: ${CURRENT_BRANCH}"
 fi
 
+# ------------------------------------------------------------------------------
+# 4. sf-release.sh を本番リリースモードで呼び出す
+# ------------------------------------------------------------------------------
 exec bash "$RELEASE_SH" --release --force "$@"
