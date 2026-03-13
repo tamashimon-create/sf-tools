@@ -16,11 +16,33 @@
 #   -t, --target ALIAS  : 接続先組織のエイリアスを明示的に指定します
 # ==============================================================================
 
+CLR_INFO='\033[36m'; CLR_RESET='\033[0m'
+echo "-------------------------------------------------------" >&2
+echo -e "${CLR_INFO}>> 強制デプロイを開始します (sf-deploy.sh)${CLR_RESET}" >&2
+echo "-------------------------------------------------------" >&2
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE_SH="${SCRIPT_DIR}/sf-release.sh"
 
 if [[ ! -f "$RELEASE_SH" ]]; then
-    echo "[FATAL ERROR] スクリプトが見つかりません: $RELEASE_SH" >&2
+    CLR_ERR='\033[31m'; CLR_RESET='\033[0m'
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}  FATAL ERROR: sf-deploy.sh${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}  スクリプトが見つかりません: ${RELEASE_SH}${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
+    exit 1
+fi
+
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "staging" || "$CURRENT_BRANCH" == "development" ]]; then
+    CLR_ERR='\033[31m'; CLR_RESET='\033[0m'
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}  実行禁止: sf-deploy.sh${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}  main / staging / development ブランチでは実行できません。${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}  現在のブランチ: ${CURRENT_BRANCH}${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}-------------------------------------------------------${CLR_RESET}" >&2
     exit 1
 fi
 

@@ -83,7 +83,8 @@ SKIP_LOGIN=0
 
 # パターンA: 接続済みの場合はログインをスキップ
 #   FORCE_RELOGIN=1（sf-restart.sh 経由）の場合はこのブロックを飛ばして強制ログイン
-if [ "$FORCE_RELOGIN" != "1" ]; then
+#   .sf/config.json が存在しない場合はプロジェクト初回起動とみなし、強制的にエイリアス入力へ
+if [ "$FORCE_RELOGIN" != "1" ] && [ -f ".sf/config.json" ]; then
     DISPLAY_JSON=$(run sf org display --json 2>/dev/null || echo "")
     CURRENT_ALIAS=$(echo "$DISPLAY_JSON" | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
     CURRENT_ID=$(echo "$DISPLAY_JSON"    | grep '"id"'    | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
@@ -103,7 +104,7 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
     ORG_ALIAS=${ORG_ALIAS:-tama}
 
     # VS Code が参照する古いエイリアス設定をクリア
-    run sf alias unset vscodeOrg
+    run sf alias unset vscodeOrg --json
 
     log "INFO" "ブラウザでログインして接続を許可してください..."
     run sf org login web --set-default --alias "$ORG_ALIAS" || die "Salesforce へのログインに失敗しました。"
@@ -121,7 +122,7 @@ log "INFO" "VS Code を起動中..."
 run mkdir -p .sfdx .sf || die "設定ディレクトリの作成に失敗しました。"
 printf '{"target-org": "%s"}\n'      "$ORG_ALIAS" | run tee .sf/config.json      || die "設定ファイル (.sf/config.json) の書き込みに失敗しました。"
 printf '{"defaultusername": "%s"}\n' "$ORG_ALIAS" | run tee .sfdx/sfdx-config.json || die "設定ファイル (.sfdx/sfdx-config.json) の書き込みに失敗しました。"
-run sf config set target-org="$ORG_ALIAS" || log "WARNING" "sf config set に失敗しました（続行します）"
+run sf config set target-org="$ORG_ALIAS" --json || log "WARNING" "sf config set に失敗しました（続行します）"
 sleep 2
 
 if command -v code >/dev/null 2>&1; then

@@ -109,6 +109,15 @@ phase_update_tools() {
         log "WARNING" "sf コマンドが見つかりません。Salesforce CLI のインストールを確認してください。"
     fi
 
+    # Prettier（プロジェクトローカルの npm パッケージ）
+    if [[ -f "./package.json" ]]; then
+        log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
+        run npm install \
+            || log "WARNING" "npm install に失敗しました（続行します）"
+    else
+        log "INFO" "package.json が見つかりません。npm install をスキップします。"
+    fi
+
     return $RET_OK
 }
 

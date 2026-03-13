@@ -95,12 +95,13 @@ phase_retrieve_metadata() {
         run sf project retrieve start \
             --manifest "$DELTA_DIR/package/package.xml" \
             --target-org "$TARGET_ORG" \
-            --ignore-conflicts
+            --ignore-conflicts \
+            --json
     fi
 
     # 主要メタデータの整合性確保のために再取得（型ごとに --metadata を分けて指定）
     log "INFO" "主要メタデータの整合性をチェック中..."
-    local retrieve_cmd=("sf" "project" "retrieve" "start" "--target-org" "$TARGET_ORG" "--ignore-conflicts")
+    local retrieve_cmd=("sf" "project" "retrieve" "start" "--target-org" "$TARGET_ORG" "--ignore-conflicts" "--json")
     for type in "${METADATA_TYPES[@]}"; do
         retrieve_cmd+=("--metadata" "$type")
     done
