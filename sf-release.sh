@@ -79,7 +79,12 @@ log "INFO" "接続先組織: ${TARGET_ORG}"
 # ------------------------------------------------------------------------------
 # 6. パス定義
 # ------------------------------------------------------------------------------
-BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null || echo "unknown-branch")
+BRANCH_NAME_FILE="release/branch_name.txt"
+if [[ -f "$BRANCH_NAME_FILE" ]]; then
+    BRANCH_NAME=$(tr -d '\r\n' < "$BRANCH_NAME_FILE")
+else
+    die "ブランチ情報ファイルが見つかりません (${BRANCH_NAME_FILE})。"
+fi
 
 readonly RELEASE_BASE="release"
 readonly RELEASE_DIR="${RELEASE_BASE}/${BRANCH_NAME}"
