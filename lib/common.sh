@@ -178,7 +178,7 @@ run() {
     local tmp_out="./cmd_out_$$_${RANDOM}.tmp"
     local status
 
-    log "CMD" "${cmd[*]}"
+    log "CMD" "[${SCRIPT_NAME}.sh] ${cmd[*]}"
 
     if [[ "${SILENT_EXEC:-}" != "1" ]]; then
         # リアルタイム表示: stderr に流しつつ tmp に保存（命令置換の stdout には影響しない）

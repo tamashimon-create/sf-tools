@@ -39,7 +39,7 @@ source "$COMMON_LIB"
 # ------------------------------------------------------------------------------
 check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
 
-log "HEADER" "リリース・検証処理を開始します..."
+log "HEADER" "リリース・検証処理を開始します (${SCRIPT_NAME}.sh)"
 
 trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
 
