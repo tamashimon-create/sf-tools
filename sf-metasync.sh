@@ -35,7 +35,7 @@ source "$COMMON_LIB"
 # ------------------------------------------------------------------------------
 check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
 
-log "HEADER" "メタデータ同期（Salesforce -> Git）を開始します"
+log "HEADER" "メタデータ同期（Salesforce -> Git）を開始します (${SCRIPT_NAME}.sh)"
 
 # ------------------------------------------------------------------------------
 # 4. 固有設定
@@ -122,6 +122,36 @@ phase_git_sync() {
     run git push origin "$BRANCH_NAME" || return $RET_NG
 }
 
+# 【PROPAGATE】main の変更を下流ブランチへ伝播 (main → staging → development)
+phase_propagate_downstream() {
+    # 伝播元が main でない場合はスキップ
+    if [[ "$BRANCH_NAME" != "main" ]]; then
+        log "INFO" "伝播スキップ: 対象は main ブランチのみ (現在: ${BRANCH_NAME})"
+        return $RET_OK
+    fi
+
+    local prev_branch="main"
+    for branch in staging development; do
+        # リモートにブランチが存在するか確認
+        if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
+            log "WARNING" "${branch} ブランチがリモートに存在しないためスキップします"
+            continue
+        fi
+
+        log "INFO" "${prev_branch} → ${branch} へマージします..."
+        run git checkout "$branch"              || { log "WARNING" "${branch} のチェックアウトに失敗しました（スキップ）"; prev_branch="$branch"; continue; }
+        run git pull origin "$branch" --rebase  || { log "WARNING" "${branch} の pull に失敗しました（スキップ）";          run git rebase --abort 2>/dev/null; run git checkout main; prev_branch="$branch"; continue; }
+        run git merge "$prev_branch" --no-edit  || { log "WARNING" "${branch} へのマージに失敗しました（スキップ）";        run git merge --abort  2>/dev/null; run git checkout main; prev_branch="$branch"; continue; }
+        run git push origin "$branch"           || { log "WARNING" "${branch} の push に失敗しました（スキップ）";          run git checkout main; prev_branch="$branch"; continue; }
+
+        log "SUCCESS" "${branch} への伝播が完了しました"
+        prev_branch="$branch"
+    done
+
+    # 作業ブランチを main に戻す
+    run git checkout main || die "main ブランチへの復帰に失敗しました。"
+}
+
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
@@ -139,6 +169,8 @@ RES=$?
 
 if [[ $RES -eq $RET_OK ]]; then
     log "SUCCESS" "完了: リポジトリを最新に更新しました。"
+    phase_propagate_downstream || die "下流ブランチへの伝播に失敗しました。"
+    log "SUCCESS" "下流ブランチへの伝播完了 (main → staging → development)"
 elif [[ $RES -eq $RET_NO_CHANGE ]]; then
     log "SUCCESS" "完了: Salesforce 組織側に変更はありませんでした。"
 else
