@@ -109,6 +109,11 @@ phase_update_tools() {
         log "WARNING" "sf コマンドが見つかりません。Salesforce CLI のインストールを確認してください。"
     fi
 
+    # Git マージドライバー (ours) の登録
+    log "INFO" "Git マージドライバー (ours) を登録します..."
+    run git config merge.ours.driver true \
+        || log "WARNING" "Git マージドライバーの登録に失敗しました（続行します）"
+
     # Prettier（プロジェクトローカルの npm パッケージ）
     if [[ -f "./package.json" ]]; then
         log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
