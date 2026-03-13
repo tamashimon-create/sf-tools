@@ -136,7 +136,6 @@ force-tama/
 │   └── main/
 │       ├── deploy-target.txt      # ⭐ main ブランチのデプロイ対象リスト
 │       └── remove-target.txt      # ⭐ main ブランチの削除対象リスト
-├── sf-install.sh                  # ⭐ sf-tools を最新化するインストーラ（sf-start.sh から自動呼び出し）
 ├── sf-start.sh                    # ⭐ sf-tools/sf-start.sh へのショートカット
 └── sf-restart.sh                  # ⭐ sf-tools/sf-restart.sh へのショートカット
 ```
@@ -199,21 +198,22 @@ bash sf-start.sh
 
 ### ③ コンポーネントをデプロイする
 
-リリースは **開発 → 結合 → ステージング → 本番** の多段階構成で進めます。
-各環境への昇格は必ずプルリクエストとレビューを経由します。
+ブランチ構成は案件の Sandbox 数に合わせて選択してください。
+push・PR・マージはコマンド・VS Code・TortoiseGit など方法は問いません。
 
-```
-【開発ブランチ】  →  【結合ブランチ】  →  【ステージングブランチ】  →  【main ブランチ】
-  feature/xxx         development           staging                      main
-      │                    │                    │                          │
-  開発 Sandbox         結合 Sandbox         ステージング Sandbox           本番組織
-```
+> 💡 **現在の実装構成**: `main` のみ（パターン A）
 
 ---
 
-**🔵 Phase 1 — 開発（feature ブランチ × 開発 Sandbox）**
+**🟢 パターン A — `main` のみ（Sandbox 1つ・小規模向け）**
 
-**Step 1**: `release/<ブランチ名>/deploy-target.txt` にリリースするコンポーネントのパスを記入。
+```
+feature/xxx  →  main
+     │            │
+  Sandbox       本番組織
+```
+
+**Step 1**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
 
 ```
 # Apex クラス
@@ -224,7 +224,7 @@ force-app/main/default/classes/MyClass.cls-meta.xml
 force-app/main/default/lwc/myComponent
 ```
 
-**Step 2**: push（コマンド・VS Code・TortoiseGit など方法は問わない）→ pre-push フックが検証（Dry-Run）を自動実行。
+**Step 2**: push → pre-push フックが検証（Dry-Run）を自動実行。
 
 ```
 [PRE-PUSH] Salesforce 組織への検証(Dry-Run)を自動開始します...
@@ -232,31 +232,47 @@ force-app/main/default/lwc/myComponent
   ↓ 検証失敗 → push を自動中断 🛑（./logs/sf-release.log に詳細）
 ```
 
-**Step 3**: GitHub 上でプルリクエストを作成し、レビューを依頼。
+**Step 3**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
 
 ---
 
-**🟡 Phase 2 — 結合（development ブランチ × 結合 Sandbox）**
+**🔵 パターン B — `development` → `main`（Sandbox 2つ・小〜中規模向け）**
 
-**Step 4**: PR がレビュー承認されたら `development` ブランチへマージ。
+```
+feature/xxx  →  development  →  main
+     │               │            │
+  Sandbox A       Sandbox B     本番組織
+```
 
-**Step 5**: マージをトリガーに GitHub Actions が自動で結合 Sandbox へリリース。動作確認を行う。
+**Step 1**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
+
+**Step 2**: push → pre-push フックが検証（Dry-Run）を自動実行。
+
+**Step 3**: `development` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox B へリリース。動作確認を行う。
+
+**Step 4**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
 
 ---
 
-**🟠 Phase 3 — ステージング（staging ブランチ × ステージング Sandbox）**
+**🟠 パターン C — `feature` → `development` → `staging` → `main`（Sandbox 3つ以上・チーム開発向け）**
 
-**Step 6**: 結合確認が完了したら `staging` ブランチへのプルリクエストを作成・レビュー・マージ。
+```
+feature/xxx  →  development  →  staging  →  main
+     │               │              │          │
+  Sandbox A       Sandbox B      Sandbox C   本番組織
+```
 
-**Step 7**: マージをトリガーに GitHub Actions が自動でステージング Sandbox へリリース。最終確認を行う。
+**Step 1**: `development` ブランチから `feature/xxx` を作成。
 
----
+**Step 2**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
 
-**🔴 Phase 4 — 本番（main ブランチ × 本番組織）**
+**Step 3**: push → pre-push フックが検証（Dry-Run）を自動実行。
 
-**Step 8**: ステージング確認完了後、`main` ブランチへのプルリクエストを作成・レビュー・マージ。
+**Step 4**: `development` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox B へリリース。動作確認を行う。
 
-**Step 9**: マージをトリガーに GitHub Actions が自動で本番組織へリリース。
+**Step 5**: `staging` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox C へリリース。最終確認を行う。
+
+**Step 6**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
 
 ---
 

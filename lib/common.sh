@@ -44,7 +44,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 # ------------------------------------------------------------------------------
 # 3. カラー定義（端末非対応環境では空文字に設定して制御コードの混入を防ぐ）
 # ------------------------------------------------------------------------------
-if [ -t 2 ]; then
+if [ -t 0 ] || [ -t 2 ]; then
     readonly CLR_INFO='\033[36m'    # シアン    (情報・進行中)
     readonly CLR_SUCCESS='\033[32m' # グリーン  (成功・完了)
     readonly CLR_WARNING='\033[33m' # イエロー  (警告)
@@ -179,12 +179,14 @@ run() {
     local status
 
     log "CMD" "${cmd[*]}"
-    "${cmd[@]}" > "$tmp_out" 2>&1
-    status=$?
 
-    # SILENT_EXEC=0 の場合は画面にも表示（stderr 経由なので命令置換に影響しない）
     if [[ "${SILENT_EXEC:-}" != "1" ]]; then
-        cat "$tmp_out" >&2
+        # リアルタイム表示: stderr に流しつつ tmp に保存（命令置換の stdout には影響しない）
+        "${cmd[@]}" 2>&1 | tee "$tmp_out" >&2
+        status="${PIPESTATUS[0]}"
+    else
+        "${cmd[@]}" > "$tmp_out" 2>&1
+        status=$?
     fi
 
     # 命令置換 $(...) 内の場合（stdout が端末でない）は出力を返す
