@@ -21,15 +21,16 @@ sf-tools/
 ├── templates/
 │   ├── deploy-template.txt  # deploy-target.txt の雛形
 │   └── remove-template.txt  # remove-target.txt の雛形
-├── sf-start.sh            # メインスクリプト（環境構築→接続→VS Code 起動）
-├── sf-install.sh          # sf-tools 最新化・ラッパー生成・ツール更新（sf-start.sh から自動呼び出し）
+├── sf-start.sh            # メインスクリプト（接続→VS Code 起動→バックグラウンドで環境構築）
+├── sf-install.sh          # sf-tools 最新化・ラッパー生成・マージドライバー登録（sf-start.sh から自動呼び出し）
 ├── sf-release.sh          # デプロイ/検証スクリプト（manifest 自動生成→sf deploy）
 ├── sf-deploy.sh           # 強制デプロイラッパー（--release --force 固定で sf-release.sh を呼び出す）
 ├── sf-metasync.sh         # Salesforce メタデータを組織から取得して Git へ自動同期
 ├── sf-hook.sh             # pre-push フックをプロジェクトにインストール
 ├── sf-unhook.sh           # pre-push フックを削除
 ├── sf-restart.sh          # 接続先組織を切り替える（FORCE_RELOGIN=1 で sf-start.sh 呼出）
-└── sf-upgrade.sh          # Git / Salesforce CLI を手動でアップデート
+├── sf-upgrade.sh          # npm / Salesforce CLI / Git をアップデート（sf-install.sh からバックグラウンドで呼び出し）
+└── tests/                 # テストスイート（test_helper.sh + 各スクリプトのテストファイル）
 ```
 
 ## 共通ライブラリ (lib/common.sh)
@@ -68,12 +69,17 @@ sf-tools/
 ## スクリプト別の処理概要
 
 ### sf-start.sh
-1. `~/sf-tools/sf-install.sh` で sf-tools を最新化
-2. `sf-hook.sh` で pre-push フックを有効化
-3. 現在のブランチに対応する `release/<branch>/` ディレクトリを作成
-4. `sf org display` で接続確認 → 未接続なら `sf org login web` でログイン
-5. `.sf/config.json` / `.sfdx/sfdx-config.json` を更新
-6. `code .` で VS Code 起動
+VS Code を素早く起動することを優先し、重い処理はバックグラウンドで実行する。
+
+**同期処理（VS Code 起動まで）:**
+1. `sf org display` で接続確認 → 未接続なら `sf org login web` でログイン
+2. `.sf/config.json` / `.sfdx/sfdx-config.json` を更新
+3. `code .` で VS Code 起動
+
+**バックグラウンド処理（VS Code 起動後に並行実行）:**
+4. `~/sf-tools/sf-install.sh` で sf-tools を最新化
+5. `sf-hook.sh` で pre-push フックを有効化
+6. 現在のブランチに対応する `release/<branch>/` ディレクトリを作成・`branch_name.txt` を更新
 
 `FORCE_RELOGIN=1` 環境変数で接続済みスキップをバイパス可能。
 
@@ -84,7 +90,6 @@ sf-tools/
 - `--release` / `-r` : 本番リリース（デフォルトは dry-run）
 - `--no-open` / `-n` : ブラウザを開かない
 - `--force` / `-f` : `--ignore-conflicts`
-- `--json` / `-j` : JSON 出力
 - `--target` / `-t` : 組織エイリアスを明示指定
 
 **デプロイ対象ファイル:**
@@ -93,41 +98,55 @@ sf-tools/
 - コメント行（`#`）・空行は無視される
 
 ### sf-metasync.sh
-Salesforce 組織の最新メタデータを取得し、Git リポジトリへ自動反映する。
+Salesforce **本番組織**の最新メタデータを取得し、**main ブランチ**へ自動反映する。
+
+**実行制約（いずれかに該当する場合はエラー終了）:**
+- `main` ブランチ以外で実行した場合
+- Sandbox 組織に接続中の場合（`sf org display --json` の `isSandbox` フィールドで判定）
+- main ブランチにローカルの未コミット変更がある場合（Salesforce 組織の内容を正とするため）
 
 **処理フロー:**
-1. `git fetch` / `git pull --rebase` でリモートの最新状態を取り込む（未コミット変更は stash で退避）
+1. ローカル変更なし確認 → `git fetch` / `git pull --rebase` でリモートの最新状態を取り込む
 2. SGD（`sf sgd source delta`）で前回同期からの差分を解析 → `$DELTA_DIR/package/package.xml` 生成
 3. SGD の package.xml があれば差分取得、さらに主要メタデータタイプを一括 retrieve
-4. `git add -A` → 変更がある場合のみ commit & push
+4. `git add -A` → 変更がある場合のみ commit & push → 下流ブランチ（staging → development）へ伝播
 
 **対象メタデータタイプ（再取得）:**
 `ApexClass` / `ApexPage` / `LightningComponentBundle` / `CustomObject` / `CustomField` / `Layout` / `FlexiPage` / `Flow` / `PermissionSet` / `CustomLabels`
 
 **戻り値の扱い:**
-- 変更あり → `SUCCESS` ログ・リポジトリ更新
+- 変更あり → `SUCCESS` ログ・リポジトリ更新・下流ブランチへ伝播
 - 変更なし → `RET_NO_CHANGE` で正常終了
 - エラー → `die` で即停止
 
 ### sf-install.sh
-`sf-start.sh` から自動呼び出しされる。通常は直接実行しない。
+`sf-start.sh` のバックグラウンド処理から呼び出される。通常は直接実行しない。
 
-**処理フロー:**
+**処理フロー（毎回実行）:**
 1. `git pull` で `~/sf-tools` を最新化
-2. プロジェクト側のラッパースクリプト（`sf-start.sh` / `sf-restart.sh`）を再生成
-3. Git（Windows のみ）/ npm / Salesforce CLI をアップデート
-4. Git マージドライバー（`ours`）を登録
-5. `package.json` があれば `npm install` を実行
+2. プロジェクト側のラッパースクリプト（`sf-start.sh` / `sf-restart.sh`）を生成（未存在時のみ）
+3. Git マージドライバー（`ours`）をグローバル設定に登録
+4. `package.json` があれば `npm install` を実行（依存関係を即時反映するため毎回）
+
+**バックグラウンドでのツール更新（24時間スロットル）:**
+5. 前回更新から 24 時間以上経過している場合のみ `sf-upgrade.sh` をバックグラウンド起動
+
+**`_get_mtime()` ヘルパー:**
+- macOS (`stat -f "%m"`) と Linux/Git Bash (`stat -c "%Y"`) の両方に対応したファイル更新時刻取得
 
 ### sf-deploy.sh
 `sf-release.sh` を `--release --force` 固定で呼び出すラッパー。
+- `force-*` ディレクトリ外では実行不可
 - `main` / `staging` / `development` ブランチでは実行不可（`die` で即停止）
-- 追加オプション（`-n`, `-j`, `-t` など）はそのまま `sf-release.sh` へ転送
+- 追加オプション（`-n`, `-t` など）はそのまま `sf-release.sh` へ転送
 
 ### sf-upgrade.sh
-Git と Salesforce CLI を手動でアップデートする。
-- Git: `git update-git-for-windows`（Windows のみ）
-- Salesforce CLI: `sf update`
+npm / Salesforce CLI / Git をアップデートする。`sf-install.sh` から 24 時間スロットルでバックグラウンド起動される。手動実行も可能。
+
+**実行順序（順番に意味がある）:**
+1. npm を最新バージョンにアップデート
+2. Salesforce CLI (`sf update`) をアップデート
+3. Git をアップデート（Windows のみ・最後に実行 ※GUI インストーラーが起動するため）
 
 ### sf-hook.sh / sf-unhook.sh
 - `sf-hook.sh` : `.git/hooks/pre-push` を上書き生成（`~/sf-tools/hooks/pre-push` を呼び出すラッパー）
@@ -148,6 +167,36 @@ Git と Salesforce CLI を手動でアップデートする。
 - エラー時は `die` で即停止（後続処理に流さない）
 - 一時ファイルは `trap ... EXIT` で確実にクリーンアップ
 - ログレベルの使い分け: 処理開始=`INFO`、正常完了=`SUCCESS`、問題あり=`WARNING`/`ERROR`
+
+## テスト
+
+`tests/` ディレクトリに各スクリプトのユニットテストがある。モックベースのテストで、実際の Salesforce 組織や Git リモートへの接続なしで実行できる。
+
+**実行方法（C:\Users\tamas\sf-tools から）:**
+```bash
+bash tests/run_tests.sh           # 全テストを実行
+bash tests/run_tests.sh test_sf-metasync.sh  # 特定のテストのみ実行
+```
+
+**テストファイル一覧:**
+| ファイル | 対象スクリプト |
+|---|---|
+| `test_sf-unhook.sh` | sf-unhook.sh |
+| `test_sf-hook.sh` | sf-hook.sh |
+| `test_sf-upgrade.sh` | sf-upgrade.sh |
+| `test_sf-install.sh` | sf-install.sh |
+| `test_sf-start.sh` | sf-start.sh |
+| `test_sf-restart.sh` | sf-restart.sh |
+| `test_sf-metasync.sh` | sf-metasync.sh |
+| `test_sf-release.sh` | sf-release.sh |
+| `test_sf-deploy.sh` | sf-deploy.sh |
+
+**テストの仕組み (`test_helper.sh`):**
+- `setup_force_dir` / `setup_regular_dir` : テスト用一時ディレクトリ作成
+- `setup_mock_bin` : PATH に差し込むモック用ディレクトリ作成
+- `create_mock_git` / `create_mock_sf` / `create_mock_npm` / `create_mock_code` : 各コマンドのモック生成
+- `MOCK_CALL_LOG` : モックコマンドが呼び出された引数を記録するログファイル
+- `MOCK_GIT_BRANCH` / `MOCK_GIT_DIFF_EXIT` / `MOCK_SF_ORG_JSON` などの環境変数でモックの挙動を制御
 
 ## ブランチ戦略
 
