@@ -189,14 +189,17 @@ bash sf-start.sh
 自動で以下をすべて実行してくれます:
 
 ```
-✅ sf-tools を最新化（git pull）
-✅ sf-start.sh / sf-restart.sh をプロジェクトへ再生成
-✅ Git / npm / Salesforce CLI をアップデート
-✅ pre-push フックを有効化
-✅ リリース管理ディレクトリ (release/<ブランチ名>/) を作成
+【VS Code 起動まで（同期処理）】
 ✅ Sandbox への接続確認（未接続ならブラウザでログイン）
 ✅ VS Code の設定ファイル（接続先 Sandbox）を更新
 ✅ VS Code を起動 → Sandbox に接続された状態で開発開始！
+
+【VS Code 起動後（バックグラウンド処理）】
+✅ sf-tools を最新化（git pull）
+✅ sf-start.sh / sf-restart.sh をプロジェクトへ再生成
+✅ npm / Git / Salesforce CLI をアップデート
+✅ pre-push フックを有効化
+✅ リリース管理ディレクトリ (release/<ブランチ名>/) を作成
 ```
 
 > 💡 **接続済みの場合はログインをスキップ**して即 VS Code が起動します。
@@ -315,14 +318,21 @@ bash sf-restart.sh
 bash sf-start.sh
 ```
 
+**同期処理（VS Code 起動まで）:**
+
 | ステップ | 処理内容 |
 |:---:|:---|
-| 1️⃣ | `sf-install.sh` を実行して sf-tools を最新化 |
-| 2️⃣ | `sf-hook.sh` を実行して pre-push フックを有効化 |
-| 3️⃣ | `release/<ブランチ名>/` ディレクトリとリストのテンプレートを作成 |
-| 4️⃣ | `sf org display` で接続確認 → 未接続または `FORCE_RELOGIN=1` の場合はブラウザログイン |
-| 5️⃣ | `.sf/config.json` / `.sfdx/sfdx-config.json` を接続組織のエイリアスで更新 |
-| 6️⃣ | `code .` で VS Code を起動 |
+| 1️⃣ | `sf org display` で接続確認 → 未接続または `FORCE_RELOGIN=1` の場合はブラウザログイン |
+| 2️⃣ | `.sf/config.json` / `.sfdx/sfdx-config.json` を接続組織のエイリアスで更新 |
+| 3️⃣ | `code .` で VS Code を起動 |
+
+**バックグラウンド処理（VS Code 起動後に並行実行）:**
+
+| ステップ | 処理内容 |
+|:---:|:---|
+| 4️⃣ | `sf-install.sh` を実行して sf-tools を最新化・ラッパー生成・ツール更新 |
+| 5️⃣ | `sf-hook.sh` を実行して pre-push フックを有効化 |
+| 6️⃣ | `release/<ブランチ名>/` ディレクトリとリストのテンプレートを作成 |
 
 ---
 
@@ -340,7 +350,6 @@ bash ~/sf-tools/sf-release.sh [オプション]
 | `-r` / `--release` | 🚢 **本番リリース** — 組織へ実際にデプロイ | — |
 | `-n` / `--no-open` | 🚫 ブラウザを開かない（CI/CD・自動化向け） | — |
 | `-f` / `--force` | 💪 コンフリクトを無視して強制デプロイ | — |
-| `-j` / `--json` | 📄 sf コマンドの出力を JSON 形式にする | — |
 | `-t ALIAS` / `--target ALIAS` | 🎯 接続先組織のエイリアスを明示指定 | — |
 
 **処理フロー:**
@@ -371,7 +380,7 @@ bash ~/sf-tools/sf-deploy.sh [追加オプション]
 - Sandbox を切り替えた直後（ソーストラッキングがリセットされた状態）
 - 現在開発中のコンポーネントを強制的にリリースしたいとき
 
-追加オプション（`-n`, `-j`, `-t` など）は `sf-release.sh` へそのまま転送されます。
+追加オプション（`-n`, `-t` など）は `sf-release.sh` へそのまま転送されます。
 
 ---
 
@@ -393,13 +402,19 @@ on:
 bash ~/sf-tools/sf-metasync.sh
 ```
 
+**実行制約（いずれかに該当する場合はエラー終了）:**
+
+- `main` ブランチ以外で実行した場合
+- Sandbox 組織に接続中の場合（`sf org display --json` の `isSandbox` フィールドで判定）
+- main ブランチにローカルの未コミット変更がある場合（Salesforce 組織の内容を正とするため）
+
 | ステップ | 処理内容 |
 |:---:|:---|
-| 1️⃣ | 未コミット変更を `git stash` で退避 → `git pull --rebase` でリモートを最新化 |
+| 1️⃣ | ローカル変更なし確認 → `git fetch` / `git pull --rebase` でリモートを最新化 |
 | 2️⃣ | SGD (`sf sgd source delta`) で前回同期からの差分を解析 → `package.xml` を自動生成 |
 | 3️⃣ | 差分ファイルを組織から retrieve（SGD の package.xml 使用） |
 | 4️⃣ | 主要メタデータタイプを一括 retrieve して整合性を確保 |
-| 5️⃣ | 変更がある場合のみ `git commit` & `git push`、変更なしなら何もしない |
+| 5️⃣ | 変更がある場合のみ `git commit` & `git push` → 下流ブランチ（staging → development）へ伝播 |
 
 > 💡 **ポイント**: 変更がない場合は commit も push も行わず `SUCCESS` で正常終了します。
 > CI のログが不必要に汚れません。
@@ -428,14 +443,13 @@ bash sf-restart.sh
 bash ~/sf-tools/sf-upgrade.sh
 ```
 
-Git と Salesforce CLI を最新バージョンにアップデートします。
+npm / Salesforce CLI / Git を最新バージョンにアップデートします。実行順序に意味があります。
 
-| ツール | コマンド |
-|:---|:---|
-| Git | `git update-git-for-windows` |
-| Salesforce CLI | `sf update` |
-
-> 💡 **Node.js** は Windows インストーラーで手動アップデートしてください。
+| 順序 | ツール | 備考 |
+|:---:|:---|:---|
+| 1️⃣ | npm | Salesforce CLI の更新前に npm を最新化 |
+| 2️⃣ | Salesforce CLI | `sf update` |
+| 3️⃣ | Git | Windows のみ（GUI インストーラーが起動するため最後に実行） |
 
 ---
 
@@ -533,7 +547,8 @@ sf-tools/
 ├── sf-restart.sh              # 🔀 接続先組織の切り替え
 ├── sf-hook.sh                 # 🪝 pre-push フックのインストール
 ├── sf-unhook.sh               # ✂️ pre-push フックの削除
-└── sf-upgrade.sh              # ⬆️ Git / Salesforce CLI のアップデート
+├── sf-upgrade.sh              # ⬆️ npm / Salesforce CLI / Git のアップデート
+└── tests/                     # 🧪 テストスイート（test_helper.sh + 各スクリプトのテストファイル）
 ```
 
 ---
