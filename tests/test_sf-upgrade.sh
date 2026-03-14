@@ -10,7 +10,7 @@ test_normal_run() {
     local td mb
     td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
     mkdir -p "$td/logs"
-    mb=$(setup_mock_bin)
+    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
@@ -28,7 +28,7 @@ test_no_npm() {
     local td mb
     td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
     mkdir -p "$td/logs"
-    mb=$(setup_mock_bin)
+    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     # npm モックを作成しない（PATH に npm が存在しない状態）
     create_mock_git "$mb"
     create_mock_sf "$mb"
@@ -47,7 +47,7 @@ test_no_sf() {
     local td mb
     td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
     mkdir -p "$td/logs"
-    mb=$(setup_mock_bin)
+    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     # sf モックを作成しない
     create_mock_git "$mb"
     create_mock_npm "$mb"
@@ -66,7 +66,7 @@ test_git_update_is_last() {
     local td mb
     td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
     mkdir -p "$td/logs"
-    mb=$(setup_mock_bin)
+    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
     cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1 >/dev/null

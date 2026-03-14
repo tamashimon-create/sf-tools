@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-start.sh ===${CLR_RST}"
 # 接続済みの場合 → ログインスキップ、VS Code が起動される
 test_connected_org() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     # 接続済みを示す設定ファイルを用意
@@ -28,7 +28,7 @@ test_connected_org() {
 # 接続済みの場合 → VS Code の設定ファイルが書き込まれる
 test_config_files_written() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
@@ -46,7 +46,7 @@ test_config_files_written() {
 # FORCE_RELOGIN=1 → 接続済みでも強制ログインフローに入る
 test_force_relogin() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
@@ -65,7 +65,7 @@ test_force_relogin() {
 # force-* 以外で実行 → エラー
 test_outside_force_dir() {
     local rd mb mh
-    rd=$(setup_regular_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-start.sh" 2>&1)

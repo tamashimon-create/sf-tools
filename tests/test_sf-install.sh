@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-install.sh ===${CLR_RST}"
 # 正常実行 → git pull、マージドライバー登録、npm install が行われる
 test_normal_run() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
@@ -23,7 +23,7 @@ test_normal_run() {
 # ラッパースクリプトが存在しない → 新規生成される
 test_wrapper_generated() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
@@ -37,7 +37,7 @@ test_wrapper_generated() {
 # ラッパースクリプトが既に存在する → スキップ（上書きされない）
 test_wrapper_skip_if_exists() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     echo "#!/bin/bash" > "$td/sf-start.sh"
@@ -53,7 +53,7 @@ test_wrapper_skip_if_exists() {
 # スタンプファイルが新しい（24h以内）→ sf-upgrade.sh がバックグラウンド起動されない
 test_upgrade_skipped_within_24h() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     # 1時間前のタイムスタンプでスタンプファイルを作成
@@ -70,7 +70,7 @@ test_upgrade_skipped_within_24h() {
 # スタンプファイルなし（初回）→ sf-upgrade.sh がバックグラウンド起動される
 test_upgrade_triggered_on_first_run() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     # スタンプファイルなし（初回実行を再現）
@@ -86,7 +86,7 @@ test_upgrade_triggered_on_first_run() {
 # package.json が存在しない → npm install がスキップされる
 test_npm_install_skipped_no_package_json() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
     rm -f "$mh/.sf-tools-last-update"  # アップグレードも動かすが npm install のみ確認
 
@@ -101,7 +101,7 @@ test_npm_install_skipped_no_package_json() {
 # force-* 以外で実行 → エラー
 test_outside_force_dir() {
     local rd mb mh
-    rd=$(setup_regular_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)

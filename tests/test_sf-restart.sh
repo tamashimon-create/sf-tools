@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-restart.sh ===${CLR_RST}"
 # 設定ファイルがクリアされる
 test_clears_config_files() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     echo '{"target-org":"oldorg"}' > "$td/.sf/config.json"
@@ -32,7 +32,7 @@ EOF
 # sf-start.sh が FORCE_RELOGIN=1 で呼び出される
 test_calls_sf_start_with_force_relogin() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     cat > "$td/sf-start.sh" << 'EOF'
@@ -51,7 +51,7 @@ EOF
 # sf-start.sh が存在しない → エラー
 test_no_sf_start() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
     # sf-start.sh を用意しない
 
@@ -65,7 +65,7 @@ test_no_sf_start() {
 # force-* 以外で実行 → エラー
 test_outside_force_dir() {
     local rd mb mh
-    rd=$(setup_regular_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
     local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-restart.sh" 2>&1)
