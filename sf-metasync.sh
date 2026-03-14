@@ -135,12 +135,6 @@ phase_git_sync() {
 
 # 【PROPAGATE】main の変更を下流ブランチへ伝播 (main → staging → development)
 phase_propagate_downstream() {
-    # 伝播元が main でない場合はスキップ
-    if [[ "$BRANCH_NAME" != "main" ]]; then
-        log "INFO" "伝播スキップ: 対象は main ブランチのみ (現在: ${BRANCH_NAME})"
-        return $RET_OK
-    fi
-
     local prev_branch="main"
     for branch in staging development; do
         # リモートにブランチが存在するか確認（出力は不要なため直接呼び出し）

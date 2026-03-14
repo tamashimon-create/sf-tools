@@ -48,11 +48,11 @@ setup_regular_dir() {
     echo "$dir"
 }
 
-# モックバイナリディレクトリを作成し、MOCK_CALL_LOG をエクスポート
+# モックバイナリディレクトリを作成して返す
+# 呼び出し元で必ず export MOCK_CALL_LOG="$mb/calls.log" を行うこと
 setup_mock_bin() {
     local dir
     dir=$(mktemp -d "${TMPDIR:-/tmp}/mock-bin-XXXX")
-    export MOCK_CALL_LOG="$dir/calls.log"
     echo "$dir"
 }
 
@@ -65,11 +65,22 @@ setup_mock_home() {
     echo "$dir"
 }
 
-# テスト環境を一括クリーンアップ
+# テスト環境を一括クリーンアップ（可変長引数）
 teardown() {
-    [[ -n "${1:-}" ]] && rm -rf "$1"
-    [[ -n "${2:-}" ]] && rm -rf "$2"
-    [[ -n "${3:-}" ]] && rm -rf "$3"
+    local arg
+    for arg in "$@"; do
+        [[ -n "$arg" ]] && rm -rf "$arg"
+    done
+}
+
+# リリースディレクトリとターゲットリストを生成
+setup_release_dir() {
+    local td="$1" branch="${2:-feature/test}"
+    mkdir -p "$td/release/$branch"
+    echo "$branch" > "$td/release/branch_name.txt"
+    printf '[files]\nforce-app/main/default/classes/TestClass.cls\n' \
+        > "$td/release/$branch/deploy-target.txt"
+    printf '[files]\n' > "$td/release/$branch/remove-target.txt"
 }
 
 # ------------------------------------------------------------------------------
@@ -105,7 +116,15 @@ case "$1" in
         exit "${MOCK_GIT_CHECKOUT_EXIT:-0}" ;;
     add)            exit 0 ;;
     commit)         exit 0 ;;
-    diff-index)     exit "${MOCK_GIT_DIFF_EXIT:-0}" ;;
+    diff-index)
+        if [[ -n "${MOCK_GIT_DIFF_EXIT_2ND:-}" ]]; then
+            _cnt_file="${MOCK_CALL_LOG%/*}/diffidx.cnt"
+            _cnt=$(cat "$_cnt_file" 2>/dev/null || echo 0)
+            _cnt=$((_cnt + 1))
+            echo "$_cnt" > "$_cnt_file"
+            [[ $_cnt -ge 2 ]] && exit "${MOCK_GIT_DIFF_EXIT_2ND}"
+        fi
+        exit "${MOCK_GIT_DIFF_EXIT:-0}" ;;
     config)         exit 0 ;;
     ls-remote)      exit "${MOCK_GIT_LS_REMOTE_EXIT:-0}" ;;
     update-git-for-windows) exit 0 ;;
@@ -123,7 +142,10 @@ create_mock_sf() {
 echo "sf $*" >> "${MOCK_CALL_LOG:-/dev/null}"
 case "$1 $2" in
     "org display")
-        echo "${MOCK_SF_ORG_JSON:-{\"result\":{\"alias\":\"testorg\",\"id\":\"00D000000000001AAA\"}}}"
+        # sf-start.sh の grep/cut パース（各キーが1行前提）に対応するため
+        # コンパクト JSON を , と { で改行展開して出力する
+        echo "${MOCK_SF_ORG_JSON:-{\"result\":{\"alias\":\"testorg\",\"id\":\"00D000000000001AAA\"}}}" \
+            | sed 's/[,{]/&\n/g'
         exit "${MOCK_SF_ORG_DISPLAY_EXIT:-0}" ;;
     "org login")    exit "${MOCK_SF_LOGIN_EXIT:-0}" ;;
     "org open")     exit 0 ;;

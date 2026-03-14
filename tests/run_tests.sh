@@ -51,9 +51,9 @@ for test_file in "${TEST_FILES[@]}"; do
     output=$(bash "$test_path" 2>&1)
     echo "$output"
 
-    # PASS / FAIL 件数を集計
-    passed=$(echo "$output" | grep -c '^\s*\[PASS\]' || true)
-    failed=$(echo "$output" | grep -c '^\s*\[FAIL\]' || true)
+    # PASS / FAIL 件数を集計（ANSI カラーコードが含まれるため ^ アンカーなし）
+    passed=$(echo "$output" | grep -c '\[PASS\]' || true)
+    failed=$(echo "$output" | grep -c '\[FAIL\]' || true)
     TOTAL_PASSED=$((TOTAL_PASSED + passed))
     TOTAL_FAILED=$((TOTAL_FAILED + failed))
 done

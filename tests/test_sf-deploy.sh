@@ -5,30 +5,12 @@
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
 echo -e "${CLR_HEAD}=== sf-deploy.sh ===${CLR_RST}"
 
-# sf-release.sh のモックを force-* ディレクトリに生成
-_create_mock_release() {
-    local td="$1"
-    cat > "$td/sf-release-called.flag" << 'EOF'
-(このファイルが存在 = sf-release.sh が呼び出された)
-EOF
-}
-
-# テスト用の release ディレクトリを生成
-_setup_release_dir() {
-    local td="$1" branch="${2:-feature/deploy-test}"
-    mkdir -p "$td/release/$branch"
-    echo "$branch" > "$td/release/branch_name.txt"
-    printf '[files]\nforce-app/main/default/classes/TestClass.cls\n' \
-        > "$td/release/$branch/deploy-target.txt"
-    printf '[files]\n' > "$td/release/$branch/remove-target.txt"
-}
-
 # 機能ブランチ → sf-release.sh が --release --force で呼び出される
 test_feature_branch() {
     local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
-    _setup_release_dir "$td" "feature/deploy-test"
+    setup_release_dir "$td" "feature/deploy-test"
 
     export MOCK_GIT_BRANCH="feature/deploy-test"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -50,7 +32,7 @@ test_feature_branch() {
 # main ブランチ → エラー終了
 test_main_branch_blocked() {
     local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="main"
 
@@ -68,7 +50,7 @@ test_main_branch_blocked() {
 # staging ブランチ → エラー終了
 test_staging_branch_blocked() {
     local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="staging"
 
@@ -83,7 +65,7 @@ test_staging_branch_blocked() {
 # development ブランチ → エラー終了
 test_development_branch_blocked() {
     local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="development"
 
@@ -98,7 +80,7 @@ test_development_branch_blocked() {
 # force-* 以外で実行 → エラー
 test_outside_force_dir() {
     local rd mb
-    rd=$(setup_regular_dir); mb=$(setup_mock_bin)
+    rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
     local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
