@@ -132,20 +132,41 @@ phase_propagate_downstream() {
 
     local prev_branch="main"
     for branch in staging development; do
-        # リモートにブランチが存在するか確認
+        # リモートにブランチが存在するか確認（出力は不要なため直接呼び出し）
         if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
             log "WARNING" "${branch} ブランチがリモートに存在しないためスキップします"
             continue
         fi
 
         log "INFO" "${prev_branch} → ${branch} へマージします..."
-        run git checkout "$branch"              || { log "WARNING" "${branch} のチェックアウトに失敗しました（スキップ）"; prev_branch="$branch"; continue; }
-        run git pull origin "$branch" --rebase  || { log "WARNING" "${branch} の pull に失敗しました（スキップ）";          run git rebase --abort 2>/dev/null; run git checkout main; prev_branch="$branch"; continue; }
-        run git merge "$prev_branch" --no-edit  || { log "WARNING" "${branch} へのマージに失敗しました（スキップ）";        run git merge --abort  2>/dev/null; run git checkout main; prev_branch="$branch"; continue; }
-        run git push origin "$branch"           || { log "WARNING" "${branch} の push に失敗しました（スキップ）";          run git checkout main; prev_branch="$branch"; continue; }
+
+        if ! run git checkout "$branch"; then
+            log "WARNING" "${branch} のチェックアウトに失敗しました（スキップ）"
+            continue
+        fi
+
+        if ! run git pull origin "$branch" --rebase; then
+            log "WARNING" "${branch} の pull に失敗しました（スキップ）"
+            run git rebase --abort 2>/dev/null
+            run git checkout main
+            continue
+        fi
+
+        if ! run git merge "$prev_branch" --no-edit; then
+            log "WARNING" "${branch} へのマージに失敗しました（スキップ）"
+            run git merge --abort 2>/dev/null
+            run git checkout main
+            continue
+        fi
+
+        if ! run git push origin "$branch"; then
+            log "WARNING" "${branch} の push に失敗しました（スキップ）"
+            run git checkout main
+            continue
+        fi
 
         log "SUCCESS" "${branch} への伝播が完了しました"
-        prev_branch="$branch"
+        prev_branch="$branch"  # 成功時のみ更新（失敗時は前のブランチからマージを継続）
     done
 
     # 作業ブランチを main に戻す
