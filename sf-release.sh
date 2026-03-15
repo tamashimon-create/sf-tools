@@ -54,6 +54,8 @@ IGNORE_CONFLICTS=0
 TARGET_ORG=""
 JSON_OUTPUT=0
 
+JSON_FLAG=()
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --validate|--dry-run) IS_VALIDATE_MODE=1 ;;
@@ -61,7 +63,7 @@ while [[ "$#" -gt 0 ]]; do
         --no-open|-n)         OPEN_BROWSER=0 ;;
         --force|-f)           IGNORE_CONFLICTS=1 ;;
         --target|-t)          TARGET_ORG="$2"; shift ;;
-        --json|-j)            JSON_OUTPUT=1 ;;
+        --json|-j)            JSON_OUTPUT=1; JSON_FLAG=("--json") ;;
         --*)
             die "不明なオプションです: $1"
             ;;
@@ -179,7 +181,7 @@ phase_generate_manifest() {
         files_count=$(printf '%s\n' "${deploy_args[@]}" | grep -c "^--source-dir$" || true)
         members_count=$(printf '%s\n' "${deploy_args[@]}" | grep -c "^--metadata$" || true)
         log "INFO" "デプロイ対象を検出 (ファイル: ${files_count}件 / メンバー: ${members_count}件)"
-        run sf project generate manifest "${deploy_args[@]}" --output-dir "$RELEASE_DIR" --name "package.xml" --json || return $RET_NG
+        run sf project generate manifest "${deploy_args[@]}" --output-dir "$RELEASE_DIR" --name "package.xml" "${JSON_FLAG[@]}" || return $RET_NG
     else
         # 対象ゼロでも CLI エラーを防ぐために最小構成の XML を作成
         printf '<?xml version="1.0" encoding="UTF-8"?><Package xmlns="http://soap.sforce.com/2006/04/metadata"><version>60.0</version></Package>\n' \
@@ -188,7 +190,7 @@ phase_generate_manifest() {
 
     # 削除用の destructiveChanges.xml 生成（対象がある場合のみ）
     if [[ ${#remove_args[@]} -gt 0 ]]; then
-        run sf project generate manifest "${remove_args[@]}" --output-dir "$RELEASE_DIR" --name "destructiveChanges.xml" --json \
+        run sf project generate manifest "${remove_args[@]}" --output-dir "$RELEASE_DIR" --name "destructiveChanges.xml" "${JSON_FLAG[@]}" \
             || return $RET_NG
     fi
 
@@ -197,8 +199,7 @@ phase_generate_manifest() {
 
 # 【RELEASE】Salesforce へのデプロイ/検証の実行
 phase_release() {
-    local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML")
-    [[ "$JSON_OUTPUT" -eq 1 ]] && deploy_cmd+=("--json")
+    local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML" "${JSON_FLAG[@]}")
     [[ -f "$REMOVE_XML" ]]          && deploy_cmd+=("--pre-destructive-changes" "$REMOVE_XML")
     [[ "$IGNORE_CONFLICTS" -eq 1 ]] && deploy_cmd+=("--ignore-conflicts")
 
@@ -212,7 +213,7 @@ phase_release() {
     # インタラクティブ実行時はブラウザで進捗画面を自動表示
     if [[ "$OPEN_BROWSER" -eq 1 ]]; then
         log "INFO" "リリース状況画面をブラウザで表示します..."
-        run sf org open --target-org "$TARGET_ORG" --path "lightning/setup/DeployStatus/home" --json
+        run sf org open --target-org "$TARGET_ORG" --path "lightning/setup/DeployStatus/home" "${JSON_FLAG[@]}"
         log "INFO" "ブラウザ描画待機 (5秒)"
         sleep 5
     fi
