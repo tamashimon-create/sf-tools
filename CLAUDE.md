@@ -192,11 +192,40 @@ bash tests/run_tests.sh test_sf-metasync.sh  # 特定のテストのみ実行
 | `test_sf-deploy.sh` | sf-deploy.sh |
 
 **テストの仕組み (`test_helper.sh`):**
-- `setup_force_dir` / `setup_regular_dir` : テスト用一時ディレクトリ作成
-- `setup_mock_bin` : PATH に差し込むモック用ディレクトリ作成
+
+セットアップ関数:
+- `setup_force_dir` : `force-*` ディレクトリ（`.git/hooks` / `.sf` / `.sfdx` / `logs` 付き）を作成
+- `setup_regular_dir` : 通常ディレクトリ（`force-*` でない）を作成
+- `setup_mock_bin` : PATH に差し込むモック用ディレクトリを作成。**呼び出し後に必ず `export MOCK_CALL_LOG="$mb/calls.log"` を実行すること**（コマンド置換内での export はサブシェル境界を越えないため）
+- `setup_release_dir TD [BRANCH]` : リリースディレクトリ（`release/<branch>/deploy-target.txt` / `remove-target.txt`）を生成
+- `setup_mock_home` : `~/sf-tools` 一式をコピーした仮 HOME ディレクトリを作成
+- `teardown ARG...` : 可変長引数で受け取った全ディレクトリを一括削除（`rm -rf`）
+
+モック生成関数:
 - `create_mock_git` / `create_mock_sf` / `create_mock_npm` / `create_mock_code` : 各コマンドのモック生成
-- `MOCK_CALL_LOG` : モックコマンドが呼び出された引数を記録するログファイル
-- `MOCK_GIT_BRANCH` / `MOCK_GIT_DIFF_EXIT` / `MOCK_SF_ORG_JSON` などの環境変数でモックの挙動を制御
+- `create_all_mocks` : 上記4つを一括生成
+
+モック制御環境変数:
+
+| 変数 | 対象 | 説明 |
+|---|---|---|
+| `MOCK_CALL_LOG` | 全モック | モックが呼び出された引数を記録するログファイルパス |
+| `MOCK_GIT_BRANCH` | git | `symbolic-ref` が返すブランチ名（デフォルト: `feature/test`） |
+| `MOCK_GIT_DIFF_EXIT` | git | `diff-index` の終了コード（デフォルト: `0`） |
+| `MOCK_GIT_DIFF_EXIT_2ND` | git | 2回目以降の `diff-index` に使う終了コード（未設定時は常に `MOCK_GIT_DIFF_EXIT`） |
+| `MOCK_GIT_PULL_EXIT` | git | `pull` の終了コード |
+| `MOCK_GIT_PUSH_EXIT` | git | `push` の終了コード |
+| `MOCK_GIT_REBASE_EXIT` | git | `rebase` の終了コード |
+| `MOCK_GIT_MERGE_EXIT` | git | `merge` の終了コード |
+| `MOCK_GIT_CHECKOUT_EXIT` | git | `checkout` の終了コード |
+| `MOCK_GIT_CHECKOUT_FAIL_BRANCH` | git | このブランチ名で `checkout` したときだけ exit 1 |
+| `MOCK_GIT_LS_REMOTE_EXIT` | git | `ls-remote` の終了コード |
+| `MOCK_SF_ORG_JSON` | sf | `sf org display` が返す JSON（コンパクト形式で指定、自動で改行展開される） |
+| `MOCK_SF_ORG_DISPLAY_EXIT` | sf | `sf org display` の終了コード |
+| `MOCK_SF_LOGIN_EXIT` | sf | `sf org login` の終了コード |
+| `MOCK_SF_SGD_EXIT` | sf | `sf sgd source delta` の終了コード |
+| `MOCK_SF_DEPLOY_EXIT` | sf | `sf project deploy` の終了コード |
+| `MOCK_NPM_EXIT` | npm | `npm` コマンドの終了コード |
 
 ## ブランチ戦略
 
