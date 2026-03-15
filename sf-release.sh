@@ -12,6 +12,7 @@
 #   -n, --no-open       : ブラウザを開かずに実行します（CI/CD 等）。
 #   -f, --force         : コンフリクト検知を無効化して強制上書きします。
 #   -t, --target ALIAS  : 接続先組織のエイリアスを明示的に指定します。
+#   -j, --json          : sf コマンドの出力を JSON 形式で表示します。
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -51,6 +52,7 @@ IS_VALIDATE_MODE=1
 OPEN_BROWSER=1
 IGNORE_CONFLICTS=0
 TARGET_ORG=""
+JSON_OUTPUT=0
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -59,6 +61,7 @@ while [[ "$#" -gt 0 ]]; do
         --no-open|-n)         OPEN_BROWSER=0 ;;
         --force|-f)           IGNORE_CONFLICTS=1 ;;
         --target|-t)          TARGET_ORG="$2"; shift ;;
+        --json|-j)            JSON_OUTPUT=1 ;;
         --*)
             die "不明なオプションです: $1"
             ;;
@@ -194,7 +197,8 @@ phase_generate_manifest() {
 
 # 【RELEASE】Salesforce へのデプロイ/検証の実行
 phase_release() {
-    local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML" "--json")
+    local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML")
+    [[ "$JSON_OUTPUT" -eq 1 ]] && deploy_cmd+=("--json")
     [[ -f "$REMOVE_XML" ]]          && deploy_cmd+=("--pre-destructive-changes" "$REMOVE_XML")
     [[ "$IGNORE_CONFLICTS" -eq 1 ]] && deploy_cmd+=("--ignore-conflicts")
 
