@@ -416,7 +416,7 @@ bash ~/sf-tools/sf-metasync.sh
 | 2️⃣ | SGD (`sf sgd source delta`) で前回同期からの差分を解析 → `package.xml` を自動生成 |
 | 3️⃣ | 差分ファイルを組織から retrieve（SGD の package.xml 使用） |
 | 4️⃣ | 主要メタデータタイプを一括 retrieve して整合性を確保 |
-| 5️⃣ | 変更がある場合のみ `git commit` & `git push` → 下流ブランチ（staging → development）へ伝播 |
+| 5️⃣ | 変更がある場合のみ `git commit` & `git push` → 下流ブランチ（main → staging、main → development）へ直接伝播 |
 
 > 💡 **ポイント**: 変更がない場合は commit も push も行わず `SUCCESS` で正常終了します。
 > CI のログが不必要に汚れません。
