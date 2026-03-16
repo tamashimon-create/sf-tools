@@ -30,7 +30,7 @@
 #     （sf-start.sh 実行時に自動生成されます）
 # ==============================================================================
 
-name: Salesforce PR 検証
+name: Salesforce デプロイ前検証（PR 自動チェック）
 
 on:
   pull_request:
@@ -38,7 +38,7 @@ on:
 
 jobs:
   validate:
-    name: Salesforce dry-run 検証
+    name: Salesforce 検証（本番反映なし・確認のみ）
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write  # PR へのコメント投稿に必要
@@ -47,24 +47,24 @@ jobs:
       # -------------------------------------------------------------------------
       # 1. リポジトリをチェックアウト
       # -------------------------------------------------------------------------
-      - name: リポジトリをチェックアウト
+      - name: ソースコードを取得
         uses: actions/checkout@v4
 
       # -------------------------------------------------------------------------
       # 2. Node.js セットアップ & Salesforce CLI インストール
       # -------------------------------------------------------------------------
-      - name: Node.js セットアップ
+      - name: Node.js をインストール
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Salesforce CLI インストール
+      - name: Salesforce CLI をインストール
         run: npm install -g @salesforce/cli
 
       # -------------------------------------------------------------------------
       # 3. sf-tools をセットアップ（~/sf-tools に配置）
       # -------------------------------------------------------------------------
-      - name: sf-tools をセットアップ
+      - name: 自動化ツール（sf-tools）を取得
         run: |
           git clone "${{ secrets.SF_TOOLS_REPO }}" "$HOME/sf-tools"
           chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
@@ -73,7 +73,7 @@ jobs:
       # 4. PR マージ先に応じて認証 URL を選択
       #    main → PROD / staging → STG / development（その他） → DEV
       # -------------------------------------------------------------------------
-      - name: 認証 URL を選択
+      - name: 接続先組織を選択（マージ先ブランチに応じて切り替え）
         run: |
           BASE="${{ github.base_ref }}"
           if   [[ "$BASE" == "main"        ]]; then
@@ -91,7 +91,7 @@ jobs:
       # -------------------------------------------------------------------------
       # 5. Salesforce 組織に認証
       # -------------------------------------------------------------------------
-      - name: Salesforce 組織に認証
+      - name: Salesforce 組織にログイン
         run: |
           echo "$SFDX_AUTH_URL" > /tmp/sf_auth.txt
           sf org login sfdx-url \
@@ -104,7 +104,7 @@ jobs:
       # 6. ブランチ名ファイルを設定
       #    sf-release.sh は sf-tools/release/branch_name.txt を参照します
       # -------------------------------------------------------------------------
-      - name: ブランチ名ファイルを設定
+      - name: デプロイ対象ブランチを設定
         run: |
           mkdir -p sf-tools/release
           echo "${{ github.head_ref }}" > sf-tools/release/branch_name.txt
@@ -113,7 +113,7 @@ jobs:
       # -------------------------------------------------------------------------
       # 7. sf-release.sh で dry-run 検証を実行
       # -------------------------------------------------------------------------
-      - name: Salesforce 検証を実行
+      - name: Salesforce にデプロイ検証を実行（本番反映なし）
         id: sf_validate
         env:
           SF_TARGET_ORG: ci-org
@@ -127,7 +127,7 @@ jobs:
       # -------------------------------------------------------------------------
       # 8. 検証結果を PR にコメント投稿
       # -------------------------------------------------------------------------
-      - name: 検証結果を PR にコメント
+      - name: 検証結果を PR に投稿
         if: always()
         uses: actions/github-script@v7
         with:
@@ -174,7 +174,7 @@ jobs:
       # -------------------------------------------------------------------------
       # 9. 検証失敗時は CI を失敗扱いにする
       # -------------------------------------------------------------------------
-      - name: 検証結果チェック
+      - name: 検証失敗時はマージをブロック
         if: always()
         run: |
           EXIT_CODE="${{ steps.sf_validate.outputs.exit_code }}"
