@@ -12,8 +12,7 @@
 #   2. プロジェクト側のラッパースクリプト (sf-start.sh / sf-restart.sh) を生成（未存在時のみ）
 #   3. sf-tools/config/metadatalist.txt を生成（未存在時のみ）
 #   4. Git マージドライバー (ours) をリポジトリに登録
-#   5. プロジェクトの npm パッケージをインストール（package.json がある場合のみ）
-#   6. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
+#   5. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
@@ -131,25 +130,6 @@ phase_setup_merge_driver() {
     return $RET_OK
 }
 
-# 【NPM】プロジェクトの npm パッケージをインストール
-# ※ 依存関係の変更を即時反映するため sf-upgrade.sh には移さず、毎回ここで実行する
-phase_npm_install() {
-    # package-lock.json が node_modules より新しい場合のみ実行
-    if [[ -f "./package.json" ]]; then
-        if [[ ! -d "./node_modules" ]] || [[ "./package-lock.json" -nt "./node_modules" ]]; then
-            log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
-            run npm install \
-                || log "WARNING" "npm install に失敗しました（続行します）"
-        else
-            log "INFO" "npm パッケージは最新です。npm install をスキップします。"
-        fi
-    else
-        log "INFO" "package.json が見つかりません。npm install をスキップします。"
-    fi
-
-    return $RET_OK
-}
-
 # 【UPGRADE】開発ツールのアップデート（バックグラウンド実行）
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
@@ -181,9 +161,6 @@ log "SUCCESS" "設定ファイルの確認が完了しました。"
 
 phase_setup_merge_driver
 log "SUCCESS" "Git マージドライバーを登録しました。"
-
-phase_npm_install
-log "SUCCESS" "npm パッケージの確認が完了しました。"
 
 phase_upgrade_tools_bg
 
