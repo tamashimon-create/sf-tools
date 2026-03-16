@@ -58,7 +58,7 @@ if echo "$ORG_DISPLAY_JSON" | grep -qi '"isSandbox".*true'; then
     die "Sandbox 組織への接続中は実行できません。本番組織に接続してから再実行してください。"
 fi
 
-DELTA_DIR="./temp_delta_$$"
+DELTA_DIR="./sf-tools/temp_delta_$$"
 
 # DELTA_DIR 定義後に trap を設定（未定義のまま rm -rf が実行されないようにする）
 trap 'rm -rf "$DELTA_DIR" ./cmd_out_*.tmp 2>/dev/null' EXIT
