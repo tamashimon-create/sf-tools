@@ -250,7 +250,7 @@ PlatformEventChannelMember
 # EventRelayConfig
 # EventSubscription
 # EventType
-MessageChannel
+LightningMessageChannel
 # MessagingChannel
 # ConversationChannelDefinition
 # ConversationMessageDefinition
