@@ -118,9 +118,6 @@ fi
 
     # リリース管理ディレクトリの準備 & ブランチ名保存
     log "INFO" "リリース管理用のディレクトリを準備します..."
-    run mkdir -p "sf-tools/config"
-    [ ! -f "sf-tools/config/metadatalist.txt" ] \
-        && run cp "$HOME/sf-tools/templates/metadatalist.txt" "sf-tools/config/metadatalist.txt"
     BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null)
     if [ -n "$BRANCH_NAME" ]; then
         RELEASE_DIR="sf-tools/release/${BRANCH_NAME}"
