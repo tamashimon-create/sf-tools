@@ -9,14 +9,14 @@
 #   ↓ VS Code 起動後にバックグラウンドで実行
 #   3. sf-tools 自動更新 & Git フック有効化
 #   4. リリース管理ディレクトリの準備
-#   5. 現在のブランチ名を release/branch_name.txt に保存
+#   5. 現在のブランチ名を sf-tools/release/branch_name.txt に保存
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
-readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
 readonly SILENT_EXEC=0
 
@@ -120,14 +120,14 @@ fi
     log "INFO" "リリース管理用のディレクトリを準備します..."
     BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null)
     if [ -n "$BRANCH_NAME" ]; then
-        RELEASE_DIR="release/${BRANCH_NAME}"
+        RELEASE_DIR="sf-tools/release/${BRANCH_NAME}"
         run mkdir -p "$RELEASE_DIR"
         [ ! -f "${RELEASE_DIR}/deploy-target.txt" ] \
             && run cp "$HOME/sf-tools/templates/deploy-template.txt" "${RELEASE_DIR}/deploy-target.txt"
         [ ! -f "${RELEASE_DIR}/remove-target.txt" ] \
             && run cp "$HOME/sf-tools/templates/remove-template.txt"  "${RELEASE_DIR}/remove-target.txt"
-        run mkdir -p "release"
-        printf '%s\n' "$BRANCH_NAME" | run tee "release/branch_name.txt" > /dev/null
+        run mkdir -p "sf-tools/release"
+        printf '%s\n' "$BRANCH_NAME" | run tee "sf-tools/release/branch_name.txt" > /dev/null
         log "INFO" "ブランチ: ${BRANCH_NAME} / branch_name.txt を保存しました"
     fi
 

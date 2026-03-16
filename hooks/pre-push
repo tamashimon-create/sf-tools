@@ -61,6 +61,6 @@ if [[ $RESULT -eq $RET_OK || $RESULT -eq $RET_NO_CHANGE ]]; then
     exit 0
 else
     echo -e "${CLR_ERR}[PRE-PUSH][ERROR] 組織の検証でエラーが発生したため、Push を中断しました。${CLR_RESET}" >&2
-    echo -e "コンポーネントのエラー詳細は ./logs/sf-release.log を確認してください。" >&2
+    echo -e "コンポーネントのエラー詳細は ./sf-tools/logs/sf-release.log を確認してください。" >&2
     exit 1
 fi
