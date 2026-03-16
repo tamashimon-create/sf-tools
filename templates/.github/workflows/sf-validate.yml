@@ -76,11 +76,11 @@ jobs:
       # -------------------------------------------------------------------------
       - name: 接続先組織を選択（マージ先ブランチに応じて切り替え）
         run: |
-          マージ先="${{ github.base_ref }}"
-          if   [[ "$マージ先" == "main"        ]]; then
+          BASE="${{ github.base_ref }}"
+          if   [[ "$BASE" == "main"        ]]; then
             echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_PROD }}" >> "$GITHUB_ENV"
             echo "接続先: 本番組織"
-          elif [[ "$マージ先" == "staging"     ]]; then
+          elif [[ "$BASE" == "staging"     ]]; then
             echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_STG }}"  >> "$GITHUB_ENV"
             echo "接続先: ステージング組織"
           else
@@ -120,9 +120,9 @@ jobs:
         run: |
           set +e
           bash "$HOME/sf-tools/sf-release.sh" --no-open > /tmp/sf_result.txt 2>&1
-          終了コード=$?
+          EXIT_CODE=$?
           cat /tmp/sf_result.txt
-          echo "exit_code=$終了コード" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
 
       # -------------------------------------------------------------------------
       # 8. 検証結果を PR に投稿
@@ -177,5 +177,5 @@ jobs:
       - name: 検証失敗時はマージをブロック
         if: always()
         run: |
-          終了コード="${{ steps.sf_validate.outputs.exit_code }}"
-          exit "${終了コード:-1}"
+          EXIT_CODE="${{ steps.sf_validate.outputs.exit_code }}"
+          exit "${EXIT_CODE:-1}"
