@@ -109,6 +109,13 @@ fi
             || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
     fi
 
+    # Git フック有効化（原則強制。作業中に sf-unhook しても翌日の起動時に自動復帰）
+    if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
+        log "INFO" "Git フックを有効化します（バックグラウンド）"
+        bash "$HOME/sf-tools/sf-hook.sh" \
+            || log "WARNING" "Git フックの有効化に失敗しました（続行します）"
+    fi
+
     # リリース管理ディレクトリの準備 & ブランチ名保存
     log "INFO" "リリース管理用のディレクトリを準備します..."
     BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null)
