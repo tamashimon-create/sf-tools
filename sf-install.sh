@@ -46,7 +46,7 @@ check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内
 
 log "HEADER" "sf-tools のセットアップを開始します (${SCRIPT_NAME}.sh)"
 
-trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 4. 定数定義

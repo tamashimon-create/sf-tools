@@ -39,7 +39,7 @@ check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内
 
 log "HEADER" "開発タスクのスタートアップを開始します (${SCRIPT_NAME}.sh)"
 
-trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 4. Salesforce 接続確認・ログイン
