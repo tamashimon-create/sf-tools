@@ -133,9 +133,8 @@ phase_git_sync() {
     run git push origin "$BRANCH_NAME" || return $RET_NG
 }
 
-# 【PROPAGATE】main の変更を下流ブランチへ伝播 (main → staging → development)
+# 【PROPAGATE】main の変更を下流ブランチへ直接伝播 (main → staging、main → development)
 phase_propagate_downstream() {
-    local prev_branch="main"
     for branch in staging development; do
         # リモートにブランチが存在するか確認（出力は不要なため直接呼び出し）
         if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
@@ -143,7 +142,7 @@ phase_propagate_downstream() {
             continue
         fi
 
-        log "INFO" "${prev_branch} → ${branch} へマージします..."
+        log "INFO" "main → ${branch} へマージします..."
 
         if ! run git checkout "$branch"; then
             log "WARNING" "${branch} のチェックアウトに失敗しました（スキップ）"
@@ -157,7 +156,7 @@ phase_propagate_downstream() {
             continue
         fi
 
-        if ! run git merge "$prev_branch" --no-edit; then
+        if ! run git merge "main" --no-edit; then
             log "WARNING" "${branch} へのマージに失敗しました（スキップ）"
             run git merge --abort 2>/dev/null
             run git checkout main
@@ -171,7 +170,6 @@ phase_propagate_downstream() {
         fi
 
         log "SUCCESS" "${branch} への伝播が完了しました"
-        prev_branch="$branch"  # 成功時のみ更新（失敗時は前のブランチからマージを継続）
     done
 
     # 作業ブランチを main に戻す
@@ -196,7 +194,7 @@ RES=$?
 if [[ $RES -eq $RET_OK ]]; then
     log "SUCCESS" "完了: リポジトリを最新に更新しました。"
     phase_propagate_downstream || die "下流ブランチへの伝播に失敗しました。"
-    log "SUCCESS" "下流ブランチへの伝播完了 (main → staging → development)"
+    log "SUCCESS" "下流ブランチへの伝播完了 (main → staging、main → development)"
 elif [[ $RES -eq $RET_NO_CHANGE ]]; then
     log "SUCCESS" "完了: Salesforce 組織側に変更はありませんでした。"
 else
