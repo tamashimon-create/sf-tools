@@ -7,7 +7,7 @@
 #   1. Salesforce 組織への接続確認・ログイン
 #   2. VS Code 設定の同期と起動
 #   ↓ VS Code 起動後にバックグラウンドで実行
-#   3. sf-tools 自動更新 & Git フック有効化
+#   3. sf-tools 自動更新
 #   4. リリース管理ディレクトリの準備
 #   5. 現在のブランチ名を sf-tools/release/branch_name.txt に保存
 # ==============================================================================
@@ -107,13 +107,6 @@ fi
         log "INFO" "sf-tools を最新化します（バックグラウンド）"
         bash "$HOME/sf-tools/sf-install.sh" \
             || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
-    fi
-
-    # Git フック有効化（原則強制。作業中に sf-unhook しても翌日の起動時に自動復帰）
-    if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
-        log "INFO" "Git フックを有効化します（バックグラウンド）"
-        bash "$HOME/sf-tools/sf-hook.sh" \
-            || log "WARNING" "Git フックの有効化に失敗しました（続行します）"
     fi
 
     # リリース管理ディレクトリの準備 & ブランチ名保存
