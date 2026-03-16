@@ -1,0 +1,618 @@
+# ==============================================================================
+# sf-tools/config/metadatalist.txt
+# ==============================================================================
+# sf-metasync.sh が Salesforce 組織から定期取得するメタデータタイプの一覧。
+#
+# 【記述ルール】
+#   - 1行につき1つのメタデータタイプ名を記載する
+#   - "#" で始まる行はコメントとして無視される
+#   - 空行は無視される
+#
+# 【参考】利用可能なメタデータタイプ一覧:
+#   https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/meta_types_list.htm
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Apex・コード
+# ------------------------------------------------------------------------------
+ApexClass
+ApexTrigger
+ApexPage
+ApexComponent
+ApexTestSuite
+ApexEmailNotifications
+
+# ------------------------------------------------------------------------------
+# Lightning / Visualforce / UI コンポーネント
+# ------------------------------------------------------------------------------
+LightningComponentBundle
+AuraDefinitionBundle
+FlexiPage
+# LightningBolt
+# LightningExperienceTheme
+# LightningOnboardingConfig
+# LightningOutApp
+# FlexcardDefinition
+# UIPlugin
+# UIViewDefinition
+# VisualizationPlugin
+# AnimationRule
+
+# ------------------------------------------------------------------------------
+# オブジェクト・項目・レイアウト
+# ------------------------------------------------------------------------------
+CustomObject
+CustomField
+CustomMetadata
+CustomIndex
+CustomTab
+# CustomDataType
+CustomFeedFilter
+CustomHelpMenuSection
+CustomPageWebLink
+# CustomApplicationComponent
+Layout
+# ChannelLayout
+# CompactLayout
+# ListViews
+HomePageComponent
+HomePageLayout
+PathAssistant
+QuickAction
+GlobalPicklist
+GlobalValueSet
+GlobalValueSetTranslation
+StandardValueSet
+StandardValueSetTranslation
+TopicsForObjects
+CustomObjectTranslation
+Translations
+CustomLabels
+CustomNotificationType
+CustomPermission
+CustomApplication
+# CustomExperience
+
+# ------------------------------------------------------------------------------
+# フロー・プロセス自動化
+# ------------------------------------------------------------------------------
+Flow
+FlowCategory
+FlowDefinition
+FlowTest
+# FlowValueMap
+ApprovalProcess
+AssignmentRules
+AutoResponseRules
+EscalationRules
+Workflow
+WorkflowAlert
+WorkflowFieldUpdate
+# WorkflowFlowAction
+# WorkflowFlowAutomation
+# WorkflowKnowledgePublish
+WorkflowOutboundMessage
+WorkflowRule
+# WorkflowSend
+# WorkflowTask
+# ProcessFlowMigration
+# DynamicTrigger
+# BatchCalcJobDefinition
+# BatchProcessJobDefinition
+# ActionPlanTemplate
+# ActionLauncherItemDef
+# ActionLinkGroupTemplate
+# CommandAction
+# InvocableActionExtension
+
+# ------------------------------------------------------------------------------
+# 権限・プロファイル・共有
+# ------------------------------------------------------------------------------
+PermissionSet
+PermissionSetGroup
+# PermissionSetLicenseDefinition
+# MutingPermissionSet
+Profile
+# ProfilePasswordPolicy
+# ProfileSessionSetting
+# UserAccessPolicy
+# UserAuthCertificate
+# UserCriteria
+# UserProvisioningConfig
+# UserProfileSearchScope
+# PersonAccountOwnerPowerUser
+SharingRules
+SharingCriteriaRule
+SharingGuestRule
+SharingOwnerRule
+# SharingTerritoryRule
+SharingSet
+# DelegateGroup
+# Group
+# Role
+# AccessControlPolicy
+# FieldRestrictionRule
+
+# ------------------------------------------------------------------------------
+# レポート・ダッシュボード
+# ------------------------------------------------------------------------------
+Report
+ReportFolder
+ReportType
+Dashboard
+DashboardFolder
+# ReferencedDashboard
+# AnalyticSnapshot
+# DataCalcInsightTemplate
+
+# ------------------------------------------------------------------------------
+# メール・通知・テンプレート
+# ------------------------------------------------------------------------------
+EmailTemplate
+EmailFolder
+EmailServicesFunction
+# EmailTemplateFolder
+Letterhead
+# PostTemplate
+Prompt
+# DocumentTemplate
+# DocumentGenerationSetting
+
+# ------------------------------------------------------------------------------
+# 接続・認証・セキュリティ
+# ------------------------------------------------------------------------------
+ConnectedApp
+AuthProvider
+NamedCredential
+ExternalCredential
+# ExternalAuthIdentityProvider
+# ExternalClientApplication
+SamlSsoConfig
+Certificate
+# InboundCertificate
+# PublicKeyCertificate
+# PublicKeyCertificateSet
+# MyDomainDiscoverableLogin
+# OAuthCustomScope
+# OAuthTokenExchangeHandler
+RemoteSiteSetting
+CorsWhitelistOrigin
+CspTrustedSite
+# IframeWhiteListUrlSettings
+# RedirectWhitelistUrl
+TransactionSecurityPolicy
+# MobSecurityCertPinConfig
+# MobileSecurityPolicy
+# MobileSecurityPolicySet
+# MobileSecurityAssignment
+# BlacklistedConsumer
+
+# ------------------------------------------------------------------------------
+# サイト・エクスペリエンス・コミュニティ
+# ------------------------------------------------------------------------------
+ExperienceBundle
+# DigitalExperienceBundle
+# DigitalExperienceConfig
+# ExperiencePropertyTypeBundle
+CustomSite
+# SiteDotCom
+Network
+NetworkBranding
+NavigationMenu
+# Community
+# CommunityTemplateDefinition
+# CommunityThemeDefinition
+# CMSConnectSource
+# ManagedContentType
+# ManagedTopic
+# BrandingSet
+
+# ------------------------------------------------------------------------------
+# データソース・外部システム連携
+# ------------------------------------------------------------------------------
+ExternalDataSource
+# ExternalDataConnector
+ExternalServiceRegistration
+# ExternalDocStorageConfig
+# ExternalStoragePrvdConfig
+# DataSource
+# DataSourceObject
+# DataSourceBundleDefinition
+# DataSourceTenant
+# DataSrcDataModelFieldMap
+# DataConnector
+# DataConnectorIngestApi
+# DataConnectorS3
+# DataPipeline
+# DataStreamDefinition
+# DataStreamTemplate
+# DataWeaveResource
+# InternalDataConnector
+# IntegrationProviderDef
+# IntegrationHubSettingsType
+# IntegrationProcDefinition
+# RegisteredExternalService
+# ExternalDataTranObject
+# ExtDataTranObjectTemplate
+# ObjectSourceTargetMap
+# ObjIntegProviderDefMapping
+# FieldSrcTrgtRelationship
+# FieldMappingConfig
+# ApiNamedQuery
+
+# ------------------------------------------------------------------------------
+# プラットフォームイベント・メッセージング
+# ------------------------------------------------------------------------------
+PlatformEventChannel
+PlatformEventChannelMember
+# PlatformEventSubscriberConfig
+# EventDelivery
+# EventRelayConfig
+# EventSubscription
+# EventType
+MessageChannel
+# MessagingChannel
+# ConversationChannelDefinition
+# ConversationMessageDefinition
+# ConversationVendorFieldDef
+# ConversationVendorInfo
+# StreamingAppDataConnector
+# ManagedEventSubscription
+
+# ------------------------------------------------------------------------------
+# ケース・サービス管理
+# ------------------------------------------------------------------------------
+EntitlementProcess
+EntitlementTemplate
+MilestoneType
+# CaseSubjectParticle
+ServiceChannel
+ServicePresenceStatus
+# ServiceProcess
+# PresenceDeclineReason
+PresenceUserConfig
+Queue
+QueueRoutingConfig
+# Skill
+# SkillType
+# WorkSkillRouting
+# WorkSkillRoutingAttribute
+# LiveChatAgentConfig
+# LiveChatButton
+# LiveChatDeployment
+# LiveChatSensitiveDataRule
+# EmbeddedServiceConfig
+# EmbeddedServiceBranding
+# EmbeddedServiceFieldService
+# EmbeddedServiceFlowConfig
+# EmbeddedServiceLiveAgent
+# EmbeddedServiceMenuSettings
+# CallCenter
+# CallCenterRoutingMap
+# CallCoachingMediaProvider
+# CallCtrAgentFavTrfrDest
+
+# ------------------------------------------------------------------------------
+# 予測・AI・Einstein
+# ------------------------------------------------------------------------------
+# AIApplication
+# AIApplicationConfig
+# AIAssistantTemplate
+# AiAuthoringBundle
+# AIScoringModelDefinition
+# AIUsecaseDefinition
+# AIEvaluationDefinition
+# ExternalAIModel
+# DiscoveryAIModel
+# DiscoveryGoal
+# DiscoveryStory
+# MlDataDefinition
+# MlDomain
+# MlPredictionDefinition
+# MlRecommendationDefinition
+# GenAiFunction
+# GenAiPlanner
+# GenAiPlannerBundle
+# GenAiPlugin
+# GenAiPromptTemplate
+# GenAiPromptTemplateActv
+# ServiceAISetupDefinition
+# ServiceAISetupField
+# AssistantContextItem
+# AssistantDefinition
+# AssistantRecommendationType
+# AssistantSkillQuickAction
+# AssistantSkillSobjectAction
+# AssistantVersion
+# ExplainabilityActionDefinition
+# ExplainabilityActionVersion
+# ExplainabilityMsgTemplate
+# InsightType
+# RecommendationStrategy
+# RecordAlertCategory
+# RecordAlertDataSource
+# RecordAlertTemplate
+# RecAlrtDataSrcExpSetDef
+# AffinityScoreDefinition
+# ScoreCategory
+# McpServerDefinition
+
+# ------------------------------------------------------------------------------
+# CRM Analytics (Wave / Tableau CRM)
+# ------------------------------------------------------------------------------
+# WaveApplication
+# WaveComponent
+# WaveDashboard
+# WaveDataFlow
+# WaveDataset
+# WaveLens
+# WaveRecipe
+# WaveXmd
+# AnalyticsDashboard
+# AnalyticsVisualization
+# AnalyticsWorkspace
+
+# ------------------------------------------------------------------------------
+# Omni Studio
+# ------------------------------------------------------------------------------
+# OmniScript
+# OmniDataTransform
+# OmniUICard
+# OmniIntegrationProcedure
+# OmniInteractionAccessConfig
+# OmniInteractionConfig
+# OmniSupervisorConfig
+# OmniscriptDefinition
+# IntegrationProcDefinition
+# ProcedurePlanDefinition
+# DataMapperDefinition
+# FlexcardDefinition
+
+# ------------------------------------------------------------------------------
+# Territory 管理
+# ------------------------------------------------------------------------------
+# Territory
+# Territory2
+# Territory2Model
+# Territory2Rule
+# Territory2Type
+# SharingTerritoryRule
+
+# ------------------------------------------------------------------------------
+# 予測・売上
+# ------------------------------------------------------------------------------
+# ForecastingFilter
+# ForecastingFilterCondition
+# ForecastingGroup
+# ForecastingSourceDefinition
+# ForecastingType
+# ForecastingTypeSource
+# AccountForecastSettings
+# AdvAccountForecastSet
+# AdvAcctForecastDimSource
+# AdvAcctForecastPeriodGroup
+# AcctMgrTargetSettings
+# SalesAgreementSettings
+# PipelineInspMetricConfig
+# CampaignInfluenceModel
+
+# ------------------------------------------------------------------------------
+# 商品・価格
+# ------------------------------------------------------------------------------
+# ProductAttributeSet
+# ProductAttrDisplayConfig
+# ProductSpecificationType
+# ProductSpecificationTypeDefinition
+# ProductSpecificationRecType
+# PricingActionParameters
+# PricingRecipe
+# GatewayProviderPaymentMethodType
+# PaymentGatewayProvider
+
+# ------------------------------------------------------------------------------
+# スケジューリング・フィールドサービス
+# ------------------------------------------------------------------------------
+# AppointmentAssignmentPolicy
+# AppointmentSchedulingPolicy
+# SchedulingObjective
+# SchedulingRule
+# TimeSheetTemplate
+# FieldServiceMobileConfig
+# FieldServiceMobileExtension
+
+# ------------------------------------------------------------------------------
+# ドキュメント・コンテンツ
+# ------------------------------------------------------------------------------
+Document
+DocumentFolder
+ContentAsset
+# DocumentCategory
+# DocumentCategoryDocumentType
+# DocumentType
+# SControl
+# CanvasMetadata
+
+# ------------------------------------------------------------------------------
+# データカテゴリ・ナレッジ
+# ------------------------------------------------------------------------------
+DataCategoryGroup
+# ModerationRule
+KeywordList
+SynonymDictionary
+SearchCustomization
+# SearchOrgWideObjectConfig
+
+# ------------------------------------------------------------------------------
+# ルール・重複チェック・マッチング
+# ------------------------------------------------------------------------------
+DuplicateRule
+MatchingRules
+# CleanDataService
+# BusinessProcessGroup
+# BusinessProcessTypeDefinition
+# BusinessProcessFeedbackConfiguration
+# DecisionTable
+# DecisionTableDatasetLink
+# DecisionMatrixDefinition
+# DecisionMatrixDefinitionVersion
+# ExpressionSetDefinition
+# ExpressionSetDefinitionVersion
+# ExpressionSetMessageToken
+# ExpressionSetObjectAlias
+# RuleLibraryDefinition
+
+# ------------------------------------------------------------------------------
+# 設定・システム
+# ------------------------------------------------------------------------------
+Settings
+# AppMenu
+# InstalledPackage
+# LicenseDefinition
+# FeatureParameterBoolean
+# FeatureParameterDate
+# FeatureParameterInteger
+# XOrgHub
+# InternalOrganization
+
+# ------------------------------------------------------------------------------
+# ポータル・パートナー
+# ------------------------------------------------------------------------------
+# Portal
+# PortalDelegablePermissionSet
+# Audience
+# BriefcaseDefinition
+
+# ------------------------------------------------------------------------------
+# Learning・有効化
+# ------------------------------------------------------------------------------
+# EnablementMeasureDefinition
+# EnablementProgramDefinition
+# EnblProgramTaskSubCategory
+# LearningAchievementConfig
+# LearningItemType
+
+# ------------------------------------------------------------------------------
+# ヘルスクラウド・業界ソリューション
+# ------------------------------------------------------------------------------
+# CareBenefitVerifySettings
+# CareLimitType
+# CareProviderAfflRoleConfig
+# CareProviderSearchConfig
+# CareRequestConfiguration
+# CareSystemFieldMapping
+# AssessmentConfiguration
+# AssessmentQuestion
+# AssessmentQuestionSet
+# LifeSciConfigCategory
+# LifeSciConfigRecord
+# FundraisingConfig
+# GiftEntryGridTemplate
+# LoyaltyProgramSetup
+# ClauseCatgConfiguration
+# ContractType
+# DisclosureDefinition
+# DisclosureDefinitionVersion
+# DisclosureType
+# ESignatureConfig
+# ESignatureEnvelopeConfig
+# MfgProgramTemplate
+# ParticipantRole
+# PartyProfileDataObjectValidityDefinition
+
+# ------------------------------------------------------------------------------
+# サステナビリティ・エネルギー
+# ------------------------------------------------------------------------------
+# BldgEnrgyIntensityCnfg
+# FuelType
+# FuelTypeSustnUom
+# StnryAssetEnvSrcCnfg
+# SustainabilityUom
+# SustnUomConversion
+# VehicleAssetEmSsnSourceCnfg
+
+# ------------------------------------------------------------------------------
+# ボット・チャット
+# ------------------------------------------------------------------------------
+# Bot
+# BotBlock
+# BotTemplate
+# ChatterExtension
+
+# ------------------------------------------------------------------------------
+# Slack・外部アプリ
+# ------------------------------------------------------------------------------
+# SlackApp
+# ExtlClntAppConfigurablePolicies
+# ExtlClntAppGlobalOauthSettings
+# ExtlClntAppMobileConfigurablePolicies
+# ExtlClntAppMobileSettings
+# ExtlClntAppNotificationSettings
+# ExtlClntAppOauthConfigurablePolicies
+# ExtlClntAppOauthSettings
+# ExtlClntAppPushConfigurablePolicies
+# ExtlClntAppPushSettings
+# ExtlClntAppSamlConfigurablePolicies
+# ExtlClntAppSampleConfigurablePolicies
+# ExtlClntAppSampleSettings
+# ExtlClntAppCanvasSettings
+
+# ------------------------------------------------------------------------------
+# その他
+# ------------------------------------------------------------------------------
+# ActionableEventOrchDef
+# ActionableEventTypeDef
+# ActionableListDefinition
+# ActnblListKeyPrfmIndDef
+# ApplicationRecordTypeConfig
+# ApplicationSubtypeDefinition
+# BenefitAction
+# ChoiceList
+# ComputeExtension
+# ContextDefinition
+# ContextUseCaseMapping
+# ConvIntelligenceSignalRule
+# DataKitObjectDependency
+# DataKitObjectTemplate
+# DataObjectBuildOrgTemplate
+# DataObjectSearchIndexConf
+# DgtAssetMgmtProvider
+# DgtAssetMgmtPrvdLghtCpnt
+# EclairGeoData
+# EmployeeDataSyncProfile
+# EntityImplements
+# Form
+# FunctionReference
+# Icon
+# MktCalcInsightObjectDef
+# MktDataConnection
+# MktDataConnectionSrcParam
+# MktDataTranField
+# MktDataTranObject
+# MktDatalakeSrcKeyQualifier
+# OcrSampleDocument
+# OcrTemplate
+# OnboardingDataObjectGroup
+# Orchestration
+# OrchestrationContext
+# OutboundNetworkConnection
+# RelatedRecordAssocCriteria
+# RelationshipGraphDefinition
+# StageAssignment
+# StageDefinition
+# TimelineObjectDefinition
+# TransactionProcessingType
+# UiFormatSpecificationSet
+# UiObjectRelationConfig
+# UiPreviewMessageTabDef
+# ViewDefinition
+# VirtualVisitConfig
+# WebApplication
+# WebStoreBundle
+# WebStoreTemplate
+# MarketingAppExtension
+# MarketingResourceType
+# MarketSegmentDefinition
+# ActivationPlatform
+# DataPackageKitDefinition
+# DataPackageKitObject
+# InboundNetworkConnection
