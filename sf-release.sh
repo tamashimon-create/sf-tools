@@ -142,7 +142,10 @@ phase_generate_manifest() {
         local section="files"
         while IFS= read -r line || [[ -n "$line" ]]; do
             local clean_line
-            clean_line=$(echo "$line" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            # サブプロセス不使用: \r 除去 → 前後空白トリム（Windows/Git Bash 高速化）
+            clean_line="${line//$'\r'/}"
+            clean_line="${clean_line#"${clean_line%%[^[:space:]]*}"}"
+            clean_line="${clean_line%"${clean_line##*[^[:space:]]}"}"
 
             # セクション区切りの検出
             if [[ "$clean_line" == "[files]" ]]; then
