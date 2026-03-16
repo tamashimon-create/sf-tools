@@ -10,8 +10,8 @@
 # 【処理の流れ】
 #   1. ~/sf-tools を git pull で最新化
 #   2. プロジェクト側のラッパースクリプト (sf-start.sh / sf-restart.sh) を生成（未存在時のみ）
-#   3. Git マージドライバー (ours) をリポジトリに登録
-#   4. プロジェクトの npm パッケージをインストール（package.json がある場合のみ）
+#   3. sf-tools/config/metadatalist.txt を生成（未存在時のみ）
+#   4. Git マージドライバー (ours) をリポジトリに登録
 #   5. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【前提】
@@ -108,30 +108,25 @@ EOF
     return $RET_OK
 }
 
+# 【CONFIG】設定ファイルの初期化（未存在時のみテンプレートからコピー）
+phase_init_config() {
+    log "INFO" "設定ファイルを確認します..."
+    run mkdir -p "sf-tools/config"
+    if [[ ! -f "sf-tools/config/metadatalist.txt" ]]; then
+        run cp "$HOME/sf-tools/templates/metadatalist.txt" "sf-tools/config/metadatalist.txt" \
+            || return $RET_NG
+        log "INFO" "sf-tools/config/metadatalist.txt を生成しました。"
+    else
+        log "INFO" "sf-tools/config/metadatalist.txt は既に存在します。スキップします。"
+    fi
+    return $RET_OK
+}
+
 # 【MERGE DRIVER】Git マージドライバーの登録
 phase_setup_merge_driver() {
     log "INFO" "Git マージドライバー (ours) を登録します..."
     run git config merge.ours.driver true \
         || log "WARNING" "Git マージドライバーの登録に失敗しました（続行します）"
-    return $RET_OK
-}
-
-# 【NPM】プロジェクトの npm パッケージをインストール
-# ※ 依存関係の変更を即時反映するため sf-upgrade.sh には移さず、毎回ここで実行する
-phase_npm_install() {
-    # package-lock.json が node_modules より新しい場合のみ実行
-    if [[ -f "./package.json" ]]; then
-        if [[ ! -d "./node_modules" ]] || [[ "./package-lock.json" -nt "./node_modules" ]]; then
-            log "INFO" "npm パッケージをインストール／更新します（Prettier 等）..."
-            run npm install \
-                || log "WARNING" "npm install に失敗しました（続行します）"
-        else
-            log "INFO" "npm パッケージは最新です。npm install をスキップします。"
-        fi
-    else
-        log "INFO" "package.json が見つかりません。npm install をスキップします。"
-    fi
-
     return $RET_OK
 }
 
@@ -161,11 +156,11 @@ log "SUCCESS" "sf-tools を最新化しました。"
 phase_generate_wrappers || die "ラッパースクリプトの確認に失敗しました。"
 log "SUCCESS" "ラッパースクリプトの確認が完了しました。"
 
+phase_init_config || die "設定ファイルの初期化に失敗しました。"
+log "SUCCESS" "設定ファイルの確認が完了しました。"
+
 phase_setup_merge_driver
 log "SUCCESS" "Git マージドライバーを登録しました。"
-
-phase_npm_install
-log "SUCCESS" "npm パッケージの確認が完了しました。"
 
 phase_upgrade_tools_bg
 

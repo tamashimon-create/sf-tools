@@ -64,7 +64,17 @@ DELTA_DIR="./temp_delta_$$"
 trap 'rm -rf "$DELTA_DIR" ./cmd_out_*.tmp 2>/dev/null' EXIT
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
-readonly METADATA_TYPES=(ApexClass ApexPage LightningComponentBundle CustomObject CustomField Layout FlexiPage Flow PermissionSet CustomLabels)
+
+readonly METADATA_CONFIG="./sf-tools/config/metadatalist.txt"
+[[ ! -f "$METADATA_CONFIG" ]] && die "メタデータ設定ファイルが見つかりません: ${METADATA_CONFIG}"
+METADATA_TYPES=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue  # コメント行をスキップ
+    [[ -z "${line//[[:space:]]/}" ]] && continue  # 空行をスキップ
+    METADATA_TYPES+=("$line")
+done < "$METADATA_CONFIG"
+readonly METADATA_TYPES
+log "INFO" "対象メタデータ (${#METADATA_TYPES[@]} 件): ${METADATA_TYPES[*]}"
 
 # ------------------------------------------------------------------------------
 # 5. フェーズ定義

@@ -109,7 +109,7 @@ fi
             || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
     fi
 
-    # Git フック有効化
+    # Git フック有効化（原則強制。作業中に sf-unhook しても翌日の起動時に自動復帰）
     if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
         log "INFO" "Git フックを有効化します（バックグラウンド）"
         bash "$HOME/sf-tools/sf-hook.sh" \
