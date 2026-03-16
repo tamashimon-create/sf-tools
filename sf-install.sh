@@ -122,6 +122,30 @@ phase_init_config() {
     return $RET_OK
 }
 
+# 【GITHUB WORKFLOW】GitHub Actions ワークフローファイルを生成（未存在時のみ）
+phase_generate_github_workflow() {
+    log "INFO" "GitHub Actions ワークフローを確認します..."
+    local workflow_dir=".github/workflows"
+    local workflow_file="${workflow_dir}/sf-validate.yml"
+    local template="$HOME/sf-tools/templates/.github/workflows/sf-validate.yml"
+
+    if [[ ! -f "$template" ]]; then
+        log "INFO" "ワークフローテンプレートが見つかりません。スキップします。"
+        return $RET_OK
+    fi
+
+    if [[ -f "$workflow_file" ]]; then
+        log "INFO" "${workflow_file} は既に存在します。スキップします。"
+        return $RET_OK
+    fi
+
+    run mkdir -p "$workflow_dir" || return $RET_NG
+    run cp "$template" "$workflow_file" || return $RET_NG
+    log "INFO" "${workflow_file} を生成しました。"
+    log "INFO" "GitHub Secrets に SFDX_AUTH_URL と SF_TOOLS_REPO を設定してください。"
+    return $RET_OK
+}
+
 # 【MERGE DRIVER】Git マージドライバーの登録
 phase_setup_merge_driver() {
     log "INFO" "Git マージドライバー (ours) を登録します..."
@@ -155,6 +179,9 @@ log "SUCCESS" "sf-tools を最新化しました。"
 
 phase_generate_wrappers || die "ラッパースクリプトの確認に失敗しました。"
 log "SUCCESS" "ラッパースクリプトの確認が完了しました。"
+
+phase_generate_github_workflow || log "WARNING" "GitHub Actions ワークフローの生成に失敗しました（続行します）"
+log "SUCCESS" "GitHub Actions ワークフローの確認が完了しました。"
 
 phase_init_config || die "設定ファイルの初期化に失敗しました。"
 log "SUCCESS" "設定ファイルの確認が完了しました。"

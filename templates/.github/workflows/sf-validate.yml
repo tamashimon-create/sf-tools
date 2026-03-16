@@ -1,0 +1,153 @@
+# ==============================================================================
+# sf-validate.yml - Salesforce PR 検証ワークフロー
+# ==============================================================================
+# PR 作成・更新時に sf-release.sh (dry-run) を自動実行します。
+# レビュアーは「PR が来た = Salesforce 検証済み」と判断できます。
+#
+# 【セットアップ手順】
+# GitHub リポジトリの Settings → Secrets and variables → Actions に以下を追加:
+#
+#   SFDX_AUTH_URL
+#     取得方法: sf org display --verbose --json | grep sfdxAuthUrl
+#     例: force://PlatformCLI::token@domain.salesforce.com
+#
+#   SF_TOOLS_REPO
+#     sf-tools リポジトリの HTTPS URL（認証情報付き）
+#     例: https://USERNAME:TOKEN@github.com/your-org/sf-tools.git
+#
+# 【前提条件】
+#   - リポジトリ名が force- で始まること（check_force_dir の要件）
+#   - PR のソースブランチに sf-tools/release/<branch>/deploy-target.txt が含まれること
+#     （sf-start.sh 実行時に自動生成されます）
+# ==============================================================================
+
+name: Salesforce PR 検証
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    name: Salesforce dry-run 検証
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # PR へのコメント投稿に必要
+
+    steps:
+      # -------------------------------------------------------------------------
+      # 1. リポジトリをチェックアウト
+      # -------------------------------------------------------------------------
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------------------------------
+      # 2. Node.js セットアップ & Salesforce CLI インストール
+      # -------------------------------------------------------------------------
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Salesforce CLI インストール
+        run: npm install -g @salesforce/cli
+
+      # -------------------------------------------------------------------------
+      # 3. sf-tools をセットアップ（~/sf-tools に配置）
+      # -------------------------------------------------------------------------
+      - name: sf-tools をセットアップ
+        run: |
+          git clone "${{ secrets.SF_TOOLS_REPO }}" "$HOME/sf-tools"
+          chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
+
+      # -------------------------------------------------------------------------
+      # 4. Salesforce 組織に認証
+      # -------------------------------------------------------------------------
+      - name: Salesforce 組織に認証
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > /tmp/sf_auth.txt
+          sf org login sfdx-url \
+            --sfdx-url-file /tmp/sf_auth.txt \
+            --set-default \
+            --alias ci-org
+          rm -f /tmp/sf_auth.txt
+
+      # -------------------------------------------------------------------------
+      # 5. ブランチ名ファイルを設定
+      #    sf-release.sh は sf-tools/release/branch_name.txt を参照します
+      # -------------------------------------------------------------------------
+      - name: ブランチ名ファイルを設定
+        run: |
+          mkdir -p sf-tools/release
+          echo "${{ github.head_ref }}" > sf-tools/release/branch_name.txt
+          echo "[INFO] ブランチ: ${{ github.head_ref }}"
+
+      # -------------------------------------------------------------------------
+      # 6. sf-release.sh で dry-run 検証を実行
+      # -------------------------------------------------------------------------
+      - name: Salesforce 検証を実行
+        id: sf_validate
+        env:
+          SF_TARGET_ORG: ci-org
+        run: |
+          set +e
+          bash "$HOME/sf-tools/sf-release.sh" --no-open > /tmp/sf_result.txt 2>&1
+          SF_EXIT=$?
+          cat /tmp/sf_result.txt
+          echo "exit_code=$SF_EXIT" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------------
+      # 7. 検証結果を PR にコメント投稿
+      # -------------------------------------------------------------------------
+      - name: 検証結果を PR にコメント
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let result = '';
+            try {
+              result = fs.readFileSync('/tmp/sf_result.txt', 'utf8');
+            } catch (e) {
+              result = '(ログファイルが見つかりません)';
+            }
+            const exitCode = parseInt('${{ steps.sf_validate.outputs.exit_code }}') || 0;
+            const icon   = exitCode === 0 ? '✅' : '❌';
+            const status = exitCode === 0 ? '検証成功' : '検証失敗';
+            const maxLen = 3000;
+            const log = result.length > maxLen
+              ? '...(前半省略)...\n' + result.slice(-maxLen)
+              : result;
+            const body = [
+              `## ${icon} Salesforce 検証結果: ${status}`,
+              '',
+              `| 項目 | 値 |`,
+              `| --- | --- |`,
+              `| ブランチ | \`${{ github.head_ref }}\` |`,
+              `| コミット | \`${{ github.event.pull_request.head.sha }}\` |`,
+              `| 実行モード | dry-run（検証のみ） |`,
+              '',
+              '<details>',
+              '<summary>実行ログ（クリックで展開）</summary>',
+              '',
+              '```',
+              log,
+              '```',
+              '',
+              '</details>'
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      # -------------------------------------------------------------------------
+      # 8. 検証失敗時は CI を失敗扱いにする
+      # -------------------------------------------------------------------------
+      - name: 検証結果チェック
+        if: always()
+        run: |
+          EXIT_CODE="${{ steps.sf_validate.outputs.exit_code }}"
+          exit "${EXIT_CODE:-1}"
