@@ -42,7 +42,7 @@ check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内
 
 log "HEADER" "リリース・検証処理を開始します (${SCRIPT_NAME}.sh)"
 
-trap 'rm -f ./cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 4. 実行時引数の解析

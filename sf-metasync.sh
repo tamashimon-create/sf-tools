@@ -61,7 +61,7 @@ fi
 DELTA_DIR="./sf-tools/temp_delta_$$"
 
 # DELTA_DIR 定義後に trap を設定（未定義のまま rm -rf が実行されないようにする）
-trap 'rm -rf "$DELTA_DIR" ./cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -rf "$DELTA_DIR" ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 

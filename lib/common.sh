@@ -175,7 +175,7 @@ log() {
 # ------------------------------------------------------------------------------
 run() {
     local cmd=("$@")
-    local tmp_out="./cmd_out_$$_${RANDOM}.tmp"
+    local tmp_out="./sf-tools/cmd_out_$$_${RANDOM}.tmp"
     local status
 
     log "CMD" "[${SCRIPT_NAME}.sh] ${cmd[*]}"
