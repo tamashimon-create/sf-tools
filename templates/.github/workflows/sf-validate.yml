@@ -1,7 +1,7 @@
 # ==============================================================================
 # sf-validate.yml - Salesforce PR 検証ワークフロー
 # ==============================================================================
-# PR 作成・更新時に sf-release.sh (dry-run) を自動実行します。
+# PR 作成・更新時に sf-release.sh (検証のみ・本番反映なし) を自動実行します。
 # レビュアーは「PR が来た = Salesforce 検証済み」と判断できます。
 #
 # 【セットアップ手順】
@@ -15,8 +15,9 @@
 #   例: force://PlatformCLI::token@domain.salesforce.com
 #
 #   SF_TOOLS_REPO
-#     sf-tools リポジトリの HTTPS URL（認証情報付き）
-#     例: https://USERNAME:TOKEN@github.com/your-org/sf-tools.git
+#     sf-tools リポジトリの HTTPS URL
+#     例: https://github.com/your-org/sf-tools.git
+#     ※ プライベートリポジトリの場合: https://TOKEN@github.com/your-org/sf-tools.git
 #
 # 【PR マージ先と使用組織の対応】
 #   main        → SFDX_AUTH_URL_PROD（本番組織）
@@ -25,8 +26,8 @@
 #   その他      → SFDX_AUTH_URL_DEV（フォールバック）
 #
 # 【前提条件】
-#   - リポジトリ名が force- で始まること（check_force_dir の要件）
-#   - PR のソースブランチに sf-tools/release/<branch>/deploy-target.txt が含まれること
+#   - リポジトリ名が force- で始まること
+#   - PR のソースブランチに sf-tools/release/<ブランチ名>/deploy-target.txt が含まれること
 #     （sf-start.sh 実行時に自動生成されます）
 # ==============================================================================
 
@@ -45,13 +46,13 @@ jobs:
 
     steps:
       # -------------------------------------------------------------------------
-      # 1. リポジトリをチェックアウト
+      # 1. ソースコードを取得
       # -------------------------------------------------------------------------
       - name: ソースコードを取得
         uses: actions/checkout@v4
 
       # -------------------------------------------------------------------------
-      # 2. Node.js セットアップ & Salesforce CLI インストール
+      # 2. 必要なツールをインストール
       # -------------------------------------------------------------------------
       - name: Node.js をインストール
         uses: actions/setup-node@v4
@@ -62,7 +63,7 @@ jobs:
         run: npm install -g @salesforce/cli
 
       # -------------------------------------------------------------------------
-      # 3. sf-tools をセットアップ（~/sf-tools に配置）
+      # 3. 自動化ツール（sf-tools）をセットアップ
       # -------------------------------------------------------------------------
       - name: 自動化ツール（sf-tools）を取得
         run: |
@@ -70,26 +71,25 @@ jobs:
           chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
 
       # -------------------------------------------------------------------------
-      # 4. PR マージ先に応じて認証 URL を選択
-      #    main → PROD / staging → STG / development（その他） → DEV
+      # 4. 接続先 Salesforce 組織を選択
+      #    main → 本番 / staging → ステージング / development（その他）→ 開発
       # -------------------------------------------------------------------------
       - name: 接続先組織を選択（マージ先ブランチに応じて切り替え）
         run: |
-          BASE="${{ github.base_ref }}"
-          if   [[ "$BASE" == "main"        ]]; then
+          マージ先="${{ github.base_ref }}"
+          if   [[ "$マージ先" == "main"        ]]; then
             echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_PROD }}" >> "$GITHUB_ENV"
-            echo "TARGET_ENV=PROD（本番）"
-          elif [[ "$BASE" == "staging"     ]]; then
+            echo "接続先: 本番組織"
+          elif [[ "$マージ先" == "staging"     ]]; then
             echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_STG }}"  >> "$GITHUB_ENV"
-            echo "TARGET_ENV=STG（ステージング）"
+            echo "接続先: ステージング組織"
           else
             echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_DEV }}"  >> "$GITHUB_ENV"
-            echo "TARGET_ENV=DEV（開発）"
+            echo "接続先: 開発組織"
           fi
-          echo "BASE_REF=$BASE" >> "$GITHUB_ENV"
 
       # -------------------------------------------------------------------------
-      # 5. Salesforce 組織に認証
+      # 5. Salesforce 組織にログイン
       # -------------------------------------------------------------------------
       - name: Salesforce 組織にログイン
         run: |
@@ -101,17 +101,17 @@ jobs:
           rm -f /tmp/sf_auth.txt
 
       # -------------------------------------------------------------------------
-      # 6. ブランチ名ファイルを設定
+      # 6. デプロイ対象ブランチを設定
       #    sf-release.sh は sf-tools/release/branch_name.txt を参照します
       # -------------------------------------------------------------------------
       - name: デプロイ対象ブランチを設定
         run: |
           mkdir -p sf-tools/release
           echo "${{ github.head_ref }}" > sf-tools/release/branch_name.txt
-          echo "[INFO] ブランチ: ${{ github.head_ref }}"
+          echo "対象ブランチ: ${{ github.head_ref }}"
 
       # -------------------------------------------------------------------------
-      # 7. sf-release.sh で dry-run 検証を実行
+      # 7. Salesforce 検証を実行（本番反映なし）
       # -------------------------------------------------------------------------
       - name: Salesforce にデプロイ検証を実行（本番反映なし）
         id: sf_validate
@@ -120,12 +120,12 @@ jobs:
         run: |
           set +e
           bash "$HOME/sf-tools/sf-release.sh" --no-open > /tmp/sf_result.txt 2>&1
-          SF_EXIT=$?
+          終了コード=$?
           cat /tmp/sf_result.txt
-          echo "exit_code=$SF_EXIT" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$終了コード" >> "$GITHUB_OUTPUT"
 
       # -------------------------------------------------------------------------
-      # 8. 検証結果を PR にコメント投稿
+      # 8. 検証結果を PR に投稿
       # -------------------------------------------------------------------------
       - name: 検証結果を PR に投稿
         if: always()
@@ -133,33 +133,33 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            let result = '';
+            let ログ = '';
             try {
-              result = fs.readFileSync('/tmp/sf_result.txt', 'utf8');
+              ログ = fs.readFileSync('/tmp/sf_result.txt', 'utf8');
             } catch (e) {
-              result = '(ログファイルが見つかりません)';
+              ログ = '（ログファイルが見つかりません）';
             }
-            const exitCode = parseInt('${{ steps.sf_validate.outputs.exit_code }}') || 0;
-            const icon   = exitCode === 0 ? '✅' : '❌';
-            const status = exitCode === 0 ? '検証成功' : '検証失敗';
-            const maxLen = 3000;
-            const log = result.length > maxLen
-              ? '...(前半省略)...\n' + result.slice(-maxLen)
-              : result;
-            const body = [
-              `## ${icon} Salesforce 検証結果: ${status}`,
+            const 終了コード = parseInt('${{ steps.sf_validate.outputs.exit_code }}') || 0;
+            const アイコン = 終了コード === 0 ? '✅' : '❌';
+            const 結果   = 終了コード === 0 ? '検証成功' : '検証失敗';
+            const 最大文字数 = 3000;
+            const 表示ログ = ログ.length > 最大文字数
+              ? '...(前半省略)...\n' + ログ.slice(-最大文字数)
+              : ログ;
+            const 本文 = [
+              `## ${アイコン} Salesforce 検証結果: ${結果}`,
               '',
               `| 項目 | 値 |`,
               `| --- | --- |`,
               `| ブランチ | \`${{ github.head_ref }}\` → \`${{ github.base_ref }}\` |`,
               `| コミット | \`${{ github.event.pull_request.head.sha }}\` |`,
-              `| 実行モード | dry-run（検証のみ） |`,
+              `| 実行モード | 検証のみ（本番反映なし） |`,
               '',
               '<details>',
               '<summary>実行ログ（クリックで展開）</summary>',
               '',
               '```',
-              log,
+              表示ログ,
               '```',
               '',
               '</details>'
@@ -168,14 +168,14 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body
+              body: 本文
             });
 
       # -------------------------------------------------------------------------
-      # 9. 検証失敗時は CI を失敗扱いにする
+      # 9. 検証失敗時はマージをブロック
       # -------------------------------------------------------------------------
       - name: 検証失敗時はマージをブロック
         if: always()
         run: |
-          EXIT_CODE="${{ steps.sf_validate.outputs.exit_code }}"
-          exit "${EXIT_CODE:-1}"
+          終了コード="${{ steps.sf_validate.outputs.exit_code }}"
+          exit "${終了コード:-1}"
