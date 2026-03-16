@@ -7,13 +7,22 @@
 # 【セットアップ手順】
 # GitHub リポジトリの Settings → Secrets and variables → Actions に以下を追加:
 #
-#   SFDX_AUTH_URL
-#     取得方法: sf org display --verbose --json | grep sfdxAuthUrl
-#     例: force://PlatformCLI::token@domain.salesforce.com
+#   SFDX_AUTH_URL_DEV   : development ブランチへの PR で使用する組織の認証 URL
+#   SFDX_AUTH_URL_STG   : staging     ブランチへの PR で使用する組織の認証 URL
+#   SFDX_AUTH_URL_PROD  : main        ブランチへの PR で使用する組織の認証 URL
+#
+#   取得方法: sf org display --verbose --json | grep sfdxAuthUrl
+#   例: force://PlatformCLI::token@domain.salesforce.com
 #
 #   SF_TOOLS_REPO
 #     sf-tools リポジトリの HTTPS URL（認証情報付き）
 #     例: https://USERNAME:TOKEN@github.com/your-org/sf-tools.git
+#
+# 【PR マージ先と使用組織の対応】
+#   main        → SFDX_AUTH_URL_PROD（本番組織）
+#   staging     → SFDX_AUTH_URL_STG（ステージング組織）
+#   development → SFDX_AUTH_URL_DEV（開発組織）
+#   その他      → SFDX_AUTH_URL_DEV（フォールバック）
 #
 # 【前提条件】
 #   - リポジトリ名が force- で始まること（check_force_dir の要件）
@@ -61,11 +70,30 @@ jobs:
           chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
 
       # -------------------------------------------------------------------------
-      # 4. Salesforce 組織に認証
+      # 4. PR マージ先に応じて認証 URL を選択
+      #    main → PROD / staging → STG / development（その他） → DEV
+      # -------------------------------------------------------------------------
+      - name: 認証 URL を選択
+        run: |
+          BASE="${{ github.base_ref }}"
+          if   [[ "$BASE" == "main"        ]]; then
+            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_PROD }}" >> "$GITHUB_ENV"
+            echo "TARGET_ENV=PROD（本番）"
+          elif [[ "$BASE" == "staging"     ]]; then
+            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_STG }}"  >> "$GITHUB_ENV"
+            echo "TARGET_ENV=STG（ステージング）"
+          else
+            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_DEV }}"  >> "$GITHUB_ENV"
+            echo "TARGET_ENV=DEV（開発）"
+          fi
+          echo "BASE_REF=$BASE" >> "$GITHUB_ENV"
+
+      # -------------------------------------------------------------------------
+      # 5. Salesforce 組織に認証
       # -------------------------------------------------------------------------
       - name: Salesforce 組織に認証
         run: |
-          echo "${{ secrets.SFDX_AUTH_URL }}" > /tmp/sf_auth.txt
+          echo "$SFDX_AUTH_URL" > /tmp/sf_auth.txt
           sf org login sfdx-url \
             --sfdx-url-file /tmp/sf_auth.txt \
             --set-default \
@@ -73,7 +101,7 @@ jobs:
           rm -f /tmp/sf_auth.txt
 
       # -------------------------------------------------------------------------
-      # 5. ブランチ名ファイルを設定
+      # 6. ブランチ名ファイルを設定
       #    sf-release.sh は sf-tools/release/branch_name.txt を参照します
       # -------------------------------------------------------------------------
       - name: ブランチ名ファイルを設定
@@ -83,7 +111,7 @@ jobs:
           echo "[INFO] ブランチ: ${{ github.head_ref }}"
 
       # -------------------------------------------------------------------------
-      # 6. sf-release.sh で dry-run 検証を実行
+      # 7. sf-release.sh で dry-run 検証を実行
       # -------------------------------------------------------------------------
       - name: Salesforce 検証を実行
         id: sf_validate
@@ -97,7 +125,7 @@ jobs:
           echo "exit_code=$SF_EXIT" >> "$GITHUB_OUTPUT"
 
       # -------------------------------------------------------------------------
-      # 7. 検証結果を PR にコメント投稿
+      # 8. 検証結果を PR にコメント投稿
       # -------------------------------------------------------------------------
       - name: 検証結果を PR にコメント
         if: always()
@@ -123,7 +151,7 @@ jobs:
               '',
               `| 項目 | 値 |`,
               `| --- | --- |`,
-              `| ブランチ | \`${{ github.head_ref }}\` |`,
+              `| ブランチ | \`${{ github.head_ref }}\` → \`${{ github.base_ref }}\` |`,
               `| コミット | \`${{ github.event.pull_request.head.sha }}\` |`,
               `| 実行モード | dry-run（検証のみ） |`,
               '',
@@ -144,7 +172,7 @@ jobs:
             });
 
       # -------------------------------------------------------------------------
-      # 8. 検証失敗時は CI を失敗扱いにする
+      # 9. 検証失敗時は CI を失敗扱いにする
       # -------------------------------------------------------------------------
       - name: 検証結果チェック
         if: always()
