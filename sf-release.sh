@@ -19,7 +19,7 @@
 # 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
-readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
 readonly SILENT_EXEC=0
 
@@ -84,14 +84,14 @@ log "INFO" "接続先組織: ${TARGET_ORG}"
 # ------------------------------------------------------------------------------
 # 6. パス定義
 # ------------------------------------------------------------------------------
-BRANCH_NAME_FILE="release/branch_name.txt"
+BRANCH_NAME_FILE="sf-tools/release/branch_name.txt"
 if [[ -f "$BRANCH_NAME_FILE" ]]; then
     BRANCH_NAME=$(tr -d '\r\n' < "$BRANCH_NAME_FILE")
 else
     die "ブランチ情報ファイルが見つかりません (${BRANCH_NAME_FILE})。"
 fi
 
-readonly RELEASE_BASE="release"
+readonly RELEASE_BASE="sf-tools/release"
 readonly RELEASE_DIR="${RELEASE_BASE}/${BRANCH_NAME}"
 readonly TEMPLATE_DEPLOY="$HOME/sf-tools/templates/deploy-template.txt"
 readonly TEMPLATE_REMOVE="$HOME/sf-tools/templates/remove-template.txt"

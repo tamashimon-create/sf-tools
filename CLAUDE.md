@@ -93,9 +93,11 @@ VS Code を素早く起動することを優先し、重い処理はバックグ
 - `--target` / `-t` : 組織エイリアスを明示指定
 
 **デプロイ対象ファイル:**
-- `release/<branch>/deploy-target.txt` : 追加/更新対象のパス一覧
+- `release/<branch>/deploy-target.txt` : 追加/更新対象（`[files]` / `[members]` 2セクション構成）
 - `release/<branch>/remove-target.txt` : 削除対象のパス一覧
-- コメント行（`#`）・空行は無視される
+- `[files]` セクション: ファイルパスで指定 → `--source-dir` 引数に変換
+- `[members]` セクション: `メタデータ種別名:メンバー名` 形式 → `--metadata` 引数に変換（カスタムラベル・プロファイル等の部分デプロイ用）
+- 行頭 `#` はコメント、空行は無視される
 
 ### sf-metasync.sh
 Salesforce **本番組織**の最新メタデータを取得し、**main ブランチ**へ自動反映する。
