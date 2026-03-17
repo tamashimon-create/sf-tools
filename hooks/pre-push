@@ -3,62 +3,16 @@
 # ==============================================================================
 # hooks/pre-push - pre-push フック実体
 # ==============================================================================
-# git push 時に sf-mergecheck.sh を実行し、main との同期を検証します。
-# 検証が成功した場合のみ Push を続行し、失敗した場合は Push を中断します。
-#
 # このスクリプトは sf-hook.sh が生成するラッパーから呼び出されます。
 # 設置場所: ~/sf-tools/hooks/pre-push
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# 1. 初期処理
-# ------------------------------------------------------------------------------
-# このスクリプトは Git フックとして独立動作するため common.sh を読み込まない。
-# カラー定義と定数はここで直接定義する。
-
-if [ -t 2 ]; then
-    readonly CLR_INFO='\033[36m'
-    readonly CLR_SUCCESS='\033[32m'
-    readonly CLR_WARNING='\033[33m'
-    readonly CLR_ERR='\033[31m'
-    readonly CLR_RESET='\033[0m'
-else
-    readonly CLR_INFO=''; readonly CLR_SUCCESS=''; readonly CLR_WARNING=''; readonly CLR_ERR=''; readonly CLR_RESET=''
-fi
-
-readonly RET_OK=0
-
-echo "=======================================================" >&2
-echo -e "${CLR_INFO}[PRE-PUSH] main ブランチとの同期を確認します...${CLR_RESET}" >&2
-echo "=======================================================" >&2
-
-# ------------------------------------------------------------------------------
-# 2. 実行環境チェック
-# ------------------------------------------------------------------------------
-if [[ ! "$(basename "$PWD")" =~ ^force- ]]; then
-    echo -e "${CLR_ERR}[ERROR] このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。${CLR_RESET}" >&2
-    exit 1
-fi
-
 readonly SCRIPT_PATH="$HOME/sf-tools/sf-mergecheck.sh"
 
 if [[ ! -f "$SCRIPT_PATH" ]]; then
-    echo -e "${CLR_ERR}[PRE-PUSH][ERROR] ツールが見つかりません: $SCRIPT_PATH${CLR_RESET}" >&2
+    echo "[PRE-PUSH][ERROR] ツールが見つかりません: $SCRIPT_PATH" >&2
     exit 1
 fi
 
-# ------------------------------------------------------------------------------
-# 3. 同期チェック実行
-# ------------------------------------------------------------------------------
 "$SCRIPT_PATH" --verbose
-RESULT=$?
-
-echo "=======================================================" >&2
-if [[ $RESULT -eq $RET_OK ]]; then
-    echo -e "${CLR_SUCCESS}[PRE-PUSH][OK] 同期確認完了！リモートリポジトリへ Push します。${CLR_RESET}" >&2
-    exit 0
-else
-    echo -e "${CLR_ERR}[PRE-PUSH][ERROR] 同期確認でエラーが発生したため、Push を中断しました。${CLR_RESET}" >&2
-    echo -e "詳細は ./sf-tools/logs/sf-mergecheck.log を確認してください。" >&2
-    exit 1
-fi
+exit $?
