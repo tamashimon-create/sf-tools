@@ -71,7 +71,7 @@ test_non_main_branch_errors() {
     teardown "$td" "$mb"
 }
 
-# staging チェックアウト失敗 → development は main からマージする（prev_branch バグ修正確認）
+# staging チェックアウト失敗 → develop は main からマージする（prev_branch バグ修正確認）
 test_staging_fail_dev_merges_main() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
@@ -85,8 +85,8 @@ test_staging_fail_dev_merges_main() {
 
     cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1 >/dev/null
 
-    # development のマージ元が "main" であることを確認（staging ではない）
-    assert_file_contains "$MOCK_CALL_LOG" "git-merge-arg: main" "staging 失敗後、development は main からマージした"
+    # develop のマージ元が "main" であることを確認（staging ではない）
+    assert_file_contains "$MOCK_CALL_LOG" "git-merge-arg: main" "staging 失敗後、develop は main からマージした"
     ! grep -q "git-merge-arg: staging" "$MOCK_CALL_LOG" 2>/dev/null \
         && pass "staging からのマージは実行されない" \
         || fail "staging からのマージは実行されない"

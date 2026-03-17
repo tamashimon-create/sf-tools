@@ -144,9 +144,9 @@ phase_git_sync() {
     run git push origin "$BRANCH_NAME" || return $RET_NG
 }
 
-# 【PROPAGATE】main の変更を下流ブランチへ直接伝播 (main → staging、main → development)
+# 【PROPAGATE】main の変更を下流ブランチへ直接伝播 (main → staging、main → develop)
 phase_propagate_downstream() {
-    for branch in staging development; do
+    for branch in staging develop; do
         # リモートにブランチが存在するか確認（出力は不要なため直接呼び出し）
         if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
             log "WARNING" "${branch} ブランチがリモートに存在しないためスキップします"
