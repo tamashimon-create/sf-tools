@@ -38,6 +38,10 @@ if [[ -z "${LOG_FILE:-}" ]]; then
     exit 1
 fi
 
+# force-* ディレクトリ内でのみ実行を許可（mkdir-p より前に実行）
+[[ "$(basename "$PWD")" =~ ^force- ]] \
+    || { echo "[ERROR] このスクリプトは 'force-*' ディレクトリ内で実行してください。" >&2; exit 1; }
+
 mkdir -p "$(dirname "$LOG_FILE")"
 [[ "${LOG_MODE:-}" == "NEW" ]] && : > "$LOG_FILE"
 

@@ -48,9 +48,6 @@ readonly HOOK_DEST=".git/hooks/pre-push"
 phase_check_environment() {
     log "INFO" "実行環境を確認中..."
 
-    # force-* ディレクトリ内でのみ実行を許可
-    check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。"
-
     # Git リポジトリのルートであることを確認
     if [[ ! -d ".git" ]]; then
         die "Gitリポジトリのルートで実行してください（.git ディレクトリが見つかりません）。"
