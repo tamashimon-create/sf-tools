@@ -89,7 +89,7 @@ trap 'run git checkout "$ORIGINAL_BRANCH" 2>/dev/null; rm -rf "$DELTA_DIR" ./sf-
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 
-readonly METADATA_CONFIG="./sf-tools/config/metadatalist.txt"
+readonly METADATA_CONFIG="./sf-tools/config/metadata-list.txt"
 [[ ! -f "$METADATA_CONFIG" ]] && die "メタデータ設定ファイルが見つかりません: ${METADATA_CONFIG}"
 METADATA_TYPES=()
 while IFS= read -r line || [[ -n "$line" ]]; do
