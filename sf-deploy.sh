@@ -43,8 +43,8 @@ RELEASE_SH="${SCRIPT_DIR}/sf-release.sh"
 [[ -f "$RELEASE_SH" ]] || die "スクリプトが見つかりません: ${RELEASE_SH}"
 
 CURRENT_BRANCH=$(run git symbolic-ref --short HEAD)
-if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "staging" || "$CURRENT_BRANCH" == "development" ]]; then
-    die "main / staging / development ブランチでは実行できません。現在のブランチ: ${CURRENT_BRANCH}"
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "staging" || "$CURRENT_BRANCH" == "develop" ]]; then
+    die "main / staging / develop ブランチでは実行できません。現在のブランチ: ${CURRENT_BRANCH}"
 fi
 
 # ------------------------------------------------------------------------------

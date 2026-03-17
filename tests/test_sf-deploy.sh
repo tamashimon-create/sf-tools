@@ -62,17 +62,17 @@ test_staging_branch_blocked() {
     teardown "$td" "$mb"
 }
 
-# development ブランチ → エラー終了
+# develop ブランチ → エラー終了
 test_development_branch_blocked() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
-    export MOCK_GIT_BRANCH="development"
+    export MOCK_GIT_BRANCH="develop"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
     local ec=$?
 
-    assert_exit_fail $ec "development ブランチ → エラー終了"
+    assert_exit_fail $ec "develop ブランチ → エラー終了"
     unset MOCK_GIT_BRANCH
     teardown "$td" "$mb"
 }
