@@ -6,7 +6,8 @@
 #
 # 【検証内容】
 #   - main ブランチへの直接プッシュを禁止
-#   - リモート main に未取り込みコミットがある場合はプッシュを中断
+#   - リモート main に未取り込みコミットがある場合は自動的に rebase して取り込む
+#   - rebase でコンフリクトが発生した場合のみプッシュを中断
 #
 # 【オプション】
 #   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
@@ -64,7 +65,7 @@ phase_fetch() {
     return $RET_OK
 }
 
-# 【CHECK】main ブランチとの同期を検証
+# 【CHECK】main ブランチとの同期を検証・自動取り込み
 phase_check() {
     local current_branch
     current_branch=$(run git symbolic-ref --short HEAD)
@@ -74,17 +75,19 @@ phase_check() {
         die "main ブランチへの直接プッシュは禁止されています。PR を作成してください。"
     fi
 
-    # リモート main に未取り込みコミットがあればブロック
+    # リモート main に未取り込みコミットがあれば自動取り込み（rebase）
     local missing_commits
     missing_commits=$(run git log "${current_branch}..origin/main" --oneline)
 
     if [[ -n "$missing_commits" ]]; then
-        log "ERROR" "リモートの main ブランチが更新されています。"
-        log "INFO"  "プッシュ前に以下のコミットを取り込む必要があります:"
+        log "WARNING" "リモートの main ブランチが更新されています。自動的に取り込みます..."
+        log "INFO" "取り込むコミット:"
         echo "--------------------------------------------------"
         echo "$missing_commits"
         echo "--------------------------------------------------"
-        die "'git pull origin main' を実行し、マージ（またはリベース）してください。"
+        run git pull origin main --rebase \
+            || die "main の自動取り込みに失敗しました。コンフリクトを解消してから再度プッシュしてください。"
+        log "SUCCESS" "main ブランチの変更を自動的に取り込みました。"
     fi
 
     return $RET_OK
