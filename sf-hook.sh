@@ -7,6 +7,9 @@
 #
 # 生成されるフックは ~/sf-tools/hooks/pre-push の呼び出しラッパーです。
 # sf-tools 本体を更新するだけで、全プロジェクトのフック動作に即時反映されます。
+#
+# 【オプション】
+#   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -15,7 +18,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=0
+
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -44,9 +47,6 @@ readonly HOOK_DEST=".git/hooks/pre-push"
 # 【CHECK】実行環境の検証
 phase_check_environment() {
     log "INFO" "実行環境を確認中..."
-
-    # force-* ディレクトリ内でのみ実行を許可
-    check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内でのみ実行可能です。"
 
     # Git リポジトリのルートであることを確認
     if [[ ! -d ".git" ]]; then

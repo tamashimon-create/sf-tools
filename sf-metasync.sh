@@ -11,6 +11,9 @@
 #   3. SGD (Salesforce Git Diff) による差分抽出
 #   4. 組織からのメタデータ取得 (Retrieve)
 #   5. 変更がある場合のみ Git Commit & Push
+#
+# 【オプション】
+#   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -19,7 +22,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=0
+
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -36,8 +39,6 @@ source "$COMMON_LIB"
 # ------------------------------------------------------------------------------
 # 3. 初期チェック
 # ------------------------------------------------------------------------------
-check_force_dir || die "このスクリプトは 'force-*' ディレクトリ内で実行してください。"
-
 log "HEADER" "メタデータ同期（Salesforce -> Git）を開始します (${SCRIPT_NAME}.sh)"
 
 # ------------------------------------------------------------------------------
@@ -46,14 +47,14 @@ log "HEADER" "メタデータ同期（Salesforce -> Git）を開始します (${
 TARGET_ORG=$(get_target_org) || die "接続先組織を特定できませんでした。"
 log "INFO" "接続先組織: ${TARGET_ORG}"
 
-BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+BRANCH_NAME=$(run git symbolic-ref --short HEAD || echo "main")
 
 # main ブランチ以外での実行を禁止
 [[ "$BRANCH_NAME" != "main" ]] \
     && die "このスクリプトは main ブランチでのみ実行できます（現在: ${BRANCH_NAME}）。"
 
 # Sandbox への接続中は実行を禁止（本番組織のみ許可）
-ORG_DISPLAY_JSON=$(run sf org display --json 2>/dev/null || echo "")
+ORG_DISPLAY_JSON=$(run sf org display --json || echo "")
 if echo "$ORG_DISPLAY_JSON" | grep -qi '"isSandbox".*true'; then
     die "Sandbox 組織への接続中は実行できません。本番組織に接続してから再実行してください。"
 fi
@@ -161,14 +162,14 @@ phase_propagate_downstream() {
 
         if ! run git pull origin "$branch" --rebase; then
             log "WARNING" "${branch} の pull に失敗しました（スキップ）"
-            run git rebase --abort 2>/dev/null
+            run git rebase --abort
             run git checkout main
             continue
         fi
 
         if ! run git merge "main" --no-edit; then
             log "WARNING" "${branch} へのマージに失敗しました（スキップ）"
-            run git merge --abort 2>/dev/null
+            run git merge --abort
             run git checkout main
             continue
         fi
