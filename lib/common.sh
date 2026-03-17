@@ -8,7 +8,7 @@
 #   readonly SCRIPT_NAME=...   スクリプト名（拡張子なし）
 #   readonly LOG_FILE=...      ログファイルパス（例: ./logs/${SCRIPT_NAME}.log）
 #   readonly LOG_MODE=...      NEW=実行ごとにリセット / APPEND=追記
-#   readonly SILENT_EXEC=...   1=コマンド出力をログのみに記録 / 0=画面にも表示
+#   ※ SILENT_EXEC は source 後に自動設定されます（--verbose / -v オプションで制御）
 #
 # 【提供する関数】
 #   log LEVEL MESSAGE [DEST]  ... 画面とログファイルへ出力
@@ -40,6 +40,15 @@ fi
 
 mkdir -p "$(dirname "$LOG_FILE")"
 [[ "${LOG_MODE:-}" == "NEW" ]] && : > "$LOG_FILE"
+
+# SILENT_EXEC: --verbose / -v が指定されていれば 0（応答表示あり）、デフォルト 1（応答表示なし）
+# ※ 各スクリプトで宣言不要。common.sh が $@ をスキャンして自動設定します。
+_sf_verbose=0
+for _sf_arg in "$@"; do
+    [[ "$_sf_arg" == "--verbose" || "$_sf_arg" == "-v" ]] && _sf_verbose=1 && break
+done
+readonly SILENT_EXEC=$(( _sf_verbose ? 0 : 1 ))
+unset _sf_verbose _sf_arg
 
 # ------------------------------------------------------------------------------
 # 3. カラー定義（端末非対応環境では空文字に設定して制御コードの混入を防ぐ）
@@ -148,13 +157,13 @@ log() {
 # 【命令置換での自動判定】
 #   stdout が端末でない場合（命令置換 $(...) 内）は出力を自動的に返します。
 #   通常呼び出し時は出力を返しません。この切り替えは自動で行われます。
-#   命令置換内で 2>/dev/null を付けると、CMD ログ行（> Command: ...）の
-#   画面表示を抑制できます。ログファイルへの記録は通常通り行われます。
-#   例: VAR=$(run git symbolic-ref --short HEAD 2>/dev/null)
+#   命令置換内でも CMD ログ行（> Command: ...）はコンソールに表示されます。
+#   例: VAR=$(run git symbolic-ref --short HEAD)
 #
 # 【SILENT_EXEC の挙動】
-#   SILENT_EXEC=1 : コマンド出力をログファイルのみに記録（画面には表示しない）
-#   SILENT_EXEC=0 : コマンド出力を画面とログファイルの両方に表示
+#   Command行（> Command: ...）は SILENT_EXEC の値にかかわらず常にコンソールへ表示します。
+#   SILENT_EXEC=1 : コマンドの応答（出力）をログファイルのみに記録（コンソールには表示しない）【デフォルト】
+#   SILENT_EXEC=0 : コマンドの応答（出力）をコンソールとログファイルの両方に表示（--verbose / -v で有効）
 #
 # 【ログファイルへの出力】
 #   コマンド出力に含まれる ANSI エスケープコードおよび絵文字を除去してから記録します。
@@ -170,8 +179,8 @@ log() {
 #   run mkdir -p "release/${BRANCH_NAME}"           || return $RET_NG
 #   run sf org login web --set-default --alias "$A" || die "失敗"
 #   printf '{"target-org": "%s"}\n' "$A" | run tee .sf/config.json
-#   BRANCH=$(run git symbolic-ref --short HEAD 2>/dev/null)
-#   JSON=$(run sf org display --json 2>/dev/null || echo "")
+#   BRANCH=$(run git symbolic-ref --short HEAD)
+#   JSON=$(run sf org display --json || echo "")
 # ------------------------------------------------------------------------------
 run() {
     local cmd=("$@")
@@ -271,7 +280,7 @@ get_target_org() {
     [[ -z "$target" ]] && target="$SF_TARGET_ORG"
     if [[ -z "$target" ]]; then
         local current_alias
-        current_alias=$(run sf org display --json 2>/dev/null | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
+        current_alias=$(run sf org display --json | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
         [[ -n "$current_alias" && "$current_alias" != "null" ]] && target="$current_alias"
     fi
     [[ -z "$target" ]] && return $RET_NG

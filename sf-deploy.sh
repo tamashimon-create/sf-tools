@@ -12,6 +12,7 @@
 # 【追加オプション（sf-release.sh に転送）】
 #   -n, --no-open       : ブラウザを開かずに実行します
 #   -t, --target ALIAS  : 接続先組織のエイリアスを明示的に指定します
+#   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -20,7 +21,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=0
+
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -44,7 +45,7 @@ log "HEADER" "強制デプロイを開始します (${SCRIPT_NAME}.sh)"
 RELEASE_SH="${SCRIPT_DIR}/sf-release.sh"
 [[ -f "$RELEASE_SH" ]] || die "スクリプトが見つかりません: ${RELEASE_SH}"
 
-CURRENT_BRANCH=$(run git symbolic-ref --short HEAD 2>/dev/null)
+CURRENT_BRANCH=$(run git symbolic-ref --short HEAD)
 if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "staging" || "$CURRENT_BRANCH" == "development" ]]; then
     die "main / staging / development ブランチでは実行できません。現在のブランチ: ${CURRENT_BRANCH}"
 fi

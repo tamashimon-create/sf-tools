@@ -10,6 +10,9 @@
 #   3. sf-tools 自動更新 & Git フック有効化
 #   4. リリース管理ディレクトリの準備
 #   5. 現在のブランチ名を sf-tools/release/branch_name.txt に保存
+#
+# 【オプション】
+#   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -18,7 +21,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=0
+
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -51,7 +54,7 @@ SKIP_LOGIN=0
 #   FORCE_RELOGIN=1（sf-restart.sh 経由）の場合はこのブロックを飛ばして強制ログイン
 #   .sf/config.json が存在しない場合はプロジェクト初回起動とみなし、強制的にエイリアス入力へ
 if [ "$FORCE_RELOGIN" != "1" ] && [ -f ".sf/config.json" ]; then
-    DISPLAY_JSON=$(run sf org display --json 2>/dev/null || echo "")
+    DISPLAY_JSON=$(run sf org display --json || echo "")
     CURRENT_ALIAS=$(echo "$DISPLAY_JSON" | grep '"alias"' | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
     CURRENT_ID=$(echo "$DISPLAY_JSON"    | grep '"id"'    | head -n 1 | cut -d '"' -f 4 | tr -d '\r')
 
@@ -105,20 +108,20 @@ fi
     # sf-tools 最新化
     if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
         log "INFO" "sf-tools を最新化します（バックグラウンド）"
-        bash "$HOME/sf-tools/sf-install.sh" \
+        bash "$HOME/sf-tools/sf-install.sh" "$@" \
             || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
     fi
 
     # Git フック有効化（sf-unhook.sh で一時的に無効化可能）
     if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
         log "INFO" "Git フックを有効化します（バックグラウンド）"
-        bash "$HOME/sf-tools/sf-hook.sh" \
+        bash "$HOME/sf-tools/sf-hook.sh" "$@" \
             || log "WARNING" "Git フックの有効化に失敗しました（続行します）"
     fi
 
     # リリース管理ディレクトリの準備 & ブランチ名保存
     log "INFO" "リリース管理用のディレクトリを準備します..."
-    BRANCH_NAME=$(run git symbolic-ref --short HEAD 2>/dev/null)
+    BRANCH_NAME=$(run git symbolic-ref --short HEAD)
     if [ -n "$BRANCH_NAME" ]; then
         RELEASE_DIR="sf-tools/release/${BRANCH_NAME}"
         run mkdir -p "$RELEASE_DIR"

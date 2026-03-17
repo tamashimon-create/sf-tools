@@ -17,6 +17,9 @@
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
 #   初回インストール: git clone <sf-tools の URL> ~/sf-tools
+#
+# 【オプション】
+#   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -25,7 +28,7 @@
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
-readonly SILENT_EXEC=0
+
 
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
@@ -158,7 +161,7 @@ phase_setup_merge_driver() {
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
         log "INFO" "開発ツールのアップデートをバックグラウンドで開始します（sf-upgrade.sh）..."
-        bash "$SCRIPT_DIR/sf-upgrade.sh" &
+        bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" &
         touch "$UPDATE_STAMP_FILE"
         log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
     else

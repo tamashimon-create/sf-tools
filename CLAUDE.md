@@ -42,7 +42,7 @@ sf-tools/
 | `SCRIPT_NAME` | スクリプト名（拡張子なし） |
 | `LOG_FILE` | `./logs/${SCRIPT_NAME}.log` |
 | `LOG_MODE` | `NEW` = 実行ごとにログリセット / `APPEND` = 追記 |
-| `SILENT_EXEC` | `1` = コマンド stdout はログのみ、`0` = 画面にも表示 |
+| `SILENT_EXEC` | `common.sh` が自動設定。`--verbose` / `-v` で `0`（応答表示）、デフォルト `1`（応答非表示）。`Command:` 行は常に表示。各スクリプトでの宣言不要。 |
 
 ### 主要関数
 
