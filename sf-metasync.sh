@@ -3,16 +3,18 @@
 # ==============================================================================
 # sf-metasync.sh - Salesforce メタデータ Git 自動同期スクリプト
 # ==============================================================================
-# 本番組織の最新メタデータを取得し、main ブランチへ自動反映します。
-# ※ main ブランチ・本番組織への接続時のみ実行可能（Sandbox / 他ブランチは即エラー）
-# ※ Salesforce 組織の変更を正とする。ローカルの未コミット変更がある場合は中止。
-#   1. 実行条件チェック（main ブランチ・本番組織・ローカル変更なしであることを確認）
+# 本番組織(prod)の最新メタデータを取得し、main ブランチへ自動反映します。
+# ※ 接続中の本番組織を対象とします（Sandbox 接続中は実行不可）。
+# ※ どのブランチから実行しても main へ自動切替して処理します。
+# ※ Salesforce 組織の変更を正とする。main のローカル未コミット変更がある場合は中止。
+#   1. main ブランチへ自動切替（他ブランチから実行した場合は stash して切替）
 #   2. Git の最新状態をプル (Rebase)
 #   3. SGD (Salesforce Git Diff) による差分抽出
 #   4. 組織からのメタデータ取得 (Retrieve)
 #   5. 変更がある場合のみ Git Commit & Push
 #
 # 【オプション】
+#   -j, --json          : sf コマンドの出力を JSON 形式で表示します
 #   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
@@ -42,27 +44,48 @@ source "$COMMON_LIB"
 log "HEADER" "メタデータ同期（Salesforce -> Git）を開始します (${SCRIPT_NAME}.sh)"
 
 # ------------------------------------------------------------------------------
-# 4. 固有設定
+# 4. 実行時引数の解析
 # ------------------------------------------------------------------------------
-TARGET_ORG=$(get_target_org) || die "接続先組織を特定できませんでした。"
+JSON_FLAG=()
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --json|-j)    JSON_FLAG=("--json") ;;
+        --verbose|-v) : ;;  # SILENT_EXEC は common.sh が設定済み
+        --*)
+            die "不明なオプションです: $1"
+            ;;
+        *)
+            die "不明な引数です: $1"
+            ;;
+    esac
+    shift
+done
+
+# ------------------------------------------------------------------------------
+# 5. 固有設定
+# ------------------------------------------------------------------------------
+# 接続中の組織情報を一度だけ取得（エイリアス解決 + Sandbox チェックに共用）
+ORG_DISPLAY_JSON=$(run sf org display --json || echo "")
+[[ -z "$ORG_DISPLAY_JSON" ]] && die "接続先組織を特定できませんでした。"
+
+readonly TARGET_ORG=$(echo "$ORG_DISPLAY_JSON" | grep '"alias"' | sed 's/.*"alias"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+[[ -z "$TARGET_ORG" ]] && die "接続先組織のエイリアスを特定できませんでした。"
 log "INFO" "接続先組織: ${TARGET_ORG}"
 
-BRANCH_NAME=$(run git symbolic-ref --short HEAD || echo "main")
-
-# main ブランチ以外での実行を禁止
-[[ "$BRANCH_NAME" != "main" ]] \
-    && die "このスクリプトは main ブランチでのみ実行できます（現在: ${BRANCH_NAME}）。"
-
 # Sandbox への接続中は実行を禁止（本番組織のみ許可）
-ORG_DISPLAY_JSON=$(run sf org display --json || echo "")
 if echo "$ORG_DISPLAY_JSON" | grep -qi '"isSandbox".*true'; then
     die "Sandbox 組織への接続中は実行できません。本番組織に接続してから再実行してください。"
 fi
 
+# 常に main ブランチで作業する
+readonly BRANCH_NAME="main"
+ORIGINAL_BRANCH=$(run git symbolic-ref --short HEAD || echo "main")
+
 DELTA_DIR="./sf-tools/temp_delta_$$"
 
-# DELTA_DIR 定義後に trap を設定（未定義のまま rm -rf が実行されないようにする）
-trap 'rm -rf "$DELTA_DIR" ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
+# 終了時に元のブランチへ復帰し、一時ファイルを削除
+trap 'run git checkout "$ORIGINAL_BRANCH" 2>/dev/null; rm -rf "$DELTA_DIR" ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 
@@ -80,6 +103,24 @@ log "INFO" "対象メタデータ (${#METADATA_TYPES[@]} 件): ${METADATA_TYPES[
 # ------------------------------------------------------------------------------
 # 5. フェーズ定義
 # ------------------------------------------------------------------------------
+
+# 【SWITCH】main ブランチへ切替（他ブランチから実行した場合は stash して切替）
+phase_switch_to_main() {
+    if [[ "$ORIGINAL_BRANCH" == "main" ]]; then
+        return $RET_OK
+    fi
+
+    log "INFO" "main ブランチへ切り替えます（現在: ${ORIGINAL_BRANCH}）..."
+
+    # 作業中の変更を一時退避
+    if ! run git diff-index --quiet HEAD --; then
+        log "INFO" "ローカルの変更を一時退避します (git stash)..."
+        run git stash || return $RET_NG
+    fi
+
+    run git checkout main || return $RET_NG
+    return $RET_OK
+}
 
 # 【GIT】リモートの変更を取り込む
 phase_git_update() {
@@ -118,12 +159,12 @@ phase_retrieve_metadata() {
             --manifest "$DELTA_DIR/package/package.xml" \
             --target-org "$TARGET_ORG" \
             --ignore-conflicts \
-            --json
+            "${JSON_FLAG[@]}"
     fi
 
     # 主要メタデータの整合性確保のために再取得（型ごとに --metadata を分けて指定）
     log "INFO" "主要メタデータの整合性をチェック中..."
-    local retrieve_cmd=("sf" "project" "retrieve" "start" "--target-org" "$TARGET_ORG" "--ignore-conflicts" "--json")
+    local retrieve_cmd=("sf" "project" "retrieve" "start" "--target-org" "$TARGET_ORG" "--ignore-conflicts" "${JSON_FLAG[@]}")
     for type in "${METADATA_TYPES[@]}"; do
         retrieve_cmd+=("--metadata" "$type")
     done
@@ -190,6 +231,9 @@ phase_propagate_downstream() {
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
+phase_switch_to_main    || die "main ブランチへの切替に失敗しました。"
+log "SUCCESS" "main ブランチへの切替完了"
+
 phase_git_update        || die "Git 更新に失敗しました。"
 log "SUCCESS" "Git 更新完了"
 
@@ -205,7 +249,7 @@ RES=$?
 if [[ $RES -eq $RET_OK ]]; then
     log "SUCCESS" "完了: リポジトリを最新に更新しました。"
     phase_propagate_downstream || die "下流ブランチへの伝播に失敗しました。"
-    log "SUCCESS" "下流ブランチへの伝播完了 (main → staging、main → development)"
+    log "SUCCESS" "下流ブランチへの伝播完了 (main → staging、main → develop)"
 elif [[ $RES -eq $RET_NO_CHANGE ]]; then
     log "SUCCESS" "完了: Salesforce 組織側に変更はありませんでした。"
 else
