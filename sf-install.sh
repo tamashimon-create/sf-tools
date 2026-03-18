@@ -167,6 +167,17 @@ phase_setup_merge_driver() {
     return $RET_OK
 }
 
+# 【NPM INSTALL】依存パッケージのインストール（毎回実行）
+phase_npm_install() {
+    if [[ ! -f "./package.json" ]]; then
+        log "INFO" "package.json が見つかりません。npm install をスキップします。"
+        return $RET_OK
+    fi
+    log "INFO" "npm install を実行します..."
+    run npm install || log "WARNING" "npm install に失敗しました（続行します）"
+    return $RET_OK
+}
+
 # 【UPGRADE】開発ツールのアップデート（バックグラウンド実行）
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
@@ -201,6 +212,9 @@ log "SUCCESS" "設定ファイルの確認が完了しました。"
 
 phase_setup_merge_driver
 log "SUCCESS" "Git マージドライバーを登録しました。"
+
+phase_npm_install
+log "SUCCESS" "npm install の確認が完了しました。"
 
 phase_upgrade_tools_bg
 
