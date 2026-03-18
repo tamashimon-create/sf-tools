@@ -114,7 +114,7 @@ phase_init_config() {
     log "INFO" "設定ファイルを確認します..."
     run mkdir -p "sf-tools/config"
     if [[ ! -f "sf-tools/config/metadata-list.txt" ]]; then
-        run cp "$HOME/sf-tools/templates/metadata-list.txt" "sf-tools/config/metadata-list.txt" \
+        run cp "$HOME/sf-tools/templates/config/metadata-list.txt" "sf-tools/config/metadata-list.txt" \
             || return $RET_NG
         log "INFO" "sf-tools/config/metadata-list.txt を生成しました。"
     else
@@ -127,23 +127,35 @@ phase_init_config() {
 phase_generate_github_workflow() {
     log "INFO" "GitHub Actions ワークフローを確認します..."
     local workflow_dir=".github/workflows"
-    local workflow_file="${workflow_dir}/sf-validate.yml"
-    local template="$HOME/sf-tools/templates/.github/workflows/sf-validate.yml"
+    local template_dir="$HOME/sf-tools/templates/.github/workflows"
 
-    if [[ ! -f "$template" ]]; then
+    if [[ ! -d "$template_dir" ]]; then
         log "INFO" "ワークフローテンプレートが見つかりません。スキップします。"
         return $RET_OK
     fi
 
-    if [[ -f "$workflow_file" ]]; then
-        log "INFO" "${workflow_file} は既に存在します。スキップします。"
-        return $RET_OK
+    run mkdir -p "$workflow_dir" || return $RET_NG
+
+    local any_generated=0
+    for template in "$template_dir"/*.yml; do
+        local filename
+        filename=$(basename "$template")
+        local dest="${workflow_dir}/${filename}"
+
+        if [[ -f "$dest" ]]; then
+            log "INFO" "${dest} は既に存在します。スキップします。"
+            continue
+        fi
+
+        run cp "$template" "$dest" || return $RET_NG
+        log "INFO" "${dest} を生成しました。"
+        any_generated=1
+    done
+
+    if [[ $any_generated -eq 1 ]]; then
+        log "INFO" "GitHub Secrets に SFDX_AUTH_URL_PROD / SFDX_AUTH_URL_STG / SFDX_AUTH_URL_DEV を設定してください。"
     fi
 
-    run mkdir -p "$workflow_dir" || return $RET_NG
-    run cp "$template" "$workflow_file" || return $RET_NG
-    log "INFO" "${workflow_file} を生成しました。"
-    log "INFO" "GitHub Secrets に SFDX_AUTH_URL と SF_TOOLS_REPO を設定してください。"
     return $RET_OK
 }
 

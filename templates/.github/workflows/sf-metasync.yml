@@ -1,0 +1,12 @@
+# Salesforce メタデータ自動同期（定期実行）
+name: Salesforce メタデータ自動同期（定期実行）
+
+on:
+  schedule:
+    - cron: "0 0-10 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  call:
+    uses: tamashimon-create/sf-tools/.github/workflows/sf-metasync-reusable.yml@main
+    secrets: inherit

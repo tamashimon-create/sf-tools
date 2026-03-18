@@ -1,0 +1,116 @@
+# ==============================================================================
+# 再利用可能ワークフロー: ブランチへ変更を伝播
+# ==============================================================================
+#
+# 【概要】
+#   main への PR マージ後、staging と develop ブランチへ変更を直接伝播する。
+#   呼び出し元リポジトリの .github/workflows/sf-propagate.yml から workflow_call で起動される。
+#
+# 【処理フロー】
+#   1. 全履歴付きでリポジトリをチェックアウト
+#   2. GitHub Actions ボットとして git コミットできるようユーザー情報を設定
+#   3. main → staging へ git merge & push
+#   4. main → develop へ git merge & push
+#
+# 【伝播ルール】
+#   - base_ref が 'main' の場合のみ staging / develop へ伝播する
+#   - staging または develop への PR マージ時は何も行わない
+#
+# 【注意】
+#   - sf-metasync.sh による自動 push（ボット push）ではこのワークフローは発火しない
+#     （呼び出し元の on: pull_request は PR マージ時のみトリガー）
+#   - Salesforce メタデータの下流伝播は sf-metasync.sh 自身が担う
+#
+# 【inputs 一覧】
+#   base_ref  : マージ先ブランチ名（例: main）。伝播先の判定に使用。
+#   head_ref  : マージ元ブランチ名（未使用。呼び出し元との入力形式統一のため宣言）
+#   pr_title  : PR タイトル（未使用。呼び出し元との入力形式統一のため宣言）
+#   pr_number : PR 番号（未使用。呼び出し元との入力形式統一のため宣言）
+#   pr_url    : PR URL（未使用。呼び出し元との入力形式統一のため宣言）
+#   pr_sha    : PR コミット SHA（未使用。呼び出し元との入力形式統一のため宣言）
+#
+# ==============================================================================
+name: sf-propagate（再利用可能）
+
+on:
+  workflow_call:
+    inputs:
+      base_ref:
+        description: "マージ先ブランチ名"
+        type: string
+        default: ""
+      head_ref:
+        description: "マージ元ブランチ名（未使用）"
+        type: string
+        default: ""
+      pr_title:
+        description: "PR タイトル（未使用）"
+        type: string
+        default: ""
+      pr_number:
+        description: "PR 番号（未使用）"
+        type: string
+        default: ""
+      pr_url:
+        description: "PR URL（未使用）"
+        type: string
+        default: ""
+      pr_sha:
+        description: "PR コミット SHA（未使用）"
+        type: string
+        default: ""
+
+# git push を行うためリポジトリへの書き込み権限を付与
+permissions:
+  contents: write
+
+jobs:
+  propagate:
+    name: 下流ブランチへ変更を伝播
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------------------------------
+      # Step 1: 全履歴付きでリポジトリをチェックアウト
+      # --------------------------------------------------------------------------
+      # fetch-depth: 0 で全履歴を取得。
+      # git merge 後の push に使用する GITHUB_TOKEN も明示的に渡す。
+      - name: ソースコードを取得
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # --------------------------------------------------------------------------
+      # Step 2: Git コミット用ユーザー情報の設定
+      # --------------------------------------------------------------------------
+      # merge コミットが作成される場合のコミッター情報を設定する。
+      # GitHub Actions のボットアカウント形式にすることで手動コミットと区別できる。
+      - name: Git ユーザー情報を設定
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # --------------------------------------------------------------------------
+      # Step 3: main → staging へ変更を伝播
+      # --------------------------------------------------------------------------
+      # base_ref が main の場合のみ実行。
+      # origin/main の内容を staging にマージし、リモートへ push する。
+      # --no-edit: マージコミットメッセージをデフォルトのままにして入力待ちを防ぐ。
+      - name: main から staging へ変更を伝播
+        if: inputs.base_ref == 'main'
+        run: |
+          git checkout staging
+          git merge origin/main --no-edit
+          git push origin staging
+
+      # --------------------------------------------------------------------------
+      # Step 4: main → develop へ変更を伝播
+      # --------------------------------------------------------------------------
+      # base_ref が main の場合のみ実行。staging と同様の処理を develop に対して行う。
+      - name: main から develop へ変更を伝播
+        if: inputs.base_ref == 'main'
+        run: |
+          git checkout develop
+          git merge origin/main --no-edit
+          git push origin develop
