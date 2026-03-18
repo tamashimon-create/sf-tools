@@ -17,7 +17,7 @@ sf-tools/
 ├── lib/
 │   └── common.sh          # 全スクリプト共通ライブラリ（ログ・コマンド実行・エラー停止）
 ├── hooks/
-│   └── pre-push           # git push 時に sf-push.sh を呼び出す実体フック（main 同期チェック）
+│   └── pre-push           # git push 時に sf-prepush.sh を呼び出す実体フック（main 同期チェック）
 ├── templates/
 │   ├── deploy-template.txt  # deploy-target.txt の雛形
 │   └── remove-template.txt  # remove-target.txt の雛形
@@ -27,7 +27,7 @@ sf-tools/
 ├── sf-deploy.sh           # 強制デプロイラッパー（--release --force 固定で sf-release.sh を呼び出す）
 ├── sf-metasync.sh         # Salesforce メタデータを組織から取得して Git へ自動同期
 ├── sf-hook.sh             # pre-push フックをプロジェクトにインストール
-├── sf-push.sh       # プッシュ前 main 同期チェック（pre-push から呼び出し）
+├── sf-prepush.sh       # プッシュ前 main 同期チェック（pre-push から呼び出し）
 ├── sf-unhook.sh           # pre-push フックを削除
 ├── sf-restart.sh          # 接続先組織を切り替える（FORCE_RELOGIN=1 で sf-start.sh 呼出）
 ├── sf-upgrade.sh          # npm / Salesforce CLI / Git をアップデート（sf-install.sh からバックグラウンドで呼び出し）

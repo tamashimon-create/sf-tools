@@ -7,7 +7,7 @@
 # 設置場所: ~/sf-tools/hooks/pre-push
 # ==============================================================================
 
-readonly SCRIPT_PATH="$HOME/sf-tools/sf-push.sh"
+readonly SCRIPT_PATH="$HOME/sf-tools/sf-prepush.sh"
 
 if [[ ! -f "$SCRIPT_PATH" ]]; then
     echo "[PRE-PUSH][ERROR] ツールが見つかりません: $SCRIPT_PATH" >&2
