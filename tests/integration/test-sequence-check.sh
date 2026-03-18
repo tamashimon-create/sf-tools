@@ -114,7 +114,7 @@ test_scenario() {
     checks=$(gh pr checks "$pr_num" --repo "$REPO" 2>&1 || true)
     if ! echo "$checks" | grep -qE "\s(pending|in_progress)\s"; then
       local seq_result
-      seq_result=$(echo "$checks" | grep "マージ順序を検証" | awk '{print $2}' | head -1)
+      seq_result=$(echo "$checks" | grep "マージ順序を検証" | awk -F'\t' '{print $2}' | head -1)
       if [[ -z "$seq_result" ]]; then
         actual="pass(skipped)"   # develop 向け PR はジョブ自体がスキップ → pass 扱い
       else
