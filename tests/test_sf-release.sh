@@ -73,10 +73,10 @@ test_empty_deploy_target() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
-    mkdir -p "$td/release/feature/test"
-    echo "feature/test" > "$td/release/branch_name.txt"
-    printf '# コメントのみ\n' > "$td/release/feature/test/deploy-target.txt"
-    printf '# コメントのみ\n' > "$td/release/feature/test/remove-target.txt"
+    mkdir -p "$td/sf-tools/release/feature/test"
+    echo "feature/test" > "$td/sf-tools/release/branch_name.txt"
+    printf '# コメントのみ\n' > "$td/sf-tools/release/feature/test/deploy-target.txt"
+    printf '# コメントのみ\n' > "$td/sf-tools/release/feature/test/remove-target.txt"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --no-open 2>&1)

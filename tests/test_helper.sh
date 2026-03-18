@@ -76,11 +76,11 @@ teardown() {
 # リリースディレクトリとターゲットリストを生成
 setup_release_dir() {
     local td="$1" branch="${2:-feature/test}"
-    mkdir -p "$td/release/$branch"
-    echo "$branch" > "$td/release/branch_name.txt"
+    mkdir -p "$td/sf-tools/release/$branch"
+    echo "$branch" > "$td/sf-tools/release/branch_name.txt"
     printf '[files]\nforce-app/main/default/classes/TestClass.cls\n' \
-        > "$td/release/$branch/deploy-target.txt"
-    printf '[files]\n' > "$td/release/$branch/remove-target.txt"
+        > "$td/sf-tools/release/$branch/deploy-target.txt"
+    printf '[files]\n' > "$td/sf-tools/release/$branch/remove-target.txt"
 }
 
 # ------------------------------------------------------------------------------
