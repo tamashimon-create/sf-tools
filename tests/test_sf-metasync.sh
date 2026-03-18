@@ -48,26 +48,25 @@ test_no_changes() {
     teardown "$td" "$mb"
 }
 
-# main 以外のブランチ → エラー終了（main ブランチでのみ実行可能）
-test_non_main_branch_errors() {
+# main 以外のブランチ → main へ自動切替して正常終了
+test_non_main_branch_switches() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
     export MOCK_GIT_BRANCH="feature/test"
+    export MOCK_GIT_DIFF_EXIT=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1)
     local ec=$?
 
-    assert_exit_fail $ec "main 以外のブランチ → エラー終了"
-    echo "$out" | grep -q "main ブランチでのみ実行できます" \
-        && pass "main 以外 → エラーメッセージが表示された" \
-        || fail "main 以外 → エラーメッセージが表示された"
+    assert_exit_ok $ec "main 以外のブランチ → 正常終了（main へ自動切替）"
+    assert_file_contains "$MOCK_CALL_LOG" "git checkout main" "main 以外 → main へ checkout した"
     ! grep -q "git-merge-arg:" "$MOCK_CALL_LOG" 2>/dev/null \
-        && pass "main 以外 → merge が実行されない" \
-        || fail "main 以外 → merge が実行されない"
-    unset MOCK_GIT_BRANCH MOCK_SF_ORG_JSON
+        && pass "変更なし → merge が実行されない" \
+        || fail "変更なし → merge が実行されない"
+    unset MOCK_GIT_BRANCH MOCK_GIT_DIFF_EXIT MOCK_SF_ORG_JSON
     teardown "$td" "$mb"
 }
 
@@ -109,7 +108,7 @@ test_outside_force_dir() {
 
 test_changes_are_committed
 test_no_changes
-test_non_main_branch_errors
+test_non_main_branch_switches
 test_staging_fail_dev_merges_main
 test_outside_force_dir
 

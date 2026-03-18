@@ -36,7 +36,9 @@ assert_executable()      { [[ -x "$1" ]]   && pass "$2" || fail "$2" "実行権�
 setup_force_dir() {
     local dir
     dir=$(mktemp -d "${TMPDIR:-/tmp}/force-test-XXXX")
-    mkdir -p "$dir/logs" "$dir/.git/hooks" "$dir/.sf" "$dir/.sfdx"
+    mkdir -p "$dir/logs" "$dir/.git/hooks" "$dir/.sf" "$dir/.sfdx" \
+             "$dir/sf-tools/config" "$dir/sf-tools/release" "$dir/sf-tools/logs"
+    echo "ApexClass" > "$dir/sf-tools/config/metadata-list.txt"
     echo "$dir"
 }
 
