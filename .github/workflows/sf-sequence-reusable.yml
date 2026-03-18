@@ -1,0 +1,163 @@
+# ==============================================================================
+# 再利用可能ワークフロー: Salesforce マージ順序チェック
+# ==============================================================================
+#
+# 【概要】
+#   PR のマージ順序（プロモーション順序）を自動検証する。
+#   呼び出し元リポジトリの .github/workflows/sf-sequence.yml から workflow_call で起動される。
+#
+# 【プロモーション順序ルール】
+#   フィーチャーブランチは以下の順序でマージされることを推奨する:
+#     feature/* → develop → staging → main
+#   このワークフローはその順序が守られているかを確認し、未確認の場合に警告する。
+#
+# 【チェック内容】
+#   staging へのPR : フィーチャーブランチが develop にマージ済みかを確認
+#   main へのPR    : フィーチャーブランチが staging にマージ済みかを確認
+#
+# 【動作】
+#   - マージ元が develop または staging の場合: エラーで PR をブロック
+#     （環境ブランチ間の直接 PR は設計上許可しない）
+#   - 順序が守られていない場合: 警告を出すが PR はブロックしない
+#     （意図的な緊急リリース等を妨げないため）
+#   - 順序 OK の場合: 通知のみで正常終了
+#
+# 【必要な GitHub Secrets（呼び出し元リポジトリに設定すること）】
+#   SLACK_BOT_TOKEN  : Slack API の Bot Token（順序未確認時の通知に使用）
+#   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
+#
+# 【inputs 一覧】
+#   base_ref  : マージ先ブランチ名（例: main / staging）。前段ブランチの判定に使用。
+#   head_ref  : フィーチャーブランチ名（マージ元）。マージ済み確認の対象。
+#   pr_title  : PR タイトル。Slack 通知の表示に使用。
+#   pr_number : PR 番号。Slack 通知の表示に使用。
+#   pr_url    : PR URL。Slack 通知のリンクに使用。
+#   pr_sha    : PR コミット SHA（未使用。呼び出し元との入力形式統一のため宣言）
+#
+# ==============================================================================
+name: sf-sequence（再利用可能）
+
+on:
+  workflow_call:
+    inputs:
+      base_ref:
+        description: "マージ先ブランチ名"
+        type: string
+        default: ""
+      head_ref:
+        description: "フィーチャーブランチ名（マージ元）"
+        type: string
+        default: ""
+      pr_title:
+        description: "PR タイトル"
+        type: string
+        default: ""
+      pr_number:
+        description: "PR 番号"
+        type: string
+        default: ""
+      pr_url:
+        description: "PR URL"
+        type: string
+        default: ""
+      pr_sha:
+        description: "PR コミット SHA（未使用）"
+        type: string
+        default: ""
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: false
+      SLACK_CHANNEL_ID:
+        required: false
+
+jobs:
+  check-promotion-order:
+    name: マージ順序を検証（プロモーション順序チェック）
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------------------------------
+      # Step 1: 全履歴付きでリポジトリをチェックアウト
+      # --------------------------------------------------------------------------
+      # git merge-base --is-ancestor でブランチ間の祖先関係を確認するために
+      # 全コミット履歴が必要。fetch-depth: 0 を指定する。
+      - name: ソースコードを取得
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # --------------------------------------------------------------------------
+      # Step 2: マージ順序の検証
+      # --------------------------------------------------------------------------
+      # 処理の流れ:
+      #   1. マージ元が develop / staging の場合は即エラー終了（直接 PR を禁止）
+      #   2. base_ref から確認すべき「前段ブランチ（PREV）」を決定する
+      #      - main へのPR    → PREV = staging
+      #      - staging へのPR → PREV = develop
+      #   3. git fetch で PREV の最新状態を取得
+      #   4. git merge-base --is-ancestor で head_ref が PREV にマージ済みかを確認
+      #      - 済み  → GITHUB_OUTPUT に out_of_order=false を出力
+      #      - 未済  → GITHUB_OUTPUT に out_of_order=true と詳細情報を出力
+      #
+      # ※ git merge-base --is-ancestor A B は「A が B の祖先である」場合に exit 0 を返す。
+      #   つまり「origin/FEATURE が origin/PREV にマージ済み」なら exit 0。
+      - name: マージ順序を検証
+        id: sequence_check
+        run: |
+          FEATURE="${{ inputs.head_ref }}"
+          BASE="${{ inputs.base_ref }}"
+
+          # 環境ブランチ間の直接 PR はエラーでブロック
+          if [ "$FEATURE" = "develop" ] || [ "$FEATURE" = "staging" ]; then
+            echo "::error title=マージ元ブランチ不正::${FEATURE} からのPRは許可されていません。必ずフィーチャーブランチからPRを作成してください。"
+            exit 1
+          fi
+
+          # マージ先に応じて確認すべき前段ブランチを決定
+          if [ "$BASE" = "main" ]; then
+            PREV="staging"
+          elif [ "$BASE" = "staging" ]; then
+            PREV="develop"
+          else
+            echo "チェック対象外のブランチです"
+            exit 0
+          fi
+
+          git fetch origin $PREV
+
+          if git merge-base --is-ancestor origin/$FEATURE origin/$PREV; then
+            echo "::notice title=プロモーション順序OK::✓ ${FEATURE} は ${PREV} にマージ済みです"
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=⚠ プロモーション順序未確認::${FEATURE} は ${PREV} にまだマージされていません。意図的な場合はそのまま進めてください。"
+            echo "out_of_order=true"  >> "$GITHUB_OUTPUT"
+            echo "feature=${FEATURE}" >> "$GITHUB_OUTPUT"
+            echo "prev=${PREV}"       >> "$GITHUB_OUTPUT"
+          fi
+
+      # --------------------------------------------------------------------------
+      # Step 3: 順序未確認時の Slack 通知
+      # --------------------------------------------------------------------------
+      # out_of_order=true の場合のみ実行。
+      # 警告は出すが PR はブロックしない（意図的な緊急リリースを妨げないため）。
+      # Slack 通知により、チームメンバーが状況を把握できるようにする。
+      - name: Slack に順序未確認を通知
+        if: steps.sequence_check.outputs.out_of_order == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          FEATURE="${{ steps.sequence_check.outputs.feature }}"
+          PREV="${{ steps.sequence_check.outputs.prev }}"
+          PR_TITLE="${{ inputs.pr_title }}"
+          PR_NUMBER="${{ inputs.pr_number }}"
+          PR_URL="${{ inputs.pr_url }}"
+          DATETIME=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M:%S JST')
+
+          MESSAGE=":warning: *マージ順序の確認が必要です*\n• ブランチ \`${FEATURE}\` は \`${PREV}\` にまだマージされていません\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n• 実行日時: ${DATETIME}\n• 意図的な場合はそのままマージを進めてください"
+          PAYLOAD="{\"channel\": \"${SLACK_CHANNEL_ID}\", \"text\": \"${MESSAGE}\"}"
+
+          curl -s -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
