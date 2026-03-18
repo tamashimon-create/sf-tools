@@ -28,12 +28,9 @@ set -uo pipefail
 REPO="tamashimon-create/force-tama"
 TS=$(date +%H%M%S)
 
-# ログ出力先: スクリプト自身の場所から sf-tools/logs/ を解決
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="$(cd "$_SCRIPT_DIR/.." && pwd)/logs"
-
-# force-tama ルート: git 操作（checkout/push）で使用
+# ログ出力先（force-tama ルートの sf-tools/logs/）
 ROOT_DIR_EARLY=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+LOG_DIR="$ROOT_DIR_EARLY/sf-tools/logs"
 LOG_FILE="$LOG_DIR/test-sequence-check.log"
 mkdir -p "$LOG_DIR"
 # 画面とログファイルに同時出力
