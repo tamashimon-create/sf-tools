@@ -230,10 +230,15 @@ phase_release() {
 phase_check_target      || die "対象リストの準備に失敗しました。"
 log "SUCCESS" "対象リストの確認完了"
 
-phase_generate_manifest || die "マニフェスト生成に失敗しました。"
+phase_generate_manifest
+manifest_ret=$?
+[[ $manifest_ret -eq $RET_NG ]] && die "マニフェスト生成に失敗しました。"
+if [[ $manifest_ret -eq $RET_NO_CHANGE ]]; then
+    log "SUCCESS" "デプロイ対象なし。正常終了します。"
+    exit 0
+fi
 log "SUCCESS" "マニフェスト生成完了"
 
-# RET_NO_CHANGE (2) は正常終了として扱う
 phase_release
 res=$?
 
