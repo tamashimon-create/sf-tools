@@ -32,6 +32,7 @@ sf-tools/
 ├── sf-restart.sh          # 接続先組織を切り替える（FORCE_RELOGIN=1 で sf-start.sh 呼出）
 ├── sf-upgrade.sh          # npm / Salesforce CLI / Git をアップデート（sf-install.sh からバックグラウンドで呼び出し）
 └── tests/                 # テストスイート（test_helper.sh + 各スクリプトのテストファイル）
+    └── integration/       # 結合テスト（force-tama から実行するもの）
 ```
 
 ## 共通ライブラリ (lib/common.sh)
@@ -173,12 +174,23 @@ npm / Salesforce CLI / Git をアップデートする。`sf-install.sh` から 
 
 ## テスト
 
-`tests/` ディレクトリに各スクリプトのユニットテストがある。モックベースのテストで、実際の Salesforce 組織や Git リモートへの接続なしで実行できる。
+### 単体テスト（`tests/`）
+
+モックベースのテストで、実際の Salesforce 組織や Git リモートへの接続なしで実行できる。
 
 **実行方法（C:\Users\tamas\sf-tools から）:**
 ```bash
-bash tests/run_tests.sh           # 全テストを実行
-bash tests/run_tests.sh test_sf-metasync.sh  # 特定のテストのみ実行
+bash tests/run_tests.sh                          # 全テストを実行
+bash tests/run_tests.sh test_sf-metasync.sh      # 特定のテストのみ実行
+```
+
+### 結合テスト（`tests/integration/`）
+
+実際の GitHub リポジトリ（force-tama）を操作する結合テスト。`gh` CLI と admin 権限が必要。
+
+**実行方法（C:\home\dev\test\force-tama から）:**
+```bash
+bash ~/sf-tools/tests/integration/test-sequence-check.sh  # シーケンスチェック全パターン検証
 ```
 
 **テストファイル一覧:**
