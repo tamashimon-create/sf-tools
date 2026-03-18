@@ -226,7 +226,7 @@ if [[ $FAIL -eq 0 && $SKIP -eq 0 ]]; then
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║                                              ║${NC}"
-  echo -e "${GREEN}║   🎉🎉🎉  全テスト 100% パス！  🎉🎉🎉     ║${NC}"
+  echo -e "${GREEN}║   🎉🎉🎉  全テスト 100% パス！  🎉🎉🎉       ║${NC}"
   echo -e "${GREEN}║                                              ║${NC}"
   echo -e "${GREEN}║   シーケンスチェック、完璧に動いています！   ║${NC}"
   echo -e "${GREEN}║                                              ║${NC}"
