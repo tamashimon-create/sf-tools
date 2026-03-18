@@ -8,8 +8,7 @@ echo -e "${CLR_HEAD}=== sf-upgrade.sh ===${CLR_RST}"
 # 正常実行 → npm / sf / git が呼び出される
 test_normal_run() {
     local td mb
-    td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
-    mkdir -p "$td/logs"
+    td=$(setup_force_dir)
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
@@ -26,15 +25,15 @@ test_normal_run() {
 # npm が存在しない → WARNING で続行、正常終了
 test_no_npm() {
     local td mb
-    td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
-    mkdir -p "$td/logs"
+    td=$(setup_force_dir)
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     # npm モックを作成しない（PATH に npm が存在しない状態）
+    # システムの npm がヒットしないよう PATH をモックビンと基本コマンドのみに制限する
     create_mock_git "$mb"
     create_mock_sf "$mb"
     create_mock_code "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "npm なし → 正常終了（続行）"
@@ -45,8 +44,7 @@ test_no_npm() {
 # sf が存在しない → WARNING で続行、正常終了
 test_no_sf() {
     local td mb
-    td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
-    mkdir -p "$td/logs"
+    td=$(setup_force_dir)
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     # sf モックを作成しない
     create_mock_git "$mb"
@@ -64,8 +62,7 @@ test_no_sf() {
 # git update-git-for-windows は npm・sf の後に実行される（順序確認）
 test_git_update_is_last() {
     local td mb
-    td=$(mktemp -d "${TMPDIR:-/tmp}/test-upgrade-XXXX")
-    mkdir -p "$td/logs"
+    td=$(setup_force_dir)
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
