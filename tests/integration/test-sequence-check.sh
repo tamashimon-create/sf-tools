@@ -96,11 +96,65 @@ fi
 CREATED_BRANCHES+=("$FEATURE_UNMERGED")
 
 PASS=0; FAIL=0; SKIP=0
+COUNT_BLOCK=0; COUNT_WARN=0; COUNT_OK=0
 CREATED_PRS=()
 
 # カラー
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; NC='\033[0m'
+
+# ==============================================================================
+# GitHub API: branches.txt のリモート同期・復元
+# ==============================================================================
+ORIGINAL_BRANCHES_CONTENT=""
+
+sync_branches_to_remote() {
+  echo -e "\n${YELLOW}━━━ branches.txt をリモートに同期 ━━━${NC}"
+
+  # 元の内容を保存（復元用）
+  ORIGINAL_BRANCHES_CONTENT=$(gh api "repos/$REPO/contents/sf-tools/config/branches.txt" \
+    --jq '.content' 2>/dev/null | tr -d '\n')
+
+  # ローカルの branches.txt をエンコード
+  local encoded sha
+  encoded=$(base64 < "$BRANCH_LIST_FILE" | tr -d '\n')
+  sha=$(gh api "repos/$REPO/contents/sf-tools/config/branches.txt" --jq '.sha' 2>/dev/null)
+
+  if [[ -z "$sha" ]]; then
+    echo "  [ERROR] リモートの branches.txt SHA を取得できません" >&2
+    return 1
+  fi
+
+  # リモート main に反映
+  gh api "repos/$REPO/contents/sf-tools/config/branches.txt" \
+    -X PUT \
+    -f message="test(seq-check): branches.txt を同期 (${BRANCHES[*]})" \
+    -f content="$encoded" \
+    -f sha="$sha" > /dev/null
+
+  echo "  リモートに反映: ${BRANCHES[*]}"
+  sleep 2
+  git fetch origin "$MAIN_BRANCH" -q
+  git reset --hard "origin/$MAIN_BRANCH" -q
+  # Windows Git Bash で CRLF/LF 差分が残る場合があるため強制チェックアウト
+  git checkout -- . 2>/dev/null || true
+}
+
+restore_branches_on_remote() {
+  if [[ -z "$ORIGINAL_BRANCHES_CONTENT" ]]; then return; fi
+
+  local sha
+  sha=$(gh api "repos/$REPO/contents/sf-tools/config/branches.txt" --jq '.sha' 2>/dev/null)
+  [[ -z "$sha" ]] && return
+
+  gh api "repos/$REPO/contents/sf-tools/config/branches.txt" \
+    -X PUT \
+    -f message="test(seq-check): branches.txt を復元" \
+    -f content="$ORIGINAL_BRANCHES_CONTENT" \
+    -f sha="$sha" > /dev/null 2>&1 || true
+
+  echo "  branches.txt を復元しました"
+}
 
 # ==============================================================================
 # クリーンアップ（EXIT 時に必ず実行）
@@ -120,6 +174,8 @@ cleanup() {
       && echo "  remote: $br 削除" || true
     git branch -D "$br" 2>/dev/null || true
   done
+
+  restore_branches_on_remote
 
   git merge --abort 2>/dev/null || true
   git rebase --abort 2>/dev/null || true
@@ -230,6 +286,9 @@ else
   echo "  残骸ブランチなし"
 fi
 
+# ローカルの branches.txt をリモート main に同期（テスト後に自動復元）
+sync_branches_to_remote
+
 echo -e "\n${YELLOW}━━━ セットアップ ━━━${NC}"
 git fetch origin "${BRANCHES[@]}"
 
@@ -266,22 +325,27 @@ echo "セットアップ完了"
 echo -e "\n${YELLOW}━━━ テスト実行 ━━━${NC}"
 
 # ❌ エラーブロック（保護ブランチ間の PR はすべてブロック）
+_before=$PASS
 for ((i=0; i<NUM_BRANCHES; i++)); do
   for ((j=i+1; j<NUM_BRANCHES; j++)); do
     test_scenario "❌ ${BRANCHES[$j]} → ${BRANCHES[$i]}（ブロック）" \
       "${BRANCHES[$j]}" "${BRANCHES[$i]}" "fail"
   done
 done
+COUNT_BLOCK=$((PASS - _before))
 
 # ⚠️ 警告のみ（前提ブランチ未マージの feature PR）
+_before=$PASS
 for ((i=1; i<${#MERGE_PATH[@]}; i++)); do
   target="${MERGE_PATH[$i]}"
   prereq="${MERGE_PATH[$((i-1))]}"
   test_scenario "⚠️  feature/* → ${target}（${prereq}未マージ）" \
     "$FEATURE_UNMERGED" "$target" "pass"
 done
+COUNT_WARN=$((PASS - _before))
 
 # ✅ 正常通過
+_before=$PASS
 if [[ $NUM_NON_MAIN -gt 0 ]]; then
   test_scenario "✅ feature/* → ${NON_MAIN[0]}（制限なし）" \
     "$FEATURE_UNMERGED" "${NON_MAIN[0]}" "pass"
@@ -299,17 +363,28 @@ else
   test_scenario "✅ feature/* → ${MAIN_BRANCH}（制限なし）" \
     "$FEATURE_UNMERGED" "$MAIN_BRANCH" "pass"
 fi
+COUNT_OK=$((PASS - _before))
 
 # ==============================================================================
 # 結果サマリー
 # ==============================================================================
 TOTAL=$((PASS + FAIL + SKIP))
 echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  想定: ${EXPECTED_TOTAL} 件 (❌${EXPECTED_BLOCK} + ⚠️${EXPECTED_WARN} + ✅${EXPECTED_PASS})"
-echo -e "  結果: ${GREEN}✅ $PASS 件成功${NC} / ${RED}❌ $FAIL 件失敗${NC} / ${YELLOW}⚠ $SKIP 件スキップ${NC}  (実行: $TOTAL 件)"
+echo -e "         想定  実績"
+echo -e "  ❌ブロック: ${EXPECTED_BLOCK}     ${COUNT_BLOCK}"
+echo -e "  ⚠️ 警告  : ${EXPECTED_WARN}     ${COUNT_WARN}"
+echo -e "  ✅正常   : ${EXPECTED_PASS}     ${COUNT_OK}"
+echo -e "  ──────────────"
+echo -e "  合計     : ${EXPECTED_TOTAL}     ${TOTAL}  (失敗: $FAIL / スキップ: $SKIP)"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [[ $FAIL -eq 0 && $SKIP -eq 0 && $TOTAL -eq $EXPECTED_TOTAL ]]; then
+ALL_MATCH=true
+[[ $COUNT_BLOCK -ne $EXPECTED_BLOCK ]] && ALL_MATCH=false
+[[ $COUNT_WARN  -ne $EXPECTED_WARN  ]] && ALL_MATCH=false
+[[ $COUNT_OK    -ne $EXPECTED_PASS  ]] && ALL_MATCH=false
+[[ $FAIL -gt 0 || $SKIP -gt 0 ]]      && ALL_MATCH=false
+
+if $ALL_MATCH; then
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║                                              ║${NC}"
@@ -321,4 +396,4 @@ if [[ $FAIL -eq 0 && $SKIP -eq 0 && $TOTAL -eq $EXPECTED_TOTAL ]]; then
   echo ""
 fi
 
-[[ $FAIL -gt 0 || $TOTAL -ne $EXPECTED_TOTAL ]] && exit 1 || exit 0
+$ALL_MATCH && exit 0 || exit 1
