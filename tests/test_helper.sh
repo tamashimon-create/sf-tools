@@ -39,7 +39,8 @@ setup_force_dir() {
     dir=$(mktemp -d "${TMPDIR:-/tmp}/force-test-XXXX")
     mkdir -p "$dir/logs" "$dir/.git/hooks" "$dir/.sf" "$dir/.sfdx" \
              "$dir/sf-tools/config" "$dir/sf-tools/release" "$dir/sf-tools/logs"
-    echo "ApexClass" > "$dir/sf-tools/config/metadata-list.txt"
+    echo "ApexClass" > "$dir/sf-tools/config/metadata.txt"
+    printf 'main\nstaging\ndevelop\n' > "$dir/sf-tools/config/branches.txt"
     echo "$dir"
 }
 
