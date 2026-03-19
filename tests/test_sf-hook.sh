@@ -111,11 +111,35 @@ test_no_git_dir() {
     teardown "$td" "$mb" "$mh"
 }
 
+# hooksPath が .husky 系に設定されている → 自動削除してインストール成功
+test_fix_husky_hooks_path() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+
+    # .git/config に hooksPath = .husky/_ を仕込む
+    git -C "$td" config core.hooksPath ".husky/_"
+
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local ec=$?
+
+    assert_exit_ok $ec "hooksPath=.husky/_ でも正常終了"
+    local remaining
+    remaining=$(git -C "$td" config core.hooksPath 2>/dev/null)
+    [[ -z "$remaining" ]] \
+        && pass "core.hooksPath が削除された" \
+        || fail "core.hooksPath が削除された" "残存値: $remaining"
+    assert_file_exists "$td/.git/hooks/pre-push" "hooksPath 削除後にフックがコピーされた"
+    teardown "$td" "$mb" "$mh"
+}
+
 test_install_hook
 test_hook_content_matches_source
 test_hook_calls_sf_prepush
 test_overwrite_existing_hook
 test_no_hook_source
+test_fix_husky_hooks_path
 test_outside_force_dir
 test_no_git_dir
 

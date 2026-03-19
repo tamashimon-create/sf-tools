@@ -56,6 +56,19 @@ phase_check_environment() {
     return $RET_OK
 }
 
+# 【FIX】hooksPath が .husky 系に設定されていれば削除
+phase_fix_hooks_path() {
+    local hooks_path
+    hooks_path=$(git config --local core.hooksPath 2>/dev/null)
+    if [[ "$hooks_path" == *husky* ]]; then
+        log "WARNING" "core.hooksPath が '$hooks_path' に設定されています。削除します..."
+        run git config --local --unset core.hooksPath \
+            || die "core.hooksPath の削除に失敗しました。"
+        log "SUCCESS" "core.hooksPath を削除しました。"
+    fi
+    return $RET_OK
+}
+
 # 【INSTALL】フックスクリプトのコピーと権限付与
 phase_install_hook() {
     log "INFO" "Git Hook をコピー（強制上書き）中..."
@@ -79,6 +92,8 @@ log "HEADER" "Git Hook (pre-push) の有効化を開始します (${SCRIPT_NAME}
 
 phase_check_environment || die "初期チェックに失敗しました。"
 log "SUCCESS" "環境確認完了。"
+
+phase_fix_hooks_path || die "hooksPath の修正に失敗しました。"
 
 phase_install_hook || die "フックのインストールに失敗しました。"
 log "SUCCESS" "pre-push フックを強制適用しました。"
