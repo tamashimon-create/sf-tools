@@ -71,7 +71,7 @@ setup_mock_home() {
 teardown() {
     local arg
     for arg in "$@"; do
-        [[ -n "$arg" ]] && rm -rf "$arg"
+        [[ -n "$arg" ]] && rm -rf "$arg" 2>/dev/null
     done
 }
 
