@@ -2,13 +2,13 @@
 # ==============================================================================
 # test-sequence-check.sh - シーケンスチェック全パターン統合テスト
 # ==============================================================================
-# gh CLI を使って全 PR パターンを自動検証する。
+# gh CLI を使って PR シーケンスチェックを自動検証する。
 # テスト対象のブランチ構成は sf-tools/config/branches.txt から動的に読み込む。
 #
-# 【テスト対象パターン（3ブランチ構成の場合）】
-#   ❌ エラーブロック  : develop→staging / develop→main / staging→main
-#   ⚠️  警告のみ（pass）: feature/*→staging（develop未マージ）/ feature/*→main（staging未マージ）
-#   ✅ 正常通過        : feature/*→develop / feature/*→staging（develop済）/ feature/*→main（staging済）
+# 【ブランチ構成別のテスト件数】
+#   main + staging + develop : ❌3 + ⚠️2 + ✅3 = 8 件
+#   main + staging           : ❌1 + ⚠️1 + ✅2 = 4 件
+#   main のみ                : ✅1 = 1 件
 #
 # 【使用方法】
 #   cd /c/home/dev/test/force-tama
@@ -25,12 +25,11 @@ set -uo pipefail
 REPO="tama-create/force-tama"
 TS=$(date +%H%M%S)
 
-# ログ出力先（force-tama ルートの sf-tools/logs/）
+# ログ出力先
 ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 LOG_DIR="$ROOT_DIR/sf-tools/logs"
 LOG_FILE="$LOG_DIR/test-sequence-check.log"
 mkdir -p "$LOG_DIR"
-# 画面とログファイルに同時出力
 exec > >(tee "$LOG_FILE") 2>&1
 echo "====== テスト開始: $(date '+%Y-%m-%d %H:%M:%S') ======"
 
@@ -46,7 +45,6 @@ if [[ ! -f "$BRANCH_LIST_FILE" ]]; then
     exit 1
 fi
 
-# BRANCHES: branches.txt の記載順（main, staging, develop）
 BRANCHES=()
 while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
@@ -58,35 +56,44 @@ done < "$BRANCH_LIST_FILE"
 NUM_BRANCHES=${#BRANCHES[@]}
 MAIN_BRANCH="${BRANCHES[0]}"
 
-echo "ブランチ構成: ${BRANCHES[*]} (${NUM_BRANCHES}ブランチ)"
-echo "構成ファイル: $BRANCH_LIST_FILE"
-
 # MERGE_PATH: マージ順序（下位→上位: develop, staging, main）
 MERGE_PATH=()
 for ((i=NUM_BRANCHES-1; i>=0; i--)); do
     MERGE_PATH+=("${BRANCHES[$i]}")
 done
 
-# NON_MAIN: main 以外のブランチ（マージ順序）
+# NON_MAIN: main 以外のブランチ（マージ順）
 NON_MAIN=()
 for b in "${MERGE_PATH[@]}"; do
     [[ "$b" != "$MAIN_BRANCH" ]] && NON_MAIN+=("$b")
 done
 NUM_NON_MAIN=${#NON_MAIN[@]}
 
+# 想定テスト件数
+EXPECTED_BLOCK=$(( NUM_BRANCHES * (NUM_BRANCHES - 1) / 2 ))
+EXPECTED_WARN=$(( NUM_BRANCHES - 1 ))
+EXPECTED_PASS=$(( NUM_NON_MAIN > 0 ? NUM_NON_MAIN + 1 : 1 ))
+EXPECTED_TOTAL=$(( EXPECTED_BLOCK + EXPECTED_WARN + EXPECTED_PASS ))
+
+echo "ブランチ構成: ${BRANCHES[*]} (${NUM_BRANCHES}ブランチ)"
+echo "構成ファイル: $BRANCH_LIST_FILE"
+echo "想定テスト件数: ❌${EXPECTED_BLOCK} + ⚠️${EXPECTED_WARN} + ✅${EXPECTED_PASS} = ${EXPECTED_TOTAL} 件"
+
 # ==============================================================================
 # Feature ブランチの設計
 # ==============================================================================
-# FEATURES[i] = NON_MAIN[0..i] にマージ済み（i 番目の上位ブランチのテスト用）
-# FEATURE_UNMERGED = どこにもマージしない（警告テスト＋最下位ブランチテスト用）
 FEATURES=()
 for ((i=0; i<NUM_NON_MAIN; i++)); do
     FEATURES+=("feature/seq-test-${i}-${TS}")
 done
 FEATURE_UNMERGED="feature/seq-test-none-${TS}"
 
-# クリーンアップ対象のブランチ一覧
-CREATED_BRANCHES=("${FEATURES[@]}" "$FEATURE_UNMERGED")
+# クリーンアップ対象
+CREATED_BRANCHES=()
+if [[ ${#FEATURES[@]} -gt 0 ]]; then
+    CREATED_BRANCHES+=("${FEATURES[@]}")
+fi
+CREATED_BRANCHES+=("$FEATURE_UNMERGED")
 
 PASS=0; FAIL=0; SKIP=0
 CREATED_PRS=()
@@ -101,14 +108,12 @@ BLUE='\033[0;34m'; NC='\033[0m'
 cleanup() {
   echo -e "\n${YELLOW}━━━ クリーンアップ ━━━${NC}"
 
-  # テスト用 PR をクローズ
   for pr in "${CREATED_PRS[@]:-}"; do
     [[ -z "$pr" ]] && continue
     gh pr close "$pr" --repo "$REPO" --comment "[自動テスト完了] クローズします。" 2>/dev/null \
       && echo "  PR#$pr クローズ" || true
   done
 
-  # テスト用ブランチを削除
   for br in "${CREATED_BRANCHES[@]:-}"; do
     [[ -z "$br" ]] && continue
     gh api "repos/$REPO/git/refs/heads/$br" -X DELETE 2>/dev/null \
@@ -116,7 +121,6 @@ cleanup() {
     git branch -D "$br" 2>/dev/null || true
   done
 
-  # 中断状態のリセット
   git merge --abort 2>/dev/null || true
   git rebase --abort 2>/dev/null || true
   git checkout "$MAIN_BRANCH" 2>/dev/null || true
@@ -128,15 +132,11 @@ trap cleanup EXIT
 # PR 作成 → マージ順序を検証の結果を確認
 # ==============================================================================
 test_scenario() {
-  local desc="$1"
-  local head="$2"
-  local base="$3"
-  local expected="$4"   # pass | fail
+  local desc="$1" head="$2" base="$3" expected="$4"
 
   echo -e "\n${BLUE}▶ $desc${NC}"
   echo    "  $head → $base  (期待: $expected)"
 
-  # PR 作成
   local pr_output
   pr_output=$(gh pr create --repo "$REPO" \
     --head "$head" --base "$base" \
@@ -154,42 +154,33 @@ test_scenario() {
   echo "  PR#$pr_num 作成"
 
   # チェック完了まで最大 5 分待機
-  local actual="timeout"
-  local _w
+  local actual="timeout" _w
   for _w in $(seq 1 20); do
     sleep 15
     local checks
     checks=$(gh pr checks "$pr_num" --repo "$REPO" 2>&1 || true)
 
-    # チェックがまだ登録されていない場合は待機を継続
     if echo "$checks" | grep -qi "no checks"; then
       echo "  待機中... $((_w * 15))s (チェック未登録)"
       continue
     fi
 
-    # pending / in_progress が残っている場合は待機を継続
     if echo "$checks" | grep -qE "\s(pending|in_progress)\s"; then
       echo "  待機中... $((_w * 15))s"
       continue
     fi
 
-    # チェック完了 — 結果を取得
     local seq_result
     seq_result=$(echo "$checks" | grep "マージ順序を検証" | awk -F'\t' '{print $2}' | head -1)
-    if [[ -z "$seq_result" ]]; then
-      actual="pass(skipped)"   # 最下位ブランチ向け PR はジョブ自体がスキップ → pass 扱い
-    else
-      actual="$seq_result"
-    fi
+    actual="${seq_result:-pass(skipped)}"
     break
   done
 
   echo "  マージ順序を検証: $actual"
 
-  # 判定
   local ok=false
-  if [[ "$expected" == "fail" && "$actual" == "fail" ]]; then ok=true; fi
-  if [[ "$expected" == "pass" ]] && echo "$actual" | grep -qE "^pass"; then ok=true; fi
+  [[ "$expected" == "fail" && "$actual" == "fail" ]] && ok=true
+  [[ "$expected" == "pass" ]] && echo "$actual" | grep -qE "^pass" && ok=true
 
   if $ok; then
     echo -e "  ${GREEN}✅ PASS${NC}"
@@ -202,8 +193,7 @@ test_scenario() {
 
 # ブランチを指定先に直接マージして push するヘルパー
 merge_to() {
-  local feature="$1"
-  local target="$2"
+  local feature="$1" target="$2"
   local tmp="_${target}_tmp"
   git checkout -B "$tmp" "origin/$target"
   if ! git merge "$feature" --no-ff -X theirs -m "test(seq-check): merge $feature to $target"; then
@@ -224,11 +214,13 @@ cd "$ROOT_DIR"
 
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${YELLOW}  シーケンスチェック統合テスト ($TS)${NC}"
+echo -e "${YELLOW}  ${BRANCHES[*]} (想定: ${EXPECTED_TOTAL} テスト)${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # 前回の残骸ブランチをリモートから自動クリーンアップ
 echo -e "\n${YELLOW}━━━ クリーンアップ（前回の残骸） ━━━${NC}"
-stale_branches=$(git ls-remote --heads origin "refs/heads/feature/seq-test-*" 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||')
+stale_branches=$(git ls-remote --heads origin "refs/heads/feature/seq-test-*" 2>/dev/null \
+  | awk '{print $2}' | sed 's|refs/heads/||')
 if [[ -n "$stale_branches" ]]; then
   while IFS= read -r br; do
     git push --no-verify origin --delete "$br" 2>/dev/null && echo "  remote: $br 削除" || true
@@ -241,22 +233,19 @@ fi
 echo -e "\n${YELLOW}━━━ セットアップ ━━━${NC}"
 git fetch origin "${BRANCHES[@]}"
 
-# Feature ブランチのセットアップ
 # FEATURES[i]: NON_MAIN[0..i] にマージ済みのブランチを作成
 for ((i=0; i<NUM_NON_MAIN; i++)); do
-  # マージ先の説明を組み立て
-  local_desc=""
+  desc=""
   for ((j=0; j<=i; j++)); do
-    [[ -n "$local_desc" ]] && local_desc+="+"
-    local_desc+="${NON_MAIN[$j]}"
+    [[ -n "$desc" ]] && desc+="+"
+    desc+="${NON_MAIN[$j]}"
   done
-  echo "FEATURES[$i] を作成（${local_desc} にマージ）..."
+  echo "FEATURES[$i] を作成（${desc} にマージ）..."
 
   git checkout -b "${FEATURES[$i]}" "origin/$MAIN_BRANCH"
   git commit --allow-empty -m "test(seq-check): FEATURES[$i] $TS"
   git push --no-verify origin "${FEATURES[$i]}"
 
-  # NON_MAIN[0..i] にマージ
   for ((j=0; j<=i; j++)); do
     merge_to "${FEATURES[$i]}" "${NON_MAIN[$j]}"
   done
@@ -284,8 +273,7 @@ for ((i=0; i<NUM_BRANCHES; i++)); do
   done
 done
 
-# ⚠️ 警告のみ（前提ブランチ未マージの feature PR → マージ可・Slack 通知あり）
-# MERGE_PATH[0] は最下位ブランチ（前提条件なし）なのでスキップ
+# ⚠️ 警告のみ（前提ブランチ未マージの feature PR）
 for ((i=1; i<${#MERGE_PATH[@]}; i++)); do
   target="${MERGE_PATH[$i]}"
   prereq="${MERGE_PATH[$((i-1))]}"
@@ -295,11 +283,9 @@ done
 
 # ✅ 正常通過
 if [[ $NUM_NON_MAIN -gt 0 ]]; then
-  # 最下位ブランチへの PR（前提条件なし）
   test_scenario "✅ feature/* → ${NON_MAIN[0]}（制限なし）" \
     "$FEATURE_UNMERGED" "${NON_MAIN[0]}" "pass"
 
-  # 各ブランチへの PR（前提条件を満たした状態）
   for ((i=0; i<NUM_NON_MAIN; i++)); do
     if ((i < NUM_NON_MAIN - 1)); then
       target="${NON_MAIN[$((i+1))]}"
@@ -310,7 +296,6 @@ if [[ $NUM_NON_MAIN -gt 0 ]]; then
       "${FEATURES[$i]}" "$target" "pass"
   done
 else
-  # main のみ構成 — feature→main は常に pass
   test_scenario "✅ feature/* → ${MAIN_BRANCH}（制限なし）" \
     "$FEATURE_UNMERGED" "$MAIN_BRANCH" "pass"
 fi
@@ -320,10 +305,11 @@ fi
 # ==============================================================================
 TOTAL=$((PASS + FAIL + SKIP))
 echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  テスト結果: ${GREEN}✅ $PASS 件成功${NC} / ${RED}❌ $FAIL 件失敗${NC} / ${YELLOW}⚠ $SKIP 件スキップ${NC}  (計 $TOTAL 件)"
+echo -e "  想定: ${EXPECTED_TOTAL} 件 (❌${EXPECTED_BLOCK} + ⚠️${EXPECTED_WARN} + ✅${EXPECTED_PASS})"
+echo -e "  結果: ${GREEN}✅ $PASS 件成功${NC} / ${RED}❌ $FAIL 件失敗${NC} / ${YELLOW}⚠ $SKIP 件スキップ${NC}  (実行: $TOTAL 件)"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [[ $FAIL -eq 0 && $SKIP -eq 0 ]]; then
+if [[ $FAIL -eq 0 && $SKIP -eq 0 && $TOTAL -eq $EXPECTED_TOTAL ]]; then
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║                                              ║${NC}"
@@ -335,4 +321,4 @@ if [[ $FAIL -eq 0 && $SKIP -eq 0 ]]; then
   echo ""
 fi
 
-[[ $FAIL -gt 0 ]] && exit 1 || exit 0
+[[ $FAIL -gt 0 || $TOTAL -ne $EXPECTED_TOTAL ]] && exit 1 || exit 0
