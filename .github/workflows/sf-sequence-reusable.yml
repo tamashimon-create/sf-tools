@@ -7,13 +7,14 @@
 #   呼び出し元リポジトリの .github/workflows/sf-sequence.yml から workflow_call で起動される。
 #
 # 【プロモーション順序ルール】
-#   フィーチャーブランチは以下の順序でマージされることを推奨する:
-#     feature/* → develop → staging → main
+#   フィーチャーブランチは branches.txt に記載された順序でマージされることを推奨する。
+#   例: feature/* → develop → staging → main
 #   このワークフローはその順序が守られているかを確認し、未確認の場合に警告する。
+#   branches.txt に記載されたブランチのみがチェック対象となる。
 #
 # 【チェック内容】
-#   staging へのPR : フィーチャーブランチが develop にマージ済みかを確認
-#   main へのPR    : フィーチャーブランチが develop かつ staging にマージ済みかを確認
+#   branches.txt を読み込み、マージ先ブランチより下位のブランチへの
+#   マージ済み状態を動的に確認する。
 #
 # 【動作】
 #   - マージ元が develop または staging の場合: エラーで PR をブロック
@@ -107,19 +108,47 @@ jobs:
           FEATURE="${{ inputs.head_ref }}"
           BASE="${{ inputs.base_ref }}"
 
+          # branches.txt からブランチ一覧を読み込み
+          BRANCH_FILE="sf-tools/config/branches.txt"
+          if [ ! -f "$BRANCH_FILE" ]; then
+            echo "::notice::branches.txt が見つかりません。チェックをスキップします。"
+            exit 0
+          fi
+
+          # コメントと空行を除外してブランチ一覧を取得
+          BRANCHES=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')
+
           # 環境ブランチ間の直接 PR はエラーでブロック
-          if [ "$FEATURE" = "develop" ] || [ "$FEATURE" = "staging" ]; then
+          if echo "$BRANCHES" | grep -qx "$FEATURE"; then
             echo "::error title=マージ元ブランチ不正::${FEATURE} からのPRは許可されていません。必ずフィーチャーブランチからPRを作成してください。"
             exit 1
           fi
 
-          # マージ先に応じて確認すべき前段ブランチを決定
-          if [ "$BASE" = "main" ]; then
-            PREV_LIST="develop staging"
-          elif [ "$BASE" = "staging" ]; then
-            PREV_LIST="develop"
-          else
-            echo "チェック対象外のブランチです"
+          # base_ref が branches.txt に含まれていない場合はスキップ
+          if ! echo "$BRANCHES" | grep -qx "$BASE"; then
+            echo "::notice::チェック対象外のブランチです: $BASE"
+            exit 0
+          fi
+
+          # base_ref より下位のブランチ（前段ブランチ）を取得
+          # branches.txt の順序: main, staging, develop（上位→下位）
+          # base_ref の行より後に記載されたブランチが前段ブランチとなる
+          PREV_LIST=""
+          FOUND=false
+          while IFS= read -r line; do
+            line=$(echo "$line" | tr -d '\r')
+            echo "$line" | grep -q '^[[:space:]]*#' && continue
+            [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
+            if [ "$FOUND" = true ]; then
+              PREV_LIST="${PREV_LIST:+$PREV_LIST }$line"
+            fi
+            [ "$line" = "$BASE" ] && FOUND=true
+          done < "$BRANCH_FILE"
+
+          # 前段ブランチがない場合（最下位ブランチ or main のみ構成）
+          if [ -z "$PREV_LIST" ]; then
+            echo "::notice title=チェック完了::${BASE} への PR に前段ブランチの確認は不要です"
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
