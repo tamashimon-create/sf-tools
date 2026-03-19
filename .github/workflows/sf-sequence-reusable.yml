@@ -108,9 +108,13 @@ jobs:
           FEATURE="${{ inputs.head_ref }}"
           BASE="${{ inputs.base_ref }}"
 
-          # branches.txt からブランチ一覧を読み込み
-          BRANCH_FILE="sf-tools/config/branches.txt"
-          if [ ! -f "$BRANCH_FILE" ]; then
+          # branches.txt は常に main ブランチから読み込む
+          # ※ PR のマージコミット（head+base の合成）には branches.txt が
+          #   含まれない場合がある（staging/develop がこのファイルを持たないケース）
+          BRANCH_FILE=$(mktemp)
+          trap 'rm -f "$BRANCH_FILE"' EXIT
+          git fetch origin main -q
+          if ! git show origin/main:sf-tools/config/branches.txt > "$BRANCH_FILE" 2>/dev/null; then
             echo "::notice::branches.txt が見つかりません。チェックをスキップします。"
             exit 0
           fi
