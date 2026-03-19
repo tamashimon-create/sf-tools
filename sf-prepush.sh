@@ -60,20 +60,44 @@ done
 
 # 【FETCH】リモートの最新情報を取得
 phase_fetch() {
+    local current_branch="$1"
     log "INFO" "リモート(origin)の最新情報を確認中..."
-    run git fetch origin main -q || return $RET_NG
+    run git fetch origin "$current_branch" main -q || return $RET_NG
+    return $RET_OK
+}
+
+# 【PULL】自分のブランチのリモートを先に同期
+phase_pull_own() {
+    local current_branch="$1"
+
+    # リモートに同名ブランチが存在するか確認
+    if ! git ls-remote --exit-code origin "$current_branch" > /dev/null 2>&1; then
+        log "INFO" "リモートに ${current_branch} ブランチがまだ存在しません。スキップします。"
+        return $RET_OK
+    fi
+
+    local missing_commits
+    missing_commits=$(run git log "${current_branch}..origin/${current_branch}" --oneline)
+
+    if [[ -n "$missing_commits" ]]; then
+        log "WARNING" "リモートの ${current_branch} ブランチが更新されています。自動的に取り込みます..."
+        log "INFO" "取り込むコミット:"
+        echo "--------------------------------------------------"
+        echo "$missing_commits"
+        echo "--------------------------------------------------"
+        run git merge "origin/${current_branch}" \
+            || { run git merge --abort; die "${current_branch} の自動取り込みに失敗しました。コンフリクトを解消してから再度プッシュしてください。"; }
+        log "SUCCESS" "${current_branch} ブランチのリモート変更を取り込みました。"
+    else
+        log "INFO" "${current_branch} ブランチはリモートと同期されています。"
+    fi
+
     return $RET_OK
 }
 
 # 【CHECK】main ブランチとの同期を検証・自動取り込み
-phase_check() {
-    local current_branch
-    current_branch=$(run git symbolic-ref --short HEAD)
-
-    # main への直接プッシュを禁止
-    if [[ "$current_branch" == "main" ]]; then
-        die "main ブランチへの直接プッシュは禁止されています。PR を作成してください。"
-    fi
+phase_check_main() {
+    local current_branch="$1"
 
     # リモート main に未取り込みコミットがあれば自動取り込み（merge）
     local missing_commits
@@ -85,9 +109,11 @@ phase_check() {
         echo "--------------------------------------------------"
         echo "$missing_commits"
         echo "--------------------------------------------------"
-        run git pull origin main \
-            || die "main の自動取り込みに失敗しました。コンフリクトを解消してから再度プッシュしてください。"
+        run git merge origin/main \
+            || { run git merge --abort; die "main の自動取り込みに失敗しました。コンフリクトを解消してから再度プッシュしてください。"; }
         log "SUCCESS" "main ブランチの変更を自動的に取り込みました。"
+    else
+        log "SUCCESS" "main ブランチと同期されています。"
     fi
 
     return $RET_OK
@@ -96,9 +122,20 @@ phase_check() {
 # ------------------------------------------------------------------------------
 # 6. メイン実行フロー
 # ------------------------------------------------------------------------------
-phase_fetch || die "リモート情報の取得に失敗しました。"
+CURRENT_BRANCH=$(run git symbolic-ref --short HEAD)
 
-phase_check || die "main ブランチとの同期確認に失敗しました。"
-log "SUCCESS" "main ブランチと同期されています。プッシュを継続します。"
+# 保護ブランチへの直接プッシュを禁止
+case "$CURRENT_BRANCH" in
+    main|staging|develop)
+        die "${CURRENT_BRANCH} ブランチへの直接プッシュは禁止されています。PR を作成してください。"
+        ;;
+esac
+
+phase_fetch "$CURRENT_BRANCH" || die "リモート情報の取得に失敗しました。"
+
+phase_pull_own "$CURRENT_BRANCH" || die "自ブランチのリモート同期に失敗しました。"
+
+phase_check_main "$CURRENT_BRANCH" || die "main ブランチとの同期確認に失敗しました。"
+log "SUCCESS" "すべての同期チェックが完了しました。プッシュを継続します。"
 
 exit $RET_OK
