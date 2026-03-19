@@ -172,7 +172,7 @@ jobs:
       # --------------------------------------------------------------------------
       # sf-release.sh の実行に必要な sf-tools 一式をホームディレクトリへ取得する。
       - name: 自動化ツール（sf-tools）を取得
-        run: git clone https://github.com/tamashimon-create/sf-tools.git ~/sf-tools
+        run: git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
 
       # --------------------------------------------------------------------------
       # Step 7: Salesforce へのリリース実行

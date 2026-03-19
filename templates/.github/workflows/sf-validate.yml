@@ -9,7 +9,7 @@ jobs:
   call:
     permissions:
       pull-requests: write
-    uses: tamashimon-create/sf-tools/.github/workflows/sf-validate-reusable.yml@main
+    uses: tama-create/sf-tools/.github/workflows/sf-validate-reusable.yml@main
     with:
       base_ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
       head_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}

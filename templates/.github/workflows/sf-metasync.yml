@@ -8,5 +8,5 @@ on:
 
 jobs:
   call:
-    uses: tamashimon-create/sf-tools/.github/workflows/sf-metasync-reusable.yml@main
+    uses: tama-create/sf-tools/.github/workflows/sf-metasync-reusable.yml@main
     secrets: inherit

@@ -126,7 +126,7 @@ jobs:
       # sf-tools は public リポジトリのため認証なしでクローン可能。
       # ~/sf-tools に配置することで sf-metasync.sh 内のパス解決と一致する。
       - name: 自動化ツール（sf-tools）を取得
-        run: git clone https://github.com/tamashimon-create/sf-tools.git ~/sf-tools
+        run: git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
 
       # --------------------------------------------------------------------------
       # Step 9: メタデータ取得・Git 同期の実行

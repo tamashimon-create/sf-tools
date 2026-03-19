@@ -25,7 +25,7 @@
 
 set -uo pipefail
 
-REPO="tamashimon-create/force-tama"
+REPO="tama-create/force-tama"
 TS=$(date +%H%M%S)
 
 # ログ出力先（force-tama ルートの sf-tools/logs/）

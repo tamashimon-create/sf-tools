@@ -116,7 +116,7 @@ jobs:
       # 全シェルスクリプトと共通ライブラリ（lib/common.sh）に実行権限を付与する。
       - name: 自動化ツール（sf-tools）を取得
         run: |
-          git clone https://github.com/tamashimon-create/sf-tools.git "$HOME/sf-tools"
+          git clone https://github.com/tama-create/sf-tools.git "$HOME/sf-tools"
           chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
 
       # --------------------------------------------------------------------------
