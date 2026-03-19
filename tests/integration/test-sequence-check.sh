@@ -112,17 +112,28 @@ test_scenario() {
     sleep 15
     local checks
     checks=$(gh pr checks "$pr_num" --repo "$REPO" 2>&1 || true)
-    if ! echo "$checks" | grep -qE "\s(pending|in_progress)\s"; then
-      local seq_result
-      seq_result=$(echo "$checks" | grep "マージ順序を検証" | awk -F'\t' '{print $2}' | head -1)
-      if [[ -z "$seq_result" ]]; then
-        actual="pass(skipped)"   # develop 向け PR はジョブ自体がスキップ → pass 扱い
-      else
-        actual="$seq_result"
-      fi
-      break
+
+    # チェックがまだ登録されていない場合は待機を継続
+    if echo "$checks" | grep -qi "no checks"; then
+      echo "  待機中... $((i * 15))s (チェック未登録)"
+      continue
     fi
-    echo "  待機中... $((i * 15))s"
+
+    # pending / in_progress が残っている場合は待機を継続
+    if echo "$checks" | grep -qE "\s(pending|in_progress)\s"; then
+      echo "  待機中... $((i * 15))s"
+      continue
+    fi
+
+    # チェック完了 — 結果を取得
+    local seq_result
+    seq_result=$(echo "$checks" | grep "マージ順序を検証" | awk -F'\t' '{print $2}' | head -1)
+    if [[ -z "$seq_result" ]]; then
+      actual="pass(skipped)"   # develop 向け PR はジョブ自体がスキップ → pass 扱い
+    else
+      actual="$seq_result"
+    fi
+    break
   done
 
   echo "  マージ順序を検証: $actual"
@@ -167,6 +178,18 @@ cd "$ROOT_DIR"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${YELLOW}  シーケンスチェック統合テスト ($TS)${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# 前回の残骸ブランチをリモートから自動クリーンアップ
+echo -e "\n${YELLOW}━━━ クリーンアップ（前回の残骸） ━━━${NC}"
+stale_branches=$(git ls-remote --heads origin "refs/heads/feature/seq-test-*" 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||')
+if [[ -n "$stale_branches" ]]; then
+  while IFS= read -r br; do
+    git push origin --delete "$br" 2>/dev/null && echo "  remote: $br 削除" || true
+    git branch -D "$br" 2>/dev/null || true
+  done <<< "$stale_branches"
+else
+  echo "  残骸ブランチなし"
+fi
 
 echo -e "\n${YELLOW}━━━ セットアップ ━━━${NC}"
 git fetch origin main develop staging
