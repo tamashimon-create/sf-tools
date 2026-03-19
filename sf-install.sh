@@ -10,7 +10,7 @@
 # 【処理の流れ】
 #   1. ~/sf-tools を git pull で最新化
 #   2. プロジェクト側のラッパースクリプト (sf-start.sh / sf-restart.sh) を生成（未存在時のみ）
-#   3. sf-tools/config/metadata.txt を生成（未存在時のみ）
+#   3. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
 #   4. Git マージドライバー (ours) をリポジトリに登録
 #   5. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
@@ -113,13 +113,16 @@ EOF
 phase_init_config() {
     log "INFO" "設定ファイルを確認します..."
     run mkdir -p "sf-tools/config"
-    if [[ ! -f "sf-tools/config/metadata.txt" ]]; then
-        run cp "$HOME/sf-tools/templates/config/metadata.txt" "sf-tools/config/metadata.txt" \
-            || return $RET_NG
-        log "INFO" "sf-tools/config/metadata.txt を生成しました。"
-    else
-        log "INFO" "sf-tools/config/metadata.txt は既に存在します。スキップします。"
-    fi
+    local file
+    for file in metadata.txt branches.txt; do
+        if [[ ! -f "sf-tools/config/$file" ]]; then
+            run cp "$HOME/sf-tools/templates/config/$file" "sf-tools/config/$file" \
+                || return $RET_NG
+            log "INFO" "sf-tools/config/$file を生成しました。"
+        else
+            log "INFO" "sf-tools/config/$file は既に存在します。スキップします。"
+        fi
+    done
     return $RET_OK
 }
 
