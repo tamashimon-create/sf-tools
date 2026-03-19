@@ -370,12 +370,8 @@ COUNT_OK=$((PASS - _before))
 # ==============================================================================
 TOTAL=$((PASS + FAIL + SKIP))
 echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "         想定  実績"
-echo -e "  ❌ブロック: ${EXPECTED_BLOCK}     ${COUNT_BLOCK}"
-echo -e "  ⚠️ 警告  : ${EXPECTED_WARN}     ${COUNT_WARN}"
-echo -e "  ✅正常   : ${EXPECTED_PASS}     ${COUNT_OK}"
-echo -e "  ──────────────"
-echo -e "  合計     : ${EXPECTED_TOTAL}     ${TOTAL}  (失敗: $FAIL / スキップ: $SKIP)"
+echo -e "  想定: ❌${EXPECTED_BLOCK}  ⚠️${EXPECTED_WARN}  ✅${EXPECTED_PASS}  = ${EXPECTED_TOTAL}件"
+echo -e "  実績: ❌${COUNT_BLOCK}  ⚠️${COUNT_WARN}  ✅${COUNT_OK}  = ${TOTAL}件 (失敗: $FAIL / スキップ: $SKIP)"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 ALL_MATCH=true
