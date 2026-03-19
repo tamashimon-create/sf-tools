@@ -13,7 +13,7 @@
 #
 # 【チェック内容】
 #   staging へのPR : フィーチャーブランチが develop にマージ済みかを確認
-#   main へのPR    : フィーチャーブランチが staging にマージ済みかを確認
+#   main へのPR    : フィーチャーブランチが develop かつ staging にマージ済みかを確認
 #
 # 【動作】
 #   - マージ元が develop または staging の場合: エラーで PR をブロック
@@ -115,24 +115,31 @@ jobs:
 
           # マージ先に応じて確認すべき前段ブランチを決定
           if [ "$BASE" = "main" ]; then
-            PREV="staging"
+            PREV_LIST="develop staging"
           elif [ "$BASE" = "staging" ]; then
-            PREV="develop"
+            PREV_LIST="develop"
           else
             echo "チェック対象外のブランチです"
             exit 0
           fi
 
-          git fetch origin $PREV
+          MISSING=""
+          for PREV in $PREV_LIST; do
+            git fetch origin $PREV
+            if git merge-base --is-ancestor origin/$FEATURE origin/$PREV; then
+              echo "::notice title=プロモーション順序OK::✓ ${FEATURE} は ${PREV} にマージ済みです"
+            else
+              echo "::warning title=⚠ プロモーション順序未確認::${FEATURE} は ${PREV} にまだマージされていません。意図的な場合はそのまま進めてください。"
+              MISSING="${MISSING:+$MISSING, }${PREV}"
+            fi
+          done
 
-          if git merge-base --is-ancestor origin/$FEATURE origin/$PREV; then
-            echo "::notice title=プロモーション順序OK::✓ ${FEATURE} は ${PREV} にマージ済みです"
+          if [ -z "$MISSING" ]; then
             echo "out_of_order=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning title=⚠ プロモーション順序未確認::${FEATURE} は ${PREV} にまだマージされていません。意図的な場合はそのまま進めてください。"
             echo "out_of_order=true"  >> "$GITHUB_OUTPUT"
             echo "feature=${FEATURE}" >> "$GITHUB_OUTPUT"
-            echo "prev=${PREV}"       >> "$GITHUB_OUTPUT"
+            echo "prev=${MISSING}"    >> "$GITHUB_OUTPUT"
           fi
 
       # --------------------------------------------------------------------------
@@ -154,7 +161,7 @@ jobs:
           PR_URL="${{ inputs.pr_url }}"
           DATETIME=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M:%S JST')
 
-          MESSAGE=":warning: *マージ順序の確認が必要です*\n• ブランチ \`${FEATURE}\` は \`${PREV}\` にまだマージされていません\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n• 実行日時: ${DATETIME}\n• 意図的な場合はそのままマージを進めてください"
+          MESSAGE=":warning: *マージ順序の確認が必要です*\n• ブランチ \`${FEATURE}\` は \`${PREV}\` にまだマージされていません\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n• 対象: \`${FEATURE}\` → \`${{ inputs.base_ref }}\`\n• 実行日時: ${DATETIME}\n• 意図的な場合はそのままマージを進めてください"
           PAYLOAD="{\"channel\": \"${SLACK_CHANNEL_ID}\", \"text\": \"${MESSAGE}\"}"
 
           curl -s -X POST "https://slack.com/api/chat.postMessage" \

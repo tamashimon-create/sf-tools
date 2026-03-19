@@ -12,12 +12,12 @@
 #
 # 【使い方】
 #   bash scripts/repo-settings.sh <owner/repo>
-#   例: bash scripts/repo-settings.sh tamashimon-create/force-tama
+#   例: bash scripts/repo-settings.sh tama-create/force-tama
 # ==============================================================================
 
 set -euo pipefail
 
-REPO="${1:-tamashimon-create/force-tama}"
+REPO="${1:-tama-create/force-tama}"
 
 echo "=================================================="
 echo " リポジトリ設定の適用: ${REPO}"

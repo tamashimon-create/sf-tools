@@ -75,7 +75,7 @@ phase_check() {
         die "main ブランチへの直接プッシュは禁止されています。PR を作成してください。"
     fi
 
-    # リモート main に未取り込みコミットがあれば自動取り込み（rebase）
+    # リモート main に未取り込みコミットがあれば自動取り込み（merge）
     local missing_commits
     missing_commits=$(run git log "${current_branch}..origin/main" --oneline)
 
@@ -85,7 +85,7 @@ phase_check() {
         echo "--------------------------------------------------"
         echo "$missing_commits"
         echo "--------------------------------------------------"
-        run git pull origin main --rebase \
+        run git pull origin main \
             || die "main の自動取り込みに失敗しました。コンフリクトを解消してから再度プッシュしてください。"
         log "SUCCESS" "main ブランチの変更を自動的に取り込みました。"
     fi

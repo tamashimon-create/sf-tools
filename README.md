@@ -147,7 +147,7 @@ force-tama/
 └── sf-restart.sh                  # ⭐ sf-tools/sf-restart.sh へのショートカット（.gitignore 済み）
 ```
 
-> 📦 **サンプルリポジトリ**: [force-tama](https://github.com/tamashimon-create/force-tama) — 実際に sf-tools を導入した Salesforce プロジェクトの構成例です。
+> 📦 **サンプルリポジトリ**: [force-tama](https://github.com/tama-create/force-tama) — 実際に sf-tools を導入した Salesforce プロジェクトの構成例です。
 
 ---
 
