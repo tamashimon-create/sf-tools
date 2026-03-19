@@ -18,6 +18,9 @@
 #   SFDX_AUTH_URL_PROD : Salesforce 本番組織の認証 URL
 #                        取得方法: sf org display --verbose --json | grep sfdxAuthUrl
 #                        例: force://PlatformCLI::token@domain.salesforce.com
+#   PAT_TOKEN          : GitHub Personal Access Token（Fine-grained）
+#                        必要権限: contents: write（対象リポジトリ）
+#                        用途: ブランチ保護ルールをバイパスして main に直接 push するため
 #
 # 【前提条件】
 #   - 呼び出し元リポジトリのデフォルトブランチが main であること
@@ -32,6 +35,8 @@ on:
   workflow_call:
     secrets:
       SFDX_AUTH_URL_PROD:
+        required: true
+      PAT_TOKEN:
         required: true
 
 jobs:
@@ -50,11 +55,14 @@ jobs:
       # fetch-depth: 0 は必須。
       # SGD（Salesforce Git Delta）が「前回同期コミット」との差分を比較するために
       # リポジトリの全コミット履歴を必要とするため、浅いクローン（shallow clone）では動作しない。
+      # token: PAT_TOKEN を使用することで、後続の git push がブランチ保護ルールを
+      # バイパスできる（GITHUB_TOKEN では Admin 権限がないためルールに阻まれる）。
       - name: ソースコードを取得
         uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
 
       # --------------------------------------------------------------------------
       # Step 2: Node.js のセットアップ

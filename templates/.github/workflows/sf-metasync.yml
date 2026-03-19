@@ -6,6 +6,9 @@ on:
     - cron: "0 0-10 * * 1-5"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   call:
     uses: tama-create/sf-tools/.github/workflows/sf-metasync-reusable.yml@main
