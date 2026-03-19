@@ -179,7 +179,7 @@ cleanup() {
 
   git merge --abort 2>/dev/null || true
   git rebase --abort 2>/dev/null || true
-  git checkout "$MAIN_BRANCH" 2>/dev/null || true
+  git checkout -f "$MAIN_BRANCH" 2>/dev/null || true
   echo "  完了"
 }
 trap cleanup EXIT
@@ -251,16 +251,16 @@ test_scenario() {
 merge_to() {
   local feature="$1" target="$2"
   local tmp="_${target}_tmp"
-  git checkout -B "$tmp" "origin/$target"
+  git checkout -f -B "$tmp" "origin/$target"
   if ! git merge "$feature" --no-ff -X theirs -m "test(seq-check): merge $feature to $target"; then
     git merge --abort 2>/dev/null || true
-    git checkout "$MAIN_BRANCH"
+    git checkout -f "$MAIN_BRANCH"
     git branch -D "$tmp" 2>/dev/null || true
     echo "  [ERROR] $feature → $target のマージに失敗しました" >&2
     return 1
   fi
   git push --no-verify origin "$tmp:$target"
-  git checkout "$MAIN_BRANCH" && git branch -D "$tmp"
+  git checkout -f "$MAIN_BRANCH" && git branch -D "$tmp"
 }
 
 # ==============================================================================
@@ -301,7 +301,7 @@ for ((i=0; i<NUM_NON_MAIN; i++)); do
   done
   echo "FEATURES[$i] を作成（${desc} にマージ）..."
 
-  git checkout -b "${FEATURES[$i]}" "origin/$MAIN_BRANCH"
+  git checkout -f --no-track -b "${FEATURES[$i]}" "origin/$MAIN_BRANCH"
   git commit --allow-empty -m "test(seq-check): FEATURES[$i] $TS"
   git push --no-verify origin "${FEATURES[$i]}"
 
@@ -312,10 +312,10 @@ done
 
 # 未マージの Feature ブランチ
 echo "FEATURE_UNMERGED を作成（未マージ）..."
-git checkout -b "$FEATURE_UNMERGED" "origin/$MAIN_BRANCH"
+git checkout -f --no-track -b "$FEATURE_UNMERGED" "origin/$MAIN_BRANCH"
 git commit --allow-empty -m "test(seq-check): FEATURE_UNMERGED $TS"
 git push --no-verify origin "$FEATURE_UNMERGED"
-git checkout "$MAIN_BRANCH"
+git checkout -f "$MAIN_BRANCH"
 
 echo "セットアップ完了"
 
