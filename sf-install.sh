@@ -182,7 +182,7 @@ phase_npm_install() {
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
         log "INFO" "開発ツールのアップデートをバックグラウンドで開始します（sf-upgrade.sh）..."
-        bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" &
+        bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>&1 &
         touch "$UPDATE_STAMP_FILE"
         log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
     else

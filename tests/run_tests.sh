@@ -8,6 +8,9 @@
 # ==============================================================================
 
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$TESTS_DIR/../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/run_tests.log"
 TOTAL_PASSED=0
 TOTAL_FAILED=0
 
@@ -34,6 +37,12 @@ if [[ $# -gt 0 ]]; then
     TEST_FILES=("$@")
 fi
 
+# 画面とログファイルの両方に出力する関数
+tee_log() { tee -a "$LOG_FILE"; }
+
+# ログファイルを初期化
+echo "====== テスト開始: $(date '+%Y-%m-%d %H:%M:%S') ======" > "$LOG_FILE"
+
 echo ""
 echo "========================================"
 echo "  sf-tools テストスイート"
@@ -42,14 +51,14 @@ echo "========================================"
 for test_file in "${TEST_FILES[@]}"; do
     test_path="$TESTS_DIR/$test_file"
     if [[ ! -f "$test_path" ]]; then
-        echo -e "${CLR_FAIL}[SKIP] $test_file が見つかりません${CLR_RST}"
+        echo -e "${CLR_FAIL}[SKIP] $test_file が見つかりません${CLR_RST}" | tee_log
         continue
     fi
 
-    echo ""
+    echo "" | tee_log
     # サブシェルで実行してカウンターを独立させる
     output=$(bash "$test_path" 2>&1)
-    echo "$output"
+    echo "$output" | tee_log
 
     # PASS / FAIL 件数を集計（ANSI カラーコードが含まれるため ^ アンカーなし）
     passed=$(echo "$output" | grep -c '\[PASS\]' || true)
@@ -59,15 +68,43 @@ for test_file in "${TEST_FILES[@]}"; do
 done
 
 # 総合サマリー
-echo ""
-echo "========================================"
-echo "  総合結果"
-echo "========================================"
 TOTAL=$((TOTAL_PASSED + TOTAL_FAILED))
+# 白太文字 + 緑背景 / 白太文字 + 赤背景
+CLR_OK='\033[97;42;1m'
+CLR_NG='\033[97;41;1m'
+
+echo "" | tee_log
+W=60  # バナー内側の幅
+_banner_line() { local c="$1" msg="$2"; local pad=$(( (W - ${#msg}) / 2 )); printf "${c}    %${pad}s%s%$(( W - pad - ${#msg} ))s    ${CLR_RST}\n" "" "$msg" ""; }
+_banner_border() { local c="$1"; printf "${c}    "; printf '=%.0s' $(seq 1 $W); printf "    ${CLR_RST}\n"; }
+_banner_blank() { local c="$1"; printf "${c}    %${W}s    ${CLR_RST}\n" ""; }
+
 if [[ $TOTAL_FAILED -eq 0 ]]; then
-    echo -e "${CLR_PASS}すべてのテストが成功しました: ${TOTAL_PASSED}/${TOTAL} 件${CLR_RST}"
+    MSG=">>> ALL ${TOTAL} TESTS PASSED !! <<<"
+    {
+        echo ""
+        _banner_blank  "$CLR_OK"
+        _banner_border "$CLR_OK"
+        _banner_blank  "$CLR_OK"
+        _banner_line   "$CLR_OK" "$MSG"
+        _banner_blank  "$CLR_OK"
+        _banner_border "$CLR_OK"
+        _banner_blank  "$CLR_OK"
+        echo ""
+    } | tee_log
     exit 0
 else
-    echo -e "${CLR_FAIL}失敗: ${TOTAL_FAILED} 件 / 成功: ${TOTAL_PASSED} 件 / 合計: ${TOTAL} 件${CLR_RST}"
+    MSG=">>> FAILED: ${TOTAL_FAILED} / ${TOTAL} TESTS <<<"
+    {
+        echo ""
+        _banner_blank  "$CLR_NG"
+        _banner_border "$CLR_NG"
+        _banner_blank  "$CLR_NG"
+        _banner_line   "$CLR_NG" "$MSG"
+        _banner_blank  "$CLR_NG"
+        _banner_border "$CLR_NG"
+        _banner_blank  "$CLR_NG"
+        echo ""
+    } | tee_log
     exit 1
 fi

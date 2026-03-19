@@ -46,12 +46,13 @@ test_no_sf() {
     local td mb
     td=$(setup_force_dir)
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    # sf モックを作成しない
+    # sf モックを作成しない（PATH に sf が存在しない状態）
+    # システムの sf がヒットしないよう PATH をモックビンと基本コマンドのみに制限する
     create_mock_git "$mb"
     create_mock_npm "$mb"
     create_mock_code "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "sf なし → 正常終了（続行）"
