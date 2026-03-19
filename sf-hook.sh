@@ -56,35 +56,18 @@ phase_check_environment() {
     return $RET_OK
 }
 
-# 【INSTALL】ラッパースクリプトの生成と権限付与
+# 【INSTALL】フックスクリプトのコピーと権限付与
 phase_install_hook() {
-    log "INFO" "Git Hook を生成（強制上書き）中..."
+    log "INFO" "Git Hook をコピー（強制上書き）中..."
 
-    run mkdir -p "$(dirname "$HOOK_DEST")" || return $RET_NG
+    local hook_src="$HOME/sf-tools/hooks/pre-push"
 
-    # ラッパースクリプトを生成する。
-    # \$HOME はここでは展開せず、ラッパー実行時 (git push 時) に展開させる。
-    cat << EOF > "$HOOK_DEST"
-#!/bin/bash
-$SF_HOOK_MARKER
-
-HOOK_SCRIPT="\$HOME/sf-tools/hooks/pre-push"
-
-if [ -f "\$HOOK_SCRIPT" ]; then
-    bash "\$HOOK_SCRIPT" "\$@"
-    exit \$?
-else
-    echo "[WARNING] [PRE-PUSH] sf-tools のフックスクリプトが見つかりません: \$HOOK_SCRIPT" >&2
-    echo "検証をスキップして Push を継続します。" >&2
-    exit 0
-fi
-EOF
-
-    if [[ $? -ne 0 ]]; then
-        log "ERROR" "フックスクリプトの書き込みに失敗しました: $HOOK_DEST"
-        return $RET_NG
+    if [[ ! -f "$hook_src" ]]; then
+        die "コピー元のフックスクリプトが見つかりません: $hook_src"
     fi
 
+    run mkdir -p "$(dirname "$HOOK_DEST")" || return $RET_NG
+    run cp "$hook_src" "$HOOK_DEST" || return $RET_NG
     run chmod +x "$HOOK_DEST" || return $RET_NG
     return $RET_OK
 }
