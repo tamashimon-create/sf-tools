@@ -132,6 +132,12 @@ fi
         log "INFO" "ブランチ: ${BRANCH_NAME} / branch_name.txt を保存しました"
     fi
 
+    # ブランチ構成ファイルの初期配置（未存在時のみ）
+    run mkdir -p "sf-tools/config"
+    [ ! -f "sf-tools/config/branches.txt" ] \
+        && run cp "$HOME/sf-tools/templates/config/branches.txt" "sf-tools/config/branches.txt" \
+        && log "INFO" "branches.txt を初期配置しました"
+
     log "SUCCESS" "バックグラウンド処理が完了しました"
 ) &
 

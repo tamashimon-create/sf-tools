@@ -305,3 +305,56 @@ check_force_dir() {
     [[ "$(basename "$PWD")" =~ ^force- ]] && return $RET_OK
     return $RET_NG
 }
+
+# get_branch_list - branches.txt からブランチ一覧を取得して echo する
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   branches=$(get_branch_list)
+#
+# 【ファイル参照先】
+#   sf-tools/config/branches.txt（プロジェクト内）
+#
+# 【戻り値】
+#   RET_OK (0) : ブランチ一覧を echo して正常終了（main が含まれない場合も WARNING）
+#   RET_NG (1) : ファイルが存在しない場合
+# ------------------------------------------------------------------------------
+readonly BRANCH_LIST_FILE="sf-tools/config/branches.txt"
+
+get_branch_list() {
+    if [[ ! -f "$BRANCH_LIST_FILE" ]]; then
+        log "WARNING" "ブランチ構成ファイルが見つかりません: ${BRANCH_LIST_FILE}（デフォルト: main のみ）"
+        echo "main"
+        return $RET_OK
+    fi
+    local branches="" line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"                          # CR 除去（Windows 対応）
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue  # コメント行スキップ
+        [[ -z "${line//[[:space:]]/}" ]] && continue  # 空行スキップ
+        branches="${branches}${branches:+$'\n'}${line}"
+    done < "$BRANCH_LIST_FILE"
+    if [[ -z "$branches" ]]; then
+        log "WARNING" "${BRANCH_LIST_FILE} にブランチが定義されていません。デフォルト: main のみ"
+        echo "main"
+        return $RET_OK
+    fi
+    echo "$branches"
+    return $RET_OK
+}
+
+# is_protected_branch - 指定ブランチが branches.txt の保護対象かを返す
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   is_protected_branch "staging" && die "直接プッシュ禁止"
+#
+# 【戻り値】
+#   RET_OK (0) : 保護対象ブランチである
+#   RET_NG (1) : 保護対象外
+# ------------------------------------------------------------------------------
+is_protected_branch() {
+    local branch="$1"
+    local branches
+    branches=$(get_branch_list)
+    echo "$branches" | grep -qx "$branch" && return $RET_OK
+    return $RET_NG
+}

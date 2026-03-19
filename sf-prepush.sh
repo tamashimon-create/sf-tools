@@ -62,7 +62,9 @@ done
 phase_fetch() {
     local current_branch="$1"
     log "INFO" "リモート(origin)の最新情報を確認中..."
-    run git fetch origin "$current_branch" main -q || return $RET_NG
+    local branches
+    branches=$(get_branch_list)
+    run git fetch origin "$current_branch" $branches -q || return $RET_NG
     return $RET_OK
 }
 
@@ -125,11 +127,9 @@ phase_check_main() {
 CURRENT_BRANCH=$(run git symbolic-ref --short HEAD)
 
 # 保護ブランチへの直接プッシュを禁止
-case "$CURRENT_BRANCH" in
-    main|staging|develop)
-        die "${CURRENT_BRANCH} ブランチへの直接プッシュは禁止されています。PR を作成してください。"
-        ;;
-esac
+if is_protected_branch "$CURRENT_BRANCH"; then
+    die "${CURRENT_BRANCH} ブランチへの直接プッシュは禁止されています。PR を作成してください。"
+fi
 
 phase_fetch "$CURRENT_BRANCH" || die "リモート情報の取得に失敗しました。"
 

@@ -89,7 +89,7 @@ trap 'run git checkout "$ORIGINAL_BRANCH" 2>/dev/null; rm -rf "$DELTA_DIR" ./sf-
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 
-readonly METADATA_CONFIG="./sf-tools/config/metadata-list.txt"
+readonly METADATA_CONFIG="./sf-tools/config/metadata.txt"
 [[ ! -f "$METADATA_CONFIG" ]] && die "メタデータ設定ファイルが見つかりません: ${METADATA_CONFIG}"
 METADATA_TYPES=()
 while IFS= read -r line || [[ -n "$line" ]]; do
@@ -187,7 +187,9 @@ phase_git_sync() {
 
 # 【PROPAGATE】main の変更を下流ブランチへ直接伝播 (main → staging、main → develop)
 phase_propagate_downstream() {
-    for branch in staging develop; do
+    local downstream_branches
+    downstream_branches=$(get_branch_list | grep -v '^main$')
+    for branch in $downstream_branches; do
         # リモートにブランチが存在するか確認（出力は不要なため直接呼び出し）
         if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
             log "WARNING" "${branch} ブランチがリモートに存在しないためスキップします"
