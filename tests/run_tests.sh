@@ -69,9 +69,9 @@ done
 
 # 総合サマリー
 TOTAL=$((TOTAL_PASSED + TOTAL_FAILED))
-# 白太文字 + 緑背景 / 白太文字 + 赤背景
-CLR_OK='\033[97;42;1m'
-CLR_NG='\033[97;41;1m'
+# 緑太文字 / 赤太文字（背景なし）
+CLR_OK='\033[32;1m'
+CLR_NG='\033[31;1m'
 
 echo "" | tee_log
 W=60  # バナー内側の幅
