@@ -141,7 +141,7 @@ for branch in "${BRANCHES[@]}"; do
     fi
 
     run git checkout -B "$branch" || die "${branch} ブランチの作成に失敗しました。"
-    run git push -u origin "$branch" || die "${branch} ブランチのプッシュに失敗しました。"
+    run git push --no-verify -u origin "$branch" || die "${branch} ブランチのプッシュに失敗しました。"
     log "SUCCESS" "${branch} ブランチを作成しました。"
     CREATED=$((CREATED + 1))
 done
