@@ -181,7 +181,24 @@ gh secret set SFDX_AUTH_URL_DEV -R <ユーザー名>/force-xxx
 
 ---
 
-## 🛡️ Step 6: リポジトリの Ruleset を設定
+## 📤 Step 6: 初回コミット＆プッシュ
+
+Step 3〜4 で生成されたファイルをまとめてコミット:
+
+```bash
+# ⚠️ .env や認証情報が含まれていないことを確認
+git status
+
+git add -A
+git commit -m "chore: sf-tools 初期セットアップ"
+git push origin main
+```
+
+---
+
+## 🛡️ Step 7: リポジトリの Ruleset を設定
+
+> ⚠️ Ruleset は status checks を要求するため、必ず Step 6 のプッシュ後に設定すること。
 
 `repo-settings.sh` で自動設定する（推奨）。手動で設定する場合は下記を参照。
 
@@ -211,25 +228,6 @@ repo-settings.sh <ユーザー名>/force-xxx
 - ルール: protect-main と同様
 
 </details>
-
----
-
-## 📤 Step 7: 初回コミット＆プッシュ
-
-Step 3〜4 で生成されたファイルをまとめてコミット:
-
-```bash
-# ⚠️ .env や認証情報が含まれていないことを確認
-git status
-
-git add -A
-git commit -m "chore: sf-tools 初期セットアップ"
-
-# Ruleset 設定済みの場合、status checks 未通過で push が拒否されることがある
-# その場合は Step 6 の前にコミット＆プッシュを済ませるか、
-# GitHub の Ruleset を一時的に無効化（Disabled）して push する
-git push origin main
-```
 
 ---
 
