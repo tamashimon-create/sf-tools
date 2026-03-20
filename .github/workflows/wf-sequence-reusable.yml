@@ -4,7 +4,7 @@
 #
 # 【概要】
 #   PR のマージ順序（プロモーション順序）を自動検証する。
-#   呼び出し元リポジトリの .github/workflows/sf-sequence.yml から workflow_call で起動される。
+#   呼び出し元リポジトリの .github/workflows/wf-sequence.yml から workflow_call で起動される。
 #
 # 【プロモーション順序ルール】
 #   フィーチャーブランチは branches.txt に記載された順序でマージされることを推奨する。

@@ -4,7 +4,7 @@
 #
 # 【概要】
 #   PR 作成・更新時に sf-release.sh を「検証のみ（本番反映なし）」で実行する。
-#   呼び出し元リポジトリの .github/workflows/sf-validate.yml から workflow_call で起動される。
+#   呼び出し元リポジトリの .github/workflows/wf-validate.yml から workflow_call で起動される。
 #   検証結果は PR にコメントとして投稿され、失敗時はマージがブロックされる。
 #
 # 【処理フロー】

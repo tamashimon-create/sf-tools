@@ -4,7 +4,7 @@
 #
 # 【概要】
 #   Salesforce 本番組織の最新メタデータを取得し、Git の main ブランチへ自動同期する。
-#   呼び出し元リポジトリの .github/workflows/sf-metasync.yml から workflow_call で起動される。
+#   呼び出し元リポジトリの .github/workflows/wf-metasync.yml から workflow_call で起動される。
 #
 # 【処理フロー】
 #   1. リポジトリの main ブランチを全履歴付きでチェックアウト

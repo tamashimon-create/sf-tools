@@ -4,7 +4,7 @@
 #
 # 【概要】
 #   main への PR マージ後、staging と develop ブランチへ変更を直接伝播する。
-#   呼び出し元リポジトリの .github/workflows/sf-propagate.yml から workflow_call で起動される。
+#   呼び出し元リポジトリの .github/workflows/wf-propagate.yml から workflow_call で起動される。
 #
 # 【処理フロー】
 #   1. 全履歴付きでリポジトリをチェックアウト
