@@ -1,15 +1,15 @@
-# Salesforce マージ順序チェック
-name: Salesforce マージ順序チェック
+# Salesforce デプロイ前検証（PR 自動チェック）
+name: Salesforce デプロイ前検証（PR 自動チェック）
 
 on:
   pull_request:
-    branches:
-      - main
-      - staging
+    types: [opened, synchronize, reopened]
 
 jobs:
   call:
-    uses: tama-create/sf-tools/.github/workflows/sf-sequence-reusable.yml@main
+    permissions:
+      pull-requests: write
+    uses: tama-create/sf-tools/.github/workflows/wf-validate-reusable.yml@main
     with:
       base_ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
       head_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}

@@ -4,7 +4,7 @@
 #
 # 【概要】
 #   PR マージをトリガーに、マージ先ブランチに対応する Salesforce 組織へリリースを実行する。
-#   呼び出し元リポジトリの .github/workflows/sf-release.yml から workflow_call で起動される。
+#   呼び出し元リポジトリの .github/workflows/wf-release.yml から workflow_call で起動される。
 #
 # 【ブランチと組織の対応】
 #   main     → 本番組織（SFDX_AUTH_URL_PROD / エイリアス: prod）
