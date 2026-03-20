@@ -9,7 +9,7 @@
 # ※ Salesforce 組織の変更を正とする。main のローカル未コミット変更がある場合は中止。
 #   1. main ブランチへ自動切替（他ブランチから実行した場合は stash して切替）
 #   2. Git の最新状態をプル (Rebase)
-#   3. SGD (Salesforce Git Diff) による差分抽出
+#   3. SGD (Salesforce Git Delta) による差分抽出
 #   4. 組織からのメタデータ取得 (Retrieve)
 #   5. 変更がある場合のみ Git Commit & Push
 #
