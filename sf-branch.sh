@@ -105,17 +105,16 @@ esac
 log "INFO" "branches.txt を更新します..."
 run mkdir -p "sf-tools/config"
 
-# コメントヘッダー（# で始まる行・空行）を保持し、ブランチ行だけ差し替える
+# コメントヘッダーを保持し、ブランチ行だけ差し替える
 {
-    # 既存ファイルのコメント部分を残す
+    # 既存ファイルのコメント行（# で始まる行）を残す
     if [[ -f "$BRANCH_LIST_FILE" ]]; then
         while IFS= read -r line || [[ -n "$line" ]]; do
             line="${line%$'\r'}"
-            if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "${line//[[:space:]]/}" ]]; then
-                echo "$line"
-            fi
+            [[ "$line" =~ ^[[:space:]]*# ]] && echo "$line"
         done < "$BRANCH_LIST_FILE"
     fi
+    # コメント末尾から1行空けてブランチ名を記載
     echo ""
     for b in "${BRANCHES[@]}"; do
         echo "$b"
