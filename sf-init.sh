@@ -48,6 +48,8 @@ if [[ ! -f "$COMMON_LIB" ]]; then
 fi
 source "$COMMON_LIB"
 
+trap '' INT  # Ctrl+C を無効化（子プロセスにも継承される）
+
 # ------------------------------------------------------------------------------
 # 3. 変数定義
 # ------------------------------------------------------------------------------
@@ -422,6 +424,7 @@ phase_setup_rulesets() {
 # 6. メイン実行フロー
 # ------------------------------------------------------------------------------
 log "HEADER" "新規 Salesforce プロジェクトの初期セットアップを開始します (${SCRIPT_NAME}.sh)"
+log "INFO" "セットアップ中は Ctrl+C が無効です。中断するにはターミナルを閉じてください。"
 
 phase_check_environment      || die "環境チェックに失敗しました。"
 log "SUCCESS" "環境チェック完了。"
@@ -451,8 +454,13 @@ run bash "$SCRIPT_DIR/sf-hook.sh" \
 phase_setup_rulesets     || log "WARNING" "Ruleset の設定に失敗しました（無料プランでは利用不可の場合があります。スキップして続行します）。"
 
 echo "-------------------------------------------------------"
-log "INFO" "次のステップ: cd \"${REPO_DIR}\" で作業ディレクトリへ移動してください。"
-log "INFO" "以降の開発は sf-start.sh で VS Code を起動して開始してください。"
+# セットアップ用クローンを削除（開発時は別途クローンし直すため）
+cd "$(dirname "$REPO_DIR")" || true
+if [[ -d "$REPO_DIR/.git" ]]; then
+    log "INFO" "セットアップ用クローンを削除します: ${REPO_DIR}"
+    rm -rf "$REPO_DIR"
+fi
+
 log "HEADER" "セットアップが完了しました"
 
 exit $RET_OK
