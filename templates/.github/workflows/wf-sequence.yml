@@ -36,8 +36,35 @@ on:
       - staging
 
 jobs:
+  check-branch:
+    name: デプロイ対象ブランチを確認
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: デプロイ対象ファイルを確認
+        run: |
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          DEPLOY="release/${HEAD}/deploy-target.txt"
+          REMOVE="release/${HEAD}/remove-target.txt"
+          has_content() {
+            [[ -f "$1" ]] && grep -qvE '^\s*(#|$)' "$1"
+          }
+          if ! has_content "$DEPLOY" && ! has_content "$REMOVE"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "デプロイ対象なし（${DEPLOY} / ${REMOVE} に内容なし）のためスキップします。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   check-promotion-order:
     name: マージ順序を検証（プロモーション順序チェック）
+    needs: check-branch
+    if: needs.check-branch.outputs.skip != 'true'
     runs-on: ubuntu-latest
 
     steps:

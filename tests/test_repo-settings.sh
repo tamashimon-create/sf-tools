@@ -19,9 +19,11 @@ _extract_contexts() {
 }
 
 # ワークフロー yml から job name を抽出する内部関数（4スペースインデントの name: 行）
+# "デプロイ対象ブランチを確認" は内部チェックジョブのため除外する
 _extract_job_names() {
     grep -h '^    name:' "$WORKFLOWS_DIR"/*.yml \
         | sed 's/^    name: //' \
+        | grep -v "デプロイ対象ブランチを確認" \
         | sort -u
 }
 
@@ -49,7 +51,8 @@ test_contexts_exist_in_workflow_job_names() {
 # ------------------------------------------------------------------------------
 test_wf_validate_job_registered_in_contexts() {
     local job_name
-    job_name=$(grep '^    name:' "$WORKFLOWS_DIR/wf-validate.yml" | head -1 | sed 's/^    name: //')
+    job_name=$(grep '^    name:' "$WORKFLOWS_DIR/wf-validate.yml" \
+        | grep -v "デプロイ対象ブランチを確認" | head -1 | sed 's/^    name: //')
 
     if grep -qF "\"${job_name}\"" "$REPO_SETTINGS"; then
         pass "wf-validate.yml の job name が repo-settings.sh の context に登録されている"
@@ -64,7 +67,8 @@ test_wf_validate_job_registered_in_contexts() {
 # ------------------------------------------------------------------------------
 test_wf_sequence_job_registered_in_contexts() {
     local job_name
-    job_name=$(grep '^    name:' "$WORKFLOWS_DIR/wf-sequence.yml" | head -1 | sed 's/^    name: //')
+    job_name=$(grep '^    name:' "$WORKFLOWS_DIR/wf-sequence.yml" \
+        | grep -v "デプロイ対象ブランチを確認" | head -1 | sed 's/^    name: //')
 
     if grep -qF "\"${job_name}\"" "$REPO_SETTINGS"; then
         pass "wf-sequence.yml の job name が repo-settings.sh の context に登録されている"
