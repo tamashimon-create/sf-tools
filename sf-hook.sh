@@ -59,7 +59,7 @@ phase_check_environment() {
 # 【FIX】hooksPath が .husky 系に設定されていれば削除
 phase_fix_hooks_path() {
     local hooks_path
-    hooks_path=$(git config --local core.hooksPath 2>/dev/null)
+    hooks_path=$(run git config --local core.hooksPath 2>/dev/null || true)
     if [[ "$hooks_path" == *husky* ]]; then
         log "WARNING" "core.hooksPath が '$hooks_path' に設定されています。削除します..."
         run git config --local --unset core.hooksPath \

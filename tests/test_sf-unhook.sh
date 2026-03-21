@@ -21,6 +21,22 @@ test_no_hook() {
     teardown "$td" "$mb"
 }
 
+# sf-hook.sh でインストールしたフック → 削除される
+test_hook_installed_by_sf_hook() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" >/dev/null 2>&1
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    local ec=$?
+
+    assert_exit_ok $ec "sf-hook.sh で入れたフック → 正常終了"
+    assert_file_not_exists "$td/.git/hooks/pre-push" "sf-hook.sh で入れたフックが削除された"
+    teardown "$td" "$mb" "$mh"
+}
+
 # sf-tools が管理するフック → 削除される
 test_sf_tools_hook() {
     local td mb
@@ -70,6 +86,7 @@ test_outside_force_dir() {
 }
 
 test_no_hook
+test_hook_installed_by_sf_hook
 test_sf_tools_hook
 test_external_hook
 test_outside_force_dir
