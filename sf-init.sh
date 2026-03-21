@@ -99,7 +99,7 @@ register_sf_secret() {
         if [[ -n "$is_sandbox_override" ]]; then
             is_sandbox_input="$is_sandbox_override"
         else
-            read -rp "  Sandbox ですか？ [Y/n]: " is_sandbox_input
+            ask_yn "Sandbox ですか？" && is_sandbox_input="Y" || is_sandbox_input="N"
         fi
         if [[ ! "$is_sandbox_input" =~ ^[Nn] ]]; then
             login_opts="$login_opts --instance-url https://test.salesforce.com"
@@ -131,6 +131,14 @@ register_sf_secret() {
 
 # 【CHECK】必要なツールと GitHub CLI 認証の確認
 phase_check_environment() {
+    # force-* ディレクトリ内からの実行を禁止
+    local current_dir
+    current_dir=$(basename "$PWD")
+    if [[ "$current_dir" == force-* ]]; then
+        die "force-* ディレクトリ内から実行しています。
+親ディレクトリから実行してください。"
+    fi
+
     log "INFO" "必要なツールを確認中..."
 
     local missing=0
@@ -181,8 +189,7 @@ phase_ask_project_info() {
     echo "  クローン先 : ${REPO_DIR}"
     echo "  --------------------------------------------------"
     echo ""
-    read -rp "  ▶ よろしいですか？ [Y/n]: " confirm
-    [[ "$confirm" =~ ^[Nn] ]] && die "セットアップを中断しました。"
+    ask_yn "▶ よろしいですか？" || die "セットアップを中断しました。"
 
     return $RET_OK
 }
@@ -297,19 +304,18 @@ phase_setup_pat_token() {
     echo ""
     echo "  ワークフローがブランチ保護をバイパスして push するために必要です。"
     echo ""
-    echo "  ブラウザで Fine-grained tokens のページを開きます。"
+    echo "  ブラウザで Personal access tokens (classic) のページを開きます。"
     echo "  【手順】"
-    echo "    1. 「Generate new token」をクリック"
+    echo "    1. 「Generate new token」→「Generate new token (classic)」をクリック"
     echo "    2. 以下の設定でトークンを作成してください:"
     echo ""
-    echo "       Token name        : sf-metasync"
-    echo "       Expiration        : No expiration"
-    echo "       Repository access : Only select repositories → ${REPO_FULL_NAME}"
-    echo "       Permissions       : Contents → Read and write"
+    echo "       Note       : sf-metasync"
+    echo "       Expiration : No expiration"
+    echo "       Scopes     : ✅ repo（全選択）  ✅ workflow"
     echo ""
     echo "    3. 「Generate token」をクリックしてトークンをコピー"
     echo ""
-    open_browser "https://github.com/settings/tokens?type=beta"
+    open_browser "https://github.com/settings/tokens"
     press_enter "トークンをコピーしたら Enter を押してください..."
 
     local pat_token=""
@@ -394,7 +400,7 @@ phase_initial_commit() {
 
     run git commit -m "chore: sf-tools 初期セットアップ" \
         || die "git commit に失敗しました。"
-    run git push origin main \
+    run git push --no-verify origin main \
         || die "git push に失敗しました。"
 
     log "SUCCESS" "初回コミット＆プッシュ完了。"

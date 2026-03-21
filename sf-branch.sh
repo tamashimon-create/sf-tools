@@ -65,12 +65,8 @@ if [[ -f "$BRANCH_LIST_FILE" ]]; then
         OLD_BRANCHES=($ACTIVE_LINES)
         log "INFO" "現在の構成: $(echo "$ACTIVE_LINES" | tr '\n' ' ')"
         echo "" >&2
-        echo -ne "  ブランチ構成は設定済みです。変更しますか？ [Y/N]: " >&2
-        read -r confirm
-        case "$confirm" in
-            [Yy]|[Yy][Ee][Ss]) ;;
-            *) log "INFO" "変更せずに終了します。"; exit $RET_OK ;;
-        esac
+        ask_yn "ブランチ構成は設定済みです。変更しますか？" \
+            || { log "INFO" "変更せずに終了します。"; exit $RET_OK; }
     fi
 fi
 

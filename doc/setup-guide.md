@@ -2,6 +2,8 @@
 
 新しい Salesforce プロジェクト（force-xxx）を GitHub に作成し、sf-tools と連携させるまでの手順。
 
+> **📝 注意:** 本ガイドの例示（`yamada-corp`、`force-yamada`、`/c/home/dev` など）は説明用のサンプルです。実際の環境に合わせて読み替えてください。
+
 ---
 
 ## 📋 前提条件
@@ -68,12 +70,12 @@ source ~/.bashrc
 
 実行中に以下を順番に入力・操作する:
 
-1. **GitHub ユーザー名または組織名**（例: `tamashimon`）
-2. **プロジェクト名**（`force-` の後の部分、例: `admin` → `force-admin`）
-3. **クローン先ディレクトリ**（デフォルト: カレントディレクトリ）
+1. **GitHub ユーザー名または組織名**（例: `yamada-corp`）
+2. **プロジェクト名**（`force-` の後の部分、例: `yamada` → `force-yamada`）
+3. **クローン先ディレクトリ**（例: `/c/home/dev`）
 4. **ブランチ構成の選択**（3 / 2 / 1 階層）
 5. **各 Salesforce 組織へのブラウザログイン**（本番・ステージング・開発）
-6. **GitHub Fine-grained PAT の発行**（ブラウザで操作・トークンを貼り付け）
+6. **GitHub Classic PAT の発行**（ブラウザで操作・トークンを貼り付け）
 7. **Slack Bot Token の取得**（ブラウザで操作・トークンを貼り付け）
 8. **Slack チャンネル ID の入力**（`C` で始まる文字列）
 
@@ -91,7 +93,7 @@ GitHub → Actions → 「Salesforce メタデータ自動同期」→ 「Run wo
 テスト用のブランチを作成して PR を出す:
 
 ```bash
-cd <クローン先>/force-xxx
+cd /c/home/dev/force-yamada
 git checkout -b feature/test-setup
 git commit --allow-empty -m "test: ワークフロー動作確認"
 git push -u origin feature/test-setup
