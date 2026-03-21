@@ -19,8 +19,13 @@ sf-tools/
 ├── hooks/
 │   └── pre-push           # git push 時に sf-prepush.sh を呼び出す実体フック（main 同期チェック）
 ├── templates/
-│   ├── deploy-template.txt  # deploy-target.txt の雛形
-│   └── remove-template.txt  # remove-target.txt の雛形
+│   ├── config/
+│   │   ├── branches.txt       # ブランチ構成の雛形
+│   │   └── metadata.txt       # メタデータ取得対象の雛形
+│   ├── release/
+│   │   ├── deploy-target.txt  # deploy-target.txt の雛形
+│   │   └── remove-target.txt  # remove-target.txt の雛形
+│   └── .github/workflows/     # ワークフローテンプレート
 ├── sf-init.sh             # 新規プロジェクトの初期セットアップ（リポジトリ作成〜Ruleset 設定まで一括）
 ├── sf-start.sh            # メインスクリプト（接続→VS Code 起動→バックグラウンドで環境構築）
 ├── sf-install.sh          # sf-tools 最新化・ラッパー生成・マージドライバー登録（sf-start.sh から自動呼び出し）
