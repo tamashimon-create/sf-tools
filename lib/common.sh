@@ -39,8 +39,11 @@ if [[ -z "${LOG_FILE:-}" ]]; then
 fi
 
 # force-* ディレクトリ内でのみ実行を許可（mkdir-p より前に実行）
-[[ "$(basename "$PWD")" =~ ^force- ]] \
-    || { echo "[ERROR] このスクリプトは 'force-*' ディレクトリ内で実行してください。" >&2; exit 1; }
+# SF_INIT_MODE=1 の場合は sf-init.sh による初期化実行のためチェックをスキップする
+if [[ "${SF_INIT_MODE:-0}" != "1" ]]; then
+    [[ "$(basename "$PWD")" =~ ^force- ]] \
+        || { echo "[ERROR] このスクリプトは 'force-*' ディレクトリ内で実行してください。" >&2; exit 1; }
+fi
 
 mkdir -p "$(dirname "$LOG_FILE")"
 [[ "${LOG_MODE:-}" == "NEW" ]] && : > "$LOG_FILE"
@@ -188,7 +191,10 @@ log() {
 # ------------------------------------------------------------------------------
 run() {
     local cmd=("$@")
-    local tmp_out="./sf-tools/cmd_out_$$_${RANDOM}.tmp"
+    # ./sf-tools/ が存在しない環境（sf-init.sh など）では ${TMPDIR:-/tmp} にフォールバック
+    local _run_tmpdir
+    [[ -d "./sf-tools" ]] && _run_tmpdir="./sf-tools" || _run_tmpdir="${TMPDIR:-/tmp}"
+    local tmp_out="${_run_tmpdir}/cmd_out_$$_${RANDOM}.tmp"
     local status
 
     log "CMD" "[${SCRIPT_NAME}.sh] ${cmd[*]}"
