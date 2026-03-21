@@ -7,14 +7,13 @@
 #
 # 【処理フロー】
 #   Phase 1: 環境チェック（ツール確認・GitHub CLI 認証確認）
-#   Phase 2: プロジェクト情報の入力（owner・プロジェクト名・クローン先）
+#   Phase 2: プロジェクト情報の入力（owner・プロジェクト名・開発組織エイリアス）
 #   Phase 3: リポジトリ作成（gh repo create + git clone）
-#   Phase 4: Salesforce 初期接続（sf org login web）
-#   Phase 5: ファイル生成（sf-install.sh / sf-hook.sh）
-#   Phase 6: ブランチ構成（sf-branch.sh）
-#   Phase 7: GitHub Secrets の設定（Salesforce 認証 URL / PAT_TOKEN / Slack）
-#   Phase 8: 初回コミット＆プッシュ
-#   Phase 9: Ruleset の設定（repo-settings.sh）
+#   Phase 4: ファイル生成（sf-install.sh / sf-hook.sh）
+#   Phase 5: ブランチ構成（sf-branch.sh）
+#   Phase 6: GitHub Secrets の設定（Salesforce 認証 URL / PAT_TOKEN / Slack）
+#   Phase 7: 初回コミット＆プッシュ
+#   Phase 8: Ruleset の設定（repo-settings.sh）
 #
 # 【手動操作が必要なステップ】
 #   - Salesforce 組織へのブラウザログイン
@@ -83,18 +82,28 @@ press_enter() {
 }
 
 # Salesforce 認証 URL を取得して GitHub Secret に登録する
-# 引数: alias、secret name、org type label
+# 引数: alias、secret name、org type label、[is_sandbox_override: Y/n（省略時は対話で確認）]
 register_sf_secret() {
     local org_alias="$1"
     local secret_name="$2"
     local label="$3"
+    local is_sandbox_override="${4:-}"   # 省略時は対話で確認
 
     log "INFO" "${label}（${org_alias}）に接続します。ブラウザが開くのでログインしてください。"
     press_enter
 
     local login_opts="--alias $org_alias"
+    # prod 以外は Sandbox か Developer Edition かを確認してログイン URL を切り替える
     if [[ "$org_alias" != "prod" ]]; then
-        login_opts="$login_opts --instance-url https://test.salesforce.com"
+        local is_sandbox_input
+        if [[ -n "$is_sandbox_override" ]]; then
+            is_sandbox_input="$is_sandbox_override"
+        else
+            read -rp "  Sandbox ですか？ [Y/n]: " is_sandbox_input
+        fi
+        if [[ ! "$is_sandbox_input" =~ ^[Nn] ]]; then
+            login_opts="$login_opts --instance-url https://test.salesforce.com"
+        fi
     fi
 
     # shellcheck disable=SC2086
@@ -147,11 +156,12 @@ phase_check_environment() {
     return $RET_OK
 }
 
-# 【INPUT】プロジェクト情報の入力
+# 【INPUT】プロジェクト情報の入力（全テキスト入力をまとめて収集・確認）
 phase_ask_project_info() {
     log "INFO" "プロジェクト情報を入力してください。"
     echo ""
 
+    # --- GitHub / リポジトリ情報 ---
     while [[ -z "$GITHUB_OWNER" ]]; do
         read -rp "  GitHub ユーザー名または組織名: " GITHUB_OWNER
     done
@@ -160,18 +170,17 @@ phase_ask_project_info() {
         read -rp "  プロジェクト名（force- の後の部分、例: admin）: " PROJECT_NAME
     done
 
-    local clone_base
-    read -rp "  クローン先ディレクトリ（デフォルト: $(pwd)）: " clone_base
-    clone_base="${clone_base:-$(pwd)}"
-
     REPO_NAME="force-${PROJECT_NAME}"
     REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
-    REPO_DIR="${clone_base}/${REPO_NAME}"
+    REPO_DIR="$(pwd)/${REPO_NAME}"
 
+    # --- 確認表示 ---
     echo ""
-    log "INFO" "  リポジトリ: ${REPO_FULL_NAME}"
-    log "INFO" "  クローン先: ${REPO_DIR}"
-
+    echo "  --------------------------------------------------"
+    echo "  リポジトリ : ${REPO_FULL_NAME}"
+    echo "  クローン先 : ${REPO_DIR}"
+    echo "  --------------------------------------------------"
+    echo ""
     read -rp "  ▶ よろしいですか？ [Y/n]: " confirm
     [[ "$confirm" =~ ^[Nn] ]] && die "セットアップを中断しました。"
 
@@ -180,51 +189,45 @@ phase_ask_project_info() {
 
 # 【CREATE】GitHub リポジトリの作成とクローン
 phase_create_repository() {
-    log "INFO" "GitHub リポジトリを作成中..."
-
-    run gh repo create "$REPO_FULL_NAME" \
-        --template tama-create/force-template \
-        --private \
-        || die "リポジトリの作成に失敗しました。"
-
-    log "INFO" "リポジトリをクローン中..."
-    local clone_base
-    clone_base="$(dirname "$REPO_DIR")"
-    mkdir -p "$clone_base" || die "クローン先ディレクトリを作成できません: $clone_base"
-
-    run git clone "https://github.com/${REPO_FULL_NAME}.git" "$REPO_DIR" \
-        || die "クローンに失敗しました。"
-
-    log "SUCCESS" "リポジトリを作成・クローンしました: ${REPO_DIR}"
-    return $RET_OK
-}
-
-# 【SF LOGIN】Salesforce 初期接続（開発組織）
-phase_initial_sf_login() {
-    log "INFO" "Salesforce 開発組織に接続します。"
-    echo ""
-    echo "  ブラウザが開くので、普段使用している開発用 Sandbox にログインしてください。"
-    echo "  ※ ログイン後、sf-tools の初期設定が続きます。"
-    echo ""
-
-    local dev_alias
-    read -rp "  開発組織のエイリアス名（例: develop）: " dev_alias
-    dev_alias="${dev_alias:-develop}"
-
-    local instance_url_opt=""
-    local is_sandbox
-    read -rp "  Sandbox ですか？ [Y/n]: " is_sandbox
-    if [[ ! "$is_sandbox" =~ ^[Nn] ]]; then
-        instance_url_opt="--instance-url https://test.salesforce.com"
+    # --- リポジトリ作成（冪等: すでに存在する場合はスキップ） ---
+    if run gh repo view "$REPO_FULL_NAME" --json name 2>/dev/null; then
+        log "WARNING" "リポジトリはすでに存在します。作成をスキップします: ${REPO_FULL_NAME}"
+    else
+        log "INFO" "GitHub リポジトリを作成中..."
+        run gh repo create "$REPO_FULL_NAME" \
+            --template tama-create/force-template \
+            --private
+        # gh repo create --template はテンプレートコピーで非ゼロを返す場合がある。
+        # 実際にリポジトリが存在するか確認して判定する。
+        if ! run gh repo view "$REPO_FULL_NAME" --json name 2>/dev/null; then
+            die "リポジトリの作成に失敗しました。
+考えられる原因:
+  - GitHub ユーザー名・組織名が誤っている（入力値: ${GITHUB_OWNER}）
+  - GitHub CLI の認証トークンの権限が不足している → gh auth status で確認
+詳細は ~/sf-tools/logs/sf-init.log を確認してください。"
+        fi
+        log "SUCCESS" "リポジトリを作成しました: ${REPO_FULL_NAME}"
     fi
 
-    # shellcheck disable=SC2086
-    cd "$REPO_DIR" && run sf org login web --alias "$dev_alias" $instance_url_opt \
-        || die "Salesforce へのログインに失敗しました。"
+    # --- クローン（冪等: すでに存在する場合はスキップ） ---
+    if [[ -d "$REPO_DIR/.git" ]]; then
+        log "WARNING" "クローン先ディレクトリが既に存在します。クローンをスキップします: ${REPO_DIR}"
+    elif [[ -d "$REPO_DIR" ]]; then
+        die "クローン先ディレクトリが既に存在しますが Git リポジトリではありません: ${REPO_DIR}
+手動で削除してから再実行してください。"
+    else
+        log "INFO" "リポジトリをクローン中..."
+        local clone_base
+        clone_base="$(dirname "$REPO_DIR")"
+        mkdir -p "$clone_base" || die "クローン先ディレクトリを作成できません: $clone_base"
+        run git clone "https://github.com/${REPO_FULL_NAME}.git" "$REPO_DIR" \
+            || die "クローンに失敗しました。"
+        log "SUCCESS" "リポジトリをクローンしました: ${REPO_DIR}"
+    fi
 
-    log "SUCCESS" "Salesforce 開発組織への接続完了（エイリアス: ${dev_alias}）。"
     return $RET_OK
 }
+
 
 # 【INSTALL】sf-install.sh でファイル生成・フック設定
 phase_generate_files() {
@@ -234,9 +237,6 @@ phase_generate_files() {
 
     run bash "$SCRIPT_DIR/sf-install.sh" \
         || die "sf-install.sh の実行に失敗しました。"
-
-    run bash "$SCRIPT_DIR/sf-hook.sh" \
-        || die "sf-hook.sh の実行に失敗しました。"
 
     log "SUCCESS" "設定ファイルの生成完了。"
     return $RET_OK
@@ -248,7 +248,9 @@ phase_setup_branches() {
 
     cd "$REPO_DIR" || die "ディレクトリに移動できません: $REPO_DIR"
 
-    run bash "$SCRIPT_DIR/sf-branch.sh" \
+    # sf-branch.sh はインタラクティブなメニューを持つため run ではなく直接実行する
+    log "CMD" "[${SCRIPT_NAME}] bash ${SCRIPT_DIR}/sf-branch.sh"
+    bash "$SCRIPT_DIR/sf-branch.sh" \
         || die "sf-branch.sh の実行に失敗しました。"
 
     # branches.txt からブランチ階層数を取得
@@ -262,24 +264,30 @@ phase_setup_branches() {
     return $RET_OK
 }
 
-# 【SECRETS-SF】Salesforce 認証 URL の取得と登録
-phase_setup_sf_secrets() {
-    log "HEADER" "GitHub Secrets（Salesforce 認証）を設定します。"
-
-    # 本番組織（必須）
+# 【SECRETS-SF-PROD】本番組織の Salesforce 認証 URL を登録（ブランチ階層に関わらず必須）
+phase_setup_prod_secret() {
+    log "HEADER" "GitHub Secrets（Salesforce 認証: 本番）を設定します。"
     register_sf_secret "prod" "SFDX_AUTH_URL_PROD" "本番組織"
+    log "SUCCESS" "本番組織の Secret 登録完了。"
+    return $RET_OK
+}
 
+# 【SECRETS-SF-SANDBOX】ステージング・開発組織の Salesforce 認証 URL を登録（階層に応じて）
+phase_setup_sandbox_secrets() {
     # ステージング組織（2階層以上）
     if [[ $BRANCH_COUNT -ge 2 ]]; then
+        log "HEADER" "GitHub Secrets（Salesforce 認証: ステージング）を設定します。"
         register_sf_secret "staging" "SFDX_AUTH_URL_STG" "ステージング組織"
+        log "SUCCESS" "ステージング組織の Secret 登録完了。"
     fi
 
     # 開発組織（3階層）
     if [[ $BRANCH_COUNT -ge 3 ]]; then
+        log "HEADER" "GitHub Secrets（Salesforce 認証: 開発）を設定します。"
         register_sf_secret "develop" "SFDX_AUTH_URL_DEV" "開発組織"
+        log "SUCCESS" "開発組織の Secret 登録完了。"
     fi
 
-    log "SUCCESS" "Salesforce Secrets の登録完了。"
     return $RET_OK
 }
 
@@ -290,18 +298,23 @@ phase_setup_pat_token() {
     echo "  ワークフローがブランチ保護をバイパスして push するために必要です。"
     echo ""
     echo "  ブラウザで Fine-grained tokens のページを開きます。"
-    echo "  以下の設定でトークンを生成してください:"
+    echo "  【手順】"
+    echo "    1. 「Generate new token」をクリック"
+    echo "    2. 以下の設定でトークンを作成してください:"
     echo ""
-    echo "    Token name      : sf-metasync（任意）"
-    echo "    Repository      : Only select repositories → ${REPO_FULL_NAME}"
-    echo "    Permissions     : Contents → Read and write"
+    echo "       Token name        : sf-metasync"
+    echo "       Expiration        : No expiration"
+    echo "       Repository access : Only select repositories → ${REPO_FULL_NAME}"
+    echo "       Permissions       : Contents → Read and write"
+    echo ""
+    echo "    3. 「Generate token」をクリックしてトークンをコピー"
     echo ""
     open_browser "https://github.com/settings/tokens?type=beta"
-    press_enter "トークンを生成したら Enter を押してください..."
+    press_enter "トークンをコピーしたら Enter を押してください..."
 
     local pat_token=""
     while [[ -z "$pat_token" ]]; do
-        read -rsp "  生成されたトークンを貼り付けてください（入力は非表示）: " pat_token
+        read -rp "  生成されたトークンを貼り付けてください: " pat_token
         echo ""
     done
 
@@ -319,18 +332,23 @@ phase_setup_slack() {
     echo "  ブラウザで Slack API ページを開きます。"
     echo "  以下の手順で Bot Token を取得してください:"
     echo ""
-    echo "    1. 「Create New App」→「From scratch」"
-    echo "    2. App 名とワークスペースを設定"
-    echo "    3. 左メニュー「OAuth & Permissions」→ Scopes → chat:write を追加"
-    echo "    4. 「Install to Workspace」→ 許可する"
-    echo "    5. 表示される「Bot User OAuth Token」（xoxb-...）をコピー"
+    echo "    1. 「Create New App」→「From scratch」をクリック"
+    echo "    2. 以下を設定して「Create App」をクリック:"
+    echo "       App Name  : sf-notify"
+    echo "       Workspace : 通知先のワークスペースを選択"
+    echo "    3. 左メニュー「OAuth & Permissions」をクリック"
+    echo "    4. 「ボットトークンのスコープ」→「OAuth スコープを追加する」をクリック"
+    echo "       chat:write と入力して追加"
+    echo "    5. 左メニュー「Install App」→「Install to <ワークスペース名>」をクリック"
+    echo "    6. 「許可する」をクリック"
+    echo "    7. 左メニュー「OAuth & Permissions」に戻り「Bot User OAuth Token」（xoxb-...）をコピー"
     echo ""
     open_browser "https://api.slack.com/apps"
     press_enter "Bot Token を取得したら Enter を押してください..."
 
     local slack_token=""
     while [[ -z "$slack_token" ]]; do
-        read -rsp "  Bot User OAuth Token を貼り付けてください（入力は非表示）: " slack_token
+        read -rp "  Bot User OAuth Token を貼り付けてください: " slack_token
         echo ""
     done
 
@@ -356,18 +374,24 @@ phase_setup_slack() {
     return $RET_OK
 }
 
-# 【COMMIT】初回コミット＆プッシュ
+# 【COMMIT】初回コミット＆プッシュ（変更がない場合はスキップ）
 phase_initial_commit() {
     log "INFO" "初回コミット＆プッシュを実行中..."
 
     cd "$REPO_DIR" || die "ディレクトリに移動できません: $REPO_DIR"
 
-    # コミット対象ファイルの確認
+    run git add -A \
+        || die "git add に失敗しました。"
+
+    # ステージングに差分がなければコミット不要
+    if git diff --cached --quiet 2>/dev/null; then
+        log "INFO" "コミットする変更がありません。スキップします。"
+        return $RET_OK
+    fi
+
     log "INFO" "変更ファイル:"
     run git status --short
 
-    run git add -A \
-        || die "git add に失敗しました。"
     run git commit -m "chore: sf-tools 初期セットアップ" \
         || die "git commit に失敗しました。"
     run git push origin main \
@@ -393,28 +417,32 @@ phase_setup_rulesets() {
 # ------------------------------------------------------------------------------
 log "HEADER" "新規 Salesforce プロジェクトの初期セットアップを開始します (${SCRIPT_NAME}.sh)"
 
-phase_check_environment  || die "環境チェックに失敗しました。"
+phase_check_environment      || die "環境チェックに失敗しました。"
 log "SUCCESS" "環境チェック完了。"
 
-phase_ask_project_info   || die "プロジェクト情報の入力に失敗しました。"
+phase_ask_project_info       || die "プロジェクト情報の入力に失敗しました。"
 
-phase_create_repository  || die "リポジトリの作成に失敗しました。"
+phase_create_repository      || die "リポジトリの作成に失敗しました。"
 
-phase_initial_sf_login   || die "Salesforce への接続に失敗しました。"
+phase_generate_files         || die "ファイル生成に失敗しました。"
 
-phase_generate_files     || die "ファイル生成に失敗しました。"
+phase_setup_prod_secret      || die "本番組織 Secret の設定に失敗しました。"
 
-phase_setup_branches     || die "ブランチ構成のセットアップに失敗しました。"
+phase_setup_branches         || die "ブランチ構成のセットアップに失敗しました。"
 
-phase_setup_sf_secrets   || die "Salesforce Secrets の設定に失敗しました。"
+phase_setup_sandbox_secrets  || die "Sandbox Secret の設定に失敗しました。"
 
-phase_setup_pat_token    || die "PAT_TOKEN の設定に失敗しました。"
+phase_setup_pat_token        || die "PAT_TOKEN の設定に失敗しました。"
 
 phase_setup_slack        || die "Slack 連携の設定に失敗しました。"
 
 phase_initial_commit     || die "初回コミットに失敗しました。"
 
-phase_setup_rulesets     || die "Ruleset の設定に失敗しました。"
+# 初回コミット後に pre-push フックをインストール（main への直接 push をブロックするため先に入れない）
+run bash "$SCRIPT_DIR/sf-hook.sh" \
+    || die "sf-hook.sh の実行に失敗しました。"
+
+phase_setup_rulesets     || log "WARNING" "Ruleset の設定に失敗しました（無料プランでは利用不可の場合があります。スキップして続行します）。"
 
 echo "-------------------------------------------------------"
 log "INFO" "次のステップ: cd \"${REPO_DIR}\" で作業ディレクトリへ移動してください。"

@@ -47,7 +47,7 @@ source "$COMMON_LIB"
 # ------------------------------------------------------------------------------
 log "HEADER" "sf-tools のセットアップを開始します (${SCRIPT_NAME}.sh)"
 
-trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -f ./sf-tools/cmd_out_'"$$"'_*.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 4. 定数定義
