@@ -21,6 +21,7 @@ sf-tools/
 ├── templates/
 │   ├── deploy-template.txt  # deploy-target.txt の雛形
 │   └── remove-template.txt  # remove-target.txt の雛形
+├── sf-init.sh             # 新規プロジェクトの初期セットアップ（リポジトリ作成〜Ruleset 設定まで一括）
 ├── sf-start.sh            # メインスクリプト（接続→VS Code 起動→バックグラウンドで環境構築）
 ├── sf-install.sh          # sf-tools 最新化・ラッパー生成・マージドライバー登録（sf-start.sh から自動呼び出し）
 ├── sf-release.sh          # デプロイ/検証スクリプト（manifest 自動生成→sf deploy）
