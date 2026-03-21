@@ -145,13 +145,8 @@ phase_generate_github_workflow() {
         filename=$(basename "$template")
         local dest="${workflow_dir}/${filename}"
 
-        if [[ -f "$dest" ]]; then
-            log "INFO" "${dest} は既に存在します。スキップします。"
-            continue
-        fi
-
         run cp "$template" "$dest" || return $RET_NG
-        log "INFO" "${dest} を生成しました。"
+        log "INFO" "${dest} を更新しました。"
         any_generated=1
     done
 
@@ -201,7 +196,7 @@ phase_upgrade_tools_bg() {
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
-phase_update           || die "sf-tools の最新化に失敗しました。"
+phase_update           || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
 log "SUCCESS" "sf-tools を最新化しました。"
 
 phase_generate_wrappers || die "ラッパースクリプトの確認に失敗しました。"

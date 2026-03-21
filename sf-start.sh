@@ -124,9 +124,9 @@ fi
         RELEASE_DIR="sf-tools/release/${BRANCH_NAME}"
         run mkdir -p "$RELEASE_DIR"
         [ ! -f "${RELEASE_DIR}/deploy-target.txt" ] \
-            && run cp "$HOME/sf-tools/templates/deploy-template.txt" "${RELEASE_DIR}/deploy-target.txt"
+            && run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${RELEASE_DIR}/deploy-target.txt"
         [ ! -f "${RELEASE_DIR}/remove-target.txt" ] \
-            && run cp "$HOME/sf-tools/templates/remove-template.txt"  "${RELEASE_DIR}/remove-target.txt"
+            && run cp "$HOME/sf-tools/templates/release/remove-target.txt"  "${RELEASE_DIR}/remove-target.txt"
         run mkdir -p "sf-tools/release"
         printf '%s\n' "$BRANCH_NAME" | run tee "sf-tools/release/branch_name.txt" > /dev/null
         log "INFO" "ブランチ: ${BRANCH_NAME} / branch_name.txt を保存しました"

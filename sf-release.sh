@@ -93,8 +93,8 @@ fi
 
 readonly RELEASE_BASE="sf-tools/release"
 readonly RELEASE_DIR="${RELEASE_BASE}/${BRANCH_NAME}"
-readonly TEMPLATE_DEPLOY="$HOME/sf-tools/templates/deploy-template.txt"
-readonly TEMPLATE_REMOVE="$HOME/sf-tools/templates/remove-template.txt"
+readonly TEMPLATE_DEPLOY="$HOME/sf-tools/templates/release/deploy-target.txt"
+readonly TEMPLATE_REMOVE="$HOME/sf-tools/templates/release/remove-target.txt"
 readonly DEPLOY_LIST="${RELEASE_DIR}/deploy-target.txt"
 readonly REMOVE_LIST="${RELEASE_DIR}/remove-target.txt"
 readonly DEPLOY_XML="${RELEASE_DIR}/package.xml"

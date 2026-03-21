@@ -48,12 +48,12 @@ jobs:
       # Step 1: 全履歴付きでリポジトリをチェックアウト
       # --------------------------------------------------------------------------
       # fetch-depth: 0 で全履歴を取得。
-      # git merge 後の push に使用する GITHUB_TOKEN も明示的に渡す。
+      # git merge 後の push に Ruleset bypass のため PAT_TOKEN を使用する。
       - name: ソースコードを取得
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       # --------------------------------------------------------------------------
       # Step 2: Git コミット用ユーザー情報の設定
