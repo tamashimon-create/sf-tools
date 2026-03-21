@@ -93,10 +93,21 @@ GitHub → Actions → 「Salesforce メタデータ自動同期」→ 「Run wo
 テスト用のブランチを作成して PR を出す:
 
 ```bash
-cd /c/home/dev/force-yamada
-git checkout -b feature/test-setup
+# GitHub 上に test-setup ブランチを作成（yamada-corp/force-yamada は実際の値に読み替える）
+gh api repos/yamada-corp/force-yamada/git/refs \
+  --method POST \
+  --field ref="refs/heads/test-setup" \
+  --field sha="$(gh api repos/yamada-corp/force-yamada/git/ref/heads/main --jq '.object.sha')"
+
+# クローン
+git clone -b test-setup https://github.com/yamada-corp/force-yamada.git /c/home/dev/yamada-corp/force-yamada
+
+# コミット＆プッシュ
+cd /c/home/dev/yamada-corp/force-yamada
 git commit --allow-empty -m "test: ワークフロー動作確認"
-git push -u origin feature/test-setup
+git push -u origin test-setup
+
+# PR 作成
 sf-next.sh
 ```
 
