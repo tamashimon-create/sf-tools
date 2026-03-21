@@ -165,6 +165,8 @@ npm / Salesforce CLI / Git をアップデートする。`sf-install.sh` から 
 
 ## コーディング規約
 
+- **すべてのテキストファイルは UTF-8 / LF で統一する（憲法）。CRLF は禁止。**
+  `.gitattributes` で `* text=auto eol=lf` を設定済み。
 - 全スクリプトは Bash。Windows/Mac/Linux 共通で動作すること
 - `jq` など追加ツールに依存しない。`awk` / `sed` / `grep` など Git Bash 標準コマンドのみ使用
 - コマンド実行には例外なく `run` ラッパーを使用（直接呼び出し禁止）
