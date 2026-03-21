@@ -125,6 +125,13 @@ case "$1" in
             exit 1
         fi
         exit "${MOCK_GIT_CHECKOUT_EXIT:-0}" ;;
+    status)         exit 0 ;;
+    clone)
+        _dest=""
+        for _a in "$@"; do _dest="$_a"; done
+        mkdir -p "$_dest/.git" "$_dest/sf-tools/config" \
+                 "$_dest/sf-tools/release" "$_dest/sf-tools/logs" "$_dest/logs"
+        exit "${MOCK_GIT_CLONE_EXIT:-0}" ;;
     add)            exit 0 ;;
     commit)         exit 0 ;;
     diff-index)
@@ -215,6 +222,35 @@ EOF
     chmod +x "$bin_dir/code"
 }
 
+# gh（GitHub CLI）モック（MOCK_GH_* 環境変数で挙動を制御）
+create_mock_gh() {
+    local bin_dir="$1"
+    cat > "$bin_dir/gh" << 'EOF'
+#!/bin/bash
+echo "gh $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+case "$1 $2" in
+    "auth status") exit "${MOCK_GH_AUTH_STATUS_EXIT:-0}" ;;
+    "auth login")  exit "${MOCK_GH_AUTH_LOGIN_EXIT:-0}" ;;
+    "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
+    "secret set")  exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
+    *) exit 0 ;;
+esac
+EOF
+    chmod +x "$bin_dir/gh"
+}
+
+# node モック
+create_mock_node() {
+    local bin_dir="$1"
+    cat > "$bin_dir/node" << 'EOF'
+#!/bin/bash
+echo "node $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+echo "v20.0.0"
+exit 0
+EOF
+    chmod +x "$bin_dir/node"
+}
+
 # 全モックを一括生成
 create_all_mocks() {
     local bin_dir="$1"
@@ -222,6 +258,8 @@ create_all_mocks() {
     create_mock_sf "$bin_dir"
     create_mock_npm "$bin_dir"
     create_mock_code "$bin_dir"
+    create_mock_gh "$bin_dir"
+    create_mock_node "$bin_dir"
 }
 
 # ------------------------------------------------------------------------------

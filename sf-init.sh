@@ -37,6 +37,9 @@ readonly LOG_MODE="NEW"
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
+# sf-init.sh はプロジェクト外から実行するため、force-* チェックをバイパスする
+export SF_INIT_MODE=1
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
 
@@ -136,7 +139,7 @@ phase_check_environment() {
     [[ $missing -eq 1 ]] && die "必要なツールが不足しています。インストール後に再実行してください。"
 
     log "INFO" "GitHub CLI の認証状態を確認中..."
-    if ! gh auth status &>/dev/null; then
+    if ! run gh auth status; then
         log "WARNING" "GitHub CLI が未認証です。ログインします..."
         run gh auth login || die "GitHub 認証に失敗しました。"
     fi
@@ -361,7 +364,7 @@ phase_initial_commit() {
 
     # コミット対象ファイルの確認
     log "INFO" "変更ファイル:"
-    git status --short
+    run git status --short
 
     run git add -A \
         || die "git add に失敗しました。"
