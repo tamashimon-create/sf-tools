@@ -34,11 +34,11 @@ gh repo edit "${REPO}" \
   --enable-issues \
   --enable-projects \
   --enable-wiki \
-  --disable-discussions \
+  --enable-discussions=false \
   --enable-merge-commit \
   --enable-squash-merge \
   --enable-rebase-merge \
-  --no-delete-branch-on-merge
+  --delete-branch-on-merge=false
 
 echo "  ✓ 基本設定を適用しました"
 echo "    - デフォルトブランチ: main"
