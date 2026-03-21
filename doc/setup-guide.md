@@ -114,19 +114,20 @@ sf-next.sh
 `sf-next.sh` がブランチ構成に応じた PR 先を自動判定し、🌐 ブラウザで PR 作成画面を開く。
 
 PR が作成されると以下が自動実行される:
-- ✅ wf-validate（デプロイ検証）— すべての PR で実行
-- ✅ wf-sequence（マージ順序チェック）— main / staging への PR で実行
+- ✅ Salesforce デプロイ前検証（PR 自動チェック）— すべての PR で実行
+- ✅ Salesforce マージ順序チェック — main / staging への PR で実行
 
 ---
 
 ## 📋 ワークフロー一覧（自動生成済み）
 
-| ファイル | トリガー | 目的 |
+| ファイル | ワークフロー名 | トリガー |
 | :--- | :--- | :--- |
-| `wf-validate.yml` | PR 作成・更新時 | dry-run 検証 → PR にコメント |
-| `wf-sequence.yml` | main/staging への PR 時 | マージ順序チェック |
-| `wf-release.yml` | PR マージ後 | 対応組織へリリース → Slack 通知 |
-| `wf-propagate.yml` | main への PR マージ後 | staging / develop へ伝播 |
+| `wf-validate.yml` | Salesforce デプロイ前検証（PR 自動チェック） | PR 作成・更新時 |
+| `wf-sequence.yml` | Salesforce マージ順序チェック | main / staging への PR 時 |
+| `wf-release.yml` | Salesforce 本番リリース（PR マージ後自動実行） | PR マージ後（main / staging / develop）|
+| `wf-propagate.yml` | ブランチへ変更を伝播（main マージ後自動実行） | main への PR マージ後 |
+| `wf-metasync.yml` | Salesforce メタデータ自動同期（定期実行） | 毎日定時（平日 0〜10 時）|
 | `wf-metasync.yml` | 平日毎時（JST 9:00〜19:00） | 本番メタデータを main へ同期 |
 
 ---
