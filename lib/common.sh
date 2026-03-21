@@ -364,3 +364,19 @@ is_protected_branch() {
     echo "$branches" | grep -qx "$branch" && return $RET_OK
     return $RET_NG
 }
+
+# Y または N を明示的に入力させる（Enter のみは無効）
+# 使い方: ask_yn "質問文" && echo "Yes" || echo "No"
+ask_yn() {
+    local prompt="$1"
+    local answer
+    while true; do
+        echo -ne "  ${prompt} [Y/N]: " >&2
+        read -r answer
+        case "$answer" in
+            [Yy]|[Yy][Ee][Ss]) return 0 ;;
+            [Nn]|[Nn][Oo])     return 1 ;;
+            *) echo -e "  Y または N を入力してください。" >&2 ;;
+        esac
+    done
+}

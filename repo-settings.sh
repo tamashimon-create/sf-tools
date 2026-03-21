@@ -92,8 +92,8 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "デプロイ検証", "integration_id": 15368 },
-          { "context": "マージ順序を検証", "integration_id": 15368 }
+          { "context": "Salesforce 検証（本番反映なし・確認のみ）", "integration_id": 15368 },
+          { "context": "マージ順序を検証（プロモーション順序チェック）", "integration_id": 15368 }
         ]
       }
     }
@@ -149,8 +149,8 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "デプロイ検証", "integration_id": 15368 },
-          { "context": "マージ順序を検証", "integration_id": 15368 }
+          { "context": "Salesforce 検証（本番反映なし・確認のみ）", "integration_id": 15368 },
+          { "context": "マージ順序を検証（プロモーション順序チェック）", "integration_id": 15368 }
         ]
       }
     }

@@ -41,6 +41,7 @@ jobs:
     # PR へのコメント投稿に必要
     permissions:
       pull-requests: write
+      contents: read
 
     steps:
       # --------------------------------------------------------------------------
