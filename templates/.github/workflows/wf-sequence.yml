@@ -1,4 +1,32 @@
-# Salesforce マージ順序チェック
+# ==============================================================================
+# wf-sequence.yml - Salesforce マージ順序チェック
+# ==============================================================================
+#
+# 【概要】
+#   PR のマージ順序（プロモーション順序）を自動検証する。
+#
+# 【プロモーション順序ルール】
+#   フィーチャーブランチは branches.txt に記載された順序でマージされることを推奨する。
+#   例: feature/* → develop → staging → main
+#   このワークフローはその順序が守られているかを確認し、未確認の場合に警告する。
+#   branches.txt に記載されたブランチのみがチェック対象となる。
+#
+# 【チェック内容】
+#   branches.txt を読み込み、マージ先ブランチより下位のブランチへの
+#   マージ済み状態を動的に確認する。
+#
+# 【動作】
+#   - マージ元が develop または staging の場合: エラーで PR をブロック
+#     （環境ブランチ間の直接 PR は設計上許可しない）
+#   - 順序が守られていない場合: 警告を出すが PR はブロックしない
+#     （意図的な緊急リリース等を妨げないため）
+#   - 順序 OK の場合: 通知のみで正常終了
+#
+# 【必要な GitHub Secrets】
+#   SLACK_BOT_TOKEN  : Slack API の Bot Token（順序未確認時の通知に使用）
+#   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
+#
+# ==============================================================================
 name: Salesforce マージ順序チェック
 
 on:
@@ -8,13 +36,133 @@ on:
       - staging
 
 jobs:
-  call:
-    uses: tama-create/sf-tools/.github/workflows/wf-sequence-reusable.yml@main
-    with:
-      base_ref: ${{ github.event.pull_request.base.ref || github.ref_name }}
-      head_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-      pr_title: ${{ github.event.pull_request.title || '' }}
-      pr_number: "${{ github.event.pull_request.number }}"
-      pr_url: ${{ github.event.pull_request.html_url || '' }}
-      pr_sha: ${{ github.event.pull_request.head.sha || '' }}
-    secrets: inherit
+  check-promotion-order:
+    name: マージ順序を検証（プロモーション順序チェック）
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------------------------------
+      # Step 1: 全履歴付きでリポジトリをチェックアウト
+      # --------------------------------------------------------------------------
+      # git merge-base --is-ancestor でブランチ間の祖先関係を確認するために
+      # 全コミット履歴が必要。fetch-depth: 0 を指定する。
+      - name: ソースコードを取得
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --------------------------------------------------------------------------
+      # Step 2: マージ順序の検証
+      # --------------------------------------------------------------------------
+      # 処理の流れ:
+      #   1. マージ元が develop / staging の場合は即エラー終了（直接 PR を禁止）
+      #   2. base_ref から確認すべき「前段ブランチ（PREV）」を決定する
+      #      - main へのPR    → PREV = staging
+      #      - staging へのPR → PREV = develop
+      #   3. git fetch で PREV の最新状態を取得
+      #   4. git merge-base --is-ancestor で head_ref が PREV にマージ済みかを確認
+      #      - 済み  → GITHUB_OUTPUT に out_of_order=false を出力
+      #      - 未済  → GITHUB_OUTPUT に out_of_order=true と詳細情報を出力
+      #
+      # ※ git merge-base --is-ancestor A B は「A が B の祖先である」場合に exit 0 を返す。
+      #   つまり「origin/FEATURE が origin/PREV にマージ済み」なら exit 0。
+      - name: マージ順序を検証
+        id: sequence_check
+        run: |
+          FEATURE="${{ github.event.pull_request.head.ref || github.ref_name }}"
+          BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
+
+          # branches.txt は常に main ブランチから読み込む
+          # ※ PR のマージコミット（head+base の合成）には branches.txt が
+          #   含まれない場合がある（staging/develop がこのファイルを持たないケース）
+          BRANCH_FILE=$(mktemp)
+          trap 'rm -f "$BRANCH_FILE"' EXIT
+          git fetch origin main -q
+          if ! git show origin/main:sf-tools/config/branches.txt > "$BRANCH_FILE" 2>/dev/null; then
+            echo "::notice::branches.txt が見つかりません。チェックをスキップします。"
+            exit 0
+          fi
+
+          # コメントと空行を除外してブランチ一覧を取得
+          BRANCHES=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')
+
+          # 環境ブランチ間の直接 PR はエラーでブロック
+          if echo "$BRANCHES" | grep -qx "$FEATURE"; then
+            echo "::error title=マージ元ブランチ不正::${FEATURE} からのPRは許可されていません。必ずフィーチャーブランチからPRを作成してください。"
+            exit 1
+          fi
+
+          # base_ref が branches.txt に含まれていない場合はスキップ
+          if ! echo "$BRANCHES" | grep -qx "$BASE"; then
+            echo "::notice::チェック対象外のブランチです: $BASE"
+            exit 0
+          fi
+
+          # base_ref より下位のブランチ（前段ブランチ）を取得
+          # branches.txt の順序: main, staging, develop（上位→下位）
+          # base_ref の行より後に記載されたブランチが前段ブランチとなる
+          PREV_LIST=""
+          FOUND=false
+          while IFS= read -r line; do
+            line=$(echo "$line" | tr -d '\r')
+            echo "$line" | grep -q '^[[:space:]]*#' && continue
+            [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
+            if [ "$FOUND" = true ]; then
+              PREV_LIST="${PREV_LIST:+$PREV_LIST }$line"
+            fi
+            [ "$line" = "$BASE" ] && FOUND=true
+          done < "$BRANCH_FILE"
+
+          # 前段ブランチがない場合（最下位ブランチ or main のみ構成）
+          if [ -z "$PREV_LIST" ]; then
+            echo "::notice title=チェック完了::${BASE} への PR に前段ブランチの確認は不要です"
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          MISSING=""
+          for PREV in $PREV_LIST; do
+            git fetch origin $PREV
+            if git merge-base --is-ancestor origin/$FEATURE origin/$PREV; then
+              echo "::notice title=プロモーション順序OK::✓ ${FEATURE} は ${PREV} にマージ済みです"
+            else
+              echo "::warning title=⚠ プロモーション順序未確認::${FEATURE} は ${PREV} にまだマージされていません。意図的な場合はそのまま進めてください。"
+              MISSING="${MISSING:+$MISSING, }${PREV}"
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "out_of_order=true"  >> "$GITHUB_OUTPUT"
+            echo "feature=${FEATURE}" >> "$GITHUB_OUTPUT"
+            echo "prev=${MISSING}"    >> "$GITHUB_OUTPUT"
+          fi
+
+      # --------------------------------------------------------------------------
+      # Step 3: 順序未確認時の Slack 通知
+      # --------------------------------------------------------------------------
+      # out_of_order=true の場合のみ実行。
+      # 警告は出すが PR はブロックしない（意図的な緊急リリースを妨げないため）。
+      # Slack 通知により、チームメンバーが状況を把握できるようにする。
+      - name: Slack に順序未確認を通知
+        if: steps.sequence_check.outputs.out_of_order == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          FEATURE="${{ steps.sequence_check.outputs.feature }}"
+          PREV="${{ steps.sequence_check.outputs.prev }}"
+          PR_TITLE="${{ github.event.pull_request.title || '' }}"
+          PR_NUMBER="${{ github.event.pull_request.number || '' }}"
+          PR_URL="${{ github.event.pull_request.html_url || '' }}"
+          BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
+          DATETIME=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M:%S JST')
+
+          MESSAGE=":warning: *マージ順序の確認が必要です*\n• ブランチ \`${FEATURE}\` は \`${PREV}\` にまだマージされていません\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n• 対象: \`${FEATURE}\` → \`${BASE}\`\n• 実行日時: ${DATETIME}\n• 意図的な場合はそのままマージを進めてください"
+          PAYLOAD="{\"channel\": \"${SLACK_CHANNEL_ID}\", \"text\": \"${MESSAGE}\"}"
+
+          curl -s -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
