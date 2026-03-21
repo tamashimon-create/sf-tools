@@ -30,6 +30,7 @@ TEST_FILES=(
     test_sf-metasync.sh
     test_sf-release.sh
     test_sf-deploy.sh
+    test_repo-settings.sh
 )
 
 # 引数指定があれば対象を絞る
