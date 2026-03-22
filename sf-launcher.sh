@@ -30,8 +30,8 @@ RESET='\033[0m'
 MENU_ITEMS_ALL=(
   "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
   "sf-restart  | 接続組織を切り替えて再起動"
-  "sf-release  | デプロイ検証 / 本番リリース"
-  "sf-deploy   | 本番リリース（sf-release -r -f のラッパー）"
+  "sf-release  | 現在接続中のSandboxへリリース検証"
+  "sf-deploy   | 現在接続中のSandboxへリリース"
   "sf-check    | deploy-target.txt の構文チェック"
   "sf-next     | 次の PR 先ブランチを確認"
   "sf-upgrade  | 開発ツール（npm / sf CLI / git）を更新"
