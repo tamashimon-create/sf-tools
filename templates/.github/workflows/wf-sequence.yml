@@ -27,7 +27,7 @@
 #   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
-name: Salesforce マージ順序チェック
+name: "[sequence] マージ順序チェック"
 
 on:
   pull_request:
@@ -37,7 +37,7 @@ on:
 
 jobs:
   check-branch:
-    name: デプロイ対象ブランチを確認
+    name: 対象ファイル確認
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.check.outputs.skip }}
@@ -62,7 +62,7 @@ jobs:
           fi
 
   check-promotion-order:
-    name: マージ順序を検証（プロモーション順序チェック）
+    name: 順序チェック
     needs: check-branch
     if: needs.check-branch.outputs.skip != 'true'
     runs-on: ubuntu-latest

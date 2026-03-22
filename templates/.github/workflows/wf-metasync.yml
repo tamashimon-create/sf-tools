@@ -28,7 +28,7 @@
 #     「Allow GitHub Actions to create and approve pull requests」が有効なこと
 #
 # ==============================================================================
-name: Salesforce メタデータ自動同期（定期実行）
+name: "[metasync] メタ同期"
 
 on:
   schedule:
@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   sync:
-    name: Salesforce メタデータを取得して Git へ同期
+    name: メタデータ同期
     runs-on: ubuntu-latest
 
     # git push を行うためリポジトリへの書き込み権限を付与

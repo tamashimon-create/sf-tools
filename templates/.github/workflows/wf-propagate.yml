@@ -25,7 +25,7 @@
 #   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
-name: ブランチへ変更を伝播（main マージ後自動実行）
+name: "[propagate] ブランチ伝播"
 
 on:
   pull_request:
@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   propagate:
-    name: 下流ブランチへ変更を伝播
+    name: 下流伝播
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
