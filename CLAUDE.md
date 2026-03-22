@@ -48,11 +48,6 @@
 - 「記憶して」と言われた場合は、メモリファイル (`memory/`) と `CLAUDE.md` の両方に保存すること
 - 「ドキュメントを最新化して」と言われた場合は、リポジトリ内のすべての `*.md` ファイルをアップデートすること
 
-## Language Settings
-- すべての対話、解説、要約は日本語で行うこと
-- ターミナル出力やエラー内容の解説も日本語で説明すること
-- コードコメントやドキュメント作成も、特に指示がない限り日本語で行うこと
-
 ## プロジェクト概要
 
 Salesforce 開発の環境構築と日々の作業を自動化するシェルスクリプト集。  
@@ -236,9 +231,6 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh
 
 ## Claude Code への追加指示
 
-- コミット・プッシュは明示的な指示があるまで実行しないこと
-- ユーザーが「コミット」「プッシュ」と指示しても、まず内容を確認してから実行すること
-- 「MMOK」が明示された場合のみ、コミット・プッシュ・main マージまで一括で実行してよい
 - `sf-*.sh` や `lib/common.sh` を変更した場合は、対応する `tests/` のテストも確認・更新すること
 - `templates/.github/workflows/` を変えた場合は、`repo-settings.sh` の `required_status_checks.context` と一致しているか確認すること
 - `templates/.github/workflows/` の `name:` を変更した場合は、`doc/setup-guide.md` のワークフロー一覧も確認すること
