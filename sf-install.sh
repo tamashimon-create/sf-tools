@@ -5,14 +5,13 @@
 # ==============================================================================
 # sf-start.sh から自動呼び出しされるため、通常は直接実行する必要はありません。
 # ※ 時間のかかるツールアップデートは sf-upgrade.sh に委譲し、バックグラウンドで最後に実行。
-#    それ以外の処理（ラッパー生成・マージドライバー登録など）は毎回・同期で実行。
+#    それ以外の処理（マージドライバー登録など）は毎回・同期で実行。
 #
 # 【処理の流れ】
 #   1. ~/sf-tools を git pull で最新化
-#   2. プロジェクト側のラッパースクリプト (sf-start.sh / sf-restart.sh) を生成（未存在時のみ）
-#   3. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
-#   4. Git マージドライバー (ours) をリポジトリに登録
-#   5. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
+#   2. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
+#   3. Git マージドライバー (ours) をリポジトリに登録
+#   4. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
@@ -86,26 +85,6 @@ phase_update() {
     local branch
     branch=$(git -C "$TARGET_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "main")
     run git -C "$TARGET_DIR" pull origin "$branch" || return $RET_NG
-    return $RET_OK
-}
-
-# 【WRAPPER】プロジェクト側のラッパースクリプトを生成
-phase_generate_wrappers() {
-    log "INFO" "プロジェクト側のラッパースクリプトを確認します..."
-
-    for script in sf-start.sh sf-restart.sh; do
-        if [[ -f "./${script}" ]]; then
-            log "INFO" "${script} は既に存在します。スキップします。"
-            continue
-        fi
-        cat << EOF > "./${script}"
-#!/bin/bash
-exec bash "\$HOME/sf-tools/${script}" "\$@"
-EOF
-        run chmod +x "./${script}" || return $RET_NG
-        log "INFO" "${script} を生成しました。"
-    done
-
     return $RET_OK
 }
 
@@ -198,9 +177,6 @@ phase_upgrade_tools_bg() {
 # ------------------------------------------------------------------------------
 phase_update           || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
 log "SUCCESS" "sf-tools を最新化しました。"
-
-phase_generate_wrappers || die "ラッパースクリプトの確認に失敗しました。"
-log "SUCCESS" "ラッパースクリプトの確認が完了しました。"
 
 phase_generate_github_workflow || log "WARNING" "GitHub Actions ワークフローの生成に失敗しました（続行します）"
 log "SUCCESS" "GitHub Actions ワークフローの確認が完了しました。"

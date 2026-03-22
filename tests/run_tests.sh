@@ -21,6 +21,7 @@ CLR_RST='\033[0m'
 
 # 実行するテストファイルを順番に定義
 TEST_FILES=(
+    test_common.sh
     test_sf-unhook.sh
     test_sf-hook.sh
     test_sf-upgrade.sh
