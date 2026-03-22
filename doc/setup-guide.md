@@ -6,11 +6,11 @@
 
 ---
 
-## 📋 前提条件
+## 1. 前提条件
 
 > **⚠️ Windows ユーザーへ:** 本ガイドのすべての操作は **Git Bash** で行ってください。コマンドプロンプトや PowerShell は非対応です。
 
-### 🖥️ ローカル環境
+### 1.1. 🖥️ ローカル環境
 
 - Git（Git Bash 含む） — ソースコード管理
 - GitHub CLI（`gh` コマンド） — GitHub 操作の自動化
@@ -20,19 +20,23 @@
   - Salesforce Extension Pack (Expanded) を事前にインストールしておくこと
 - Slack — ワークフローの通知先
 
-### ☁️ Salesforce 環境
+### 1.2. ☁️ Salesforce 環境
 
 - 開発用の Sandbox（Developer / Developer Pro）が作成済みであること
 - 接続先の Sandbox 名を把握していること
 
-### 🐙 GitHub アカウント
+### 1.3. 🐙 GitHub アカウント
 
 - リポジトリ作成権限があること
 - GitHub CLI で認証済みであること（`gh auth login` で事前にログインしておく）
 
 ---
 
-## 📦 Step 1: sf-tools をクローン
+## 2. sf-tools をクローン
+
+sf-tools は、Salesforce 開発の環境構築・日々の作業を自動化するシェルスクリプト集です。
+`~/sf-tools/` に設置し、各 Salesforce プロジェクト（`force-*` ディレクトリ）から共通で呼び出して使います。
+一度クローンすれば、複数のプロジェクトで共有できます。
 
 ```bash
 git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
@@ -47,7 +51,11 @@ source ~/.bashrc
 
 ---
 
-## 🛠️ Step 2: sf-init.sh でセットアップを自動実行
+## 3. sf-init.sh でセットアップを自動実行
+
+新しい Salesforce プロジェクトを一から立ち上げるための初期セットアップスクリプトです。
+GitHub リポジトリの作成から Salesforce 組織への接続、ブランチ構成の設定、Secrets の登録、ブランチ保護ルールの適用まで、すべてを一括で自動実行します。
+手動でひとつひとつ設定する手間をなくし、設定漏れを防ぐことが目的です。
 
 ```bash
 ~/sf-tools/sf-init.sh
@@ -66,7 +74,7 @@ source ~/.bashrc
 | 初回コミット | セットアップ内容をまとめてコミット＆プッシュ |
 | Ruleset 設定 | ブランチ保護ルールを自動設定 |
 
-### 入力が必要な項目
+### 3.1. 入力が必要な項目
 
 実行中に以下を順番に入力・操作する:
 
@@ -81,14 +89,17 @@ source ~/.bashrc
 
 ---
 
-## ✅ Step 3: 動作確認
+## 4. 動作確認
 
-### 🔄 sf-metasync の確認
+sf-init.sh によるセットアップが正しく完了したことを確認します。
+メタデータ同期とワークフローの2点を検証することで、Salesforce 組織との接続・GitHub Actions の動作・ブランチ保護ルールがすべて正しく機能しているかを確かめます。
+
+### 4.1. 🔄 sf-metasync の確認
 
 GitHub → Actions → 「Salesforce メタデータ自動同期」→ 「Run workflow」で手動実行。
 ✅ 正常に完了すれば本番組織のメタデータが main に同期される。
 
-### 📝 PR ワークフローの確認
+### 4.2. 📝 PR ワークフローの確認
 
 テスト用のブランチを作成して PR を出す:
 
@@ -119,20 +130,21 @@ PR が作成されると以下が自動実行される:
 
 ---
 
-## 📋 ワークフロー一覧（自動生成済み）
+## 5. ワークフロー一覧（自動生成済み）
 
-| ファイル | ワークフロー名 | トリガー |
+sf-init.sh によって `.github/workflows/` に自動生成されるワークフローの一覧です。
+
+| ファイル | ワークフロー名（`name:` フィールド） | トリガー |
 | :--- | :--- | :--- |
-| `wf-validate.yml` | Salesforce デプロイ前検証（PR 自動チェック） | PR 作成・更新時 |
-| `wf-sequence.yml` | Salesforce マージ順序チェック | main / staging への PR 時 |
-| `wf-release.yml` | Salesforce 本番リリース（PR マージ後自動実行） | PR マージ後（main / staging / develop）|
+| `wf-validate.yml` | Salesforce デプロイ前検証（PR 自動チェック） | すべてのブランチへの PR 作成・更新・再オープン時 |
+| `wf-sequence.yml` | Salesforce マージ順序チェック | main / staging への PR 作成・更新時 |
+| `wf-release.yml` | Salesforce 本番リリース（PR マージ後自動実行） | main / staging / develop への PR マージ後 |
 | `wf-propagate.yml` | ブランチへ変更を伝播（main マージ後自動実行） | main への PR マージ後 |
-| `wf-metasync.yml` | Salesforce メタデータ自動同期（定期実行） | 毎日定時（平日 0〜10 時）|
-| `wf-metasync.yml` | 平日毎時（JST 9:00〜19:00） | 本番メタデータを main へ同期 |
+| `wf-metasync.yml` | Salesforce メタデータ自動同期（定期実行） | 平日 JST 9:00〜19:00 の 1 時間おきに自動実行 |
 
 ---
 
-## 📁 ディレクトリ構成（セットアップ後）
+## 6. ディレクトリ構成（セットアップ後）
 
 ```
 force-xxx/
@@ -164,9 +176,9 @@ force-xxx/
 
 ---
 
-## 🔧 トラブルシューティング
+## 7. トラブルシューティング
 
-### ❌ sf-init.sh が途中でエラー終了した
+### 7.1. ❌ sf-init.sh が途中でエラー終了した
 
 ログファイルを確認する:
 
@@ -176,21 +188,21 @@ cat ~/sf-tools/logs/sf-init.log
 
 エラー内容を確認して対処後、再実行する。すでに作成されたリポジトリは手動で削除してからやり直すこと。
 
-### ❌ sf-metasync が「push declined due to repository rule violations」で失敗
+### 7.2. ❌ sf-metasync が「push declined due to repository rule violations」で失敗
 
-PAT_TOKEN が未設定、または権限不足。Step 2 の PAT_TOKEN 登録を確認。
+PAT_TOKEN が未設定、または権限不足。3.1 の PAT_TOKEN 登録を確認。
 
-### ❌ wf-validate / wf-sequence が動かない
+### 7.3. ❌ wf-validate / wf-sequence が動かない
 
 ワークフローファイルが `.github/workflows/` にあるか確認。
 `sf-start.sh` を再実行すれば未存在のワークフローは自動コピーされる。
 
-### ⚠️ CRLF の警告が出る
+### 7.4. ⚠️ CRLF の警告が出る
 
 Windows 環境での改行コードの違い。動作に影響はない。
 `git checkout -- <file>` でリセット可能。
 
-### ⚠️ pre-push フックがプッシュをブロックする
+### 7.5. ⚠️ pre-push フックがプッシュをブロックする
 
 main ブランチへの直接プッシュは禁止。PR 経由でマージすること。
 テスト等でバイパスが必要な場合は `git push --no-verify`。
