@@ -81,10 +81,30 @@ test_outside_force_dir() {
     teardown "$rd" "$mb" "$mh"
 }
 
+# SF_INIT_RUNNING=1 の場合 → git pull をスキップ
+test_skip_pull_when_sf_init_running() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+
+    local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+
+    echo "$out" | grep -q "git pull をスキップ" \
+        && pass "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された" \
+        || fail "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された"
+
+    grep "git -C" "$MOCK_CALL_LOG" 2>/dev/null | grep -q "pull" \
+        && fail "SF_INIT_RUNNING=1 → git pull が呼び出されていない" \
+        || pass "SF_INIT_RUNNING=1 → git pull が呼び出されていない"
+
+    teardown "$td" "$mb" "$mh"
+}
+
 test_normal_run
 test_upgrade_skipped_within_24h
 test_upgrade_triggered_on_first_run
 test_npm_install_skipped_no_package_json
 test_outside_force_dir
+test_skip_pull_when_sf_init_running
 
 print_summary
