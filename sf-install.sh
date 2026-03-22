@@ -81,6 +81,12 @@ _is_tool_update_needed() {
 
 # 【UPDATE】sf-tools を最新化
 phase_update() {
+    # sf-init.sh から呼ばれた場合は git pull をスキップ
+    # （bash が sf-init.sh を実行中に git pull で sf-init.sh が書き換わると読み位置がずれてエラーになるため）
+    if [[ -n "${SF_INIT_RUNNING:-}" ]]; then
+        log "INFO" "sf-init.sh から実行中のため sf-tools の git pull をスキップします。"
+        return $RET_OK
+    fi
     log "INFO" "sf-tools を最新化します (${TARGET_DIR})..."
     local branch
     branch=$(git -C "$TARGET_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "main")
