@@ -82,6 +82,9 @@ setup_release_dir() {
     local td="$1" branch="${2:-feature/test}"
     mkdir -p "$td/sf-tools/release/$branch"
     echo "$branch" > "$td/sf-tools/release/branch_name.txt"
+    # sf-check.sh のファイル存在チェックを通すため、参照ファイルを実際に作成する
+    mkdir -p "$td/force-app/main/default/classes"
+    touch "$td/force-app/main/default/classes/TestClass.cls"
     printf '[files]\nforce-app/main/default/classes/TestClass.cls\n' \
         > "$td/sf-tools/release/$branch/deploy-target.txt"
     printf '[files]\n' > "$td/sf-tools/release/$branch/remove-target.txt"

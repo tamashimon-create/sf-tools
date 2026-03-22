@@ -83,9 +83,10 @@ readonly BRANCH_NAME="main"
 ORIGINAL_BRANCH=$(run git symbolic-ref --short HEAD || echo "main")
 
 DELTA_DIR="./sf-tools/temp_delta_$$"
+STASH_USED=0
 
-# 終了時に元のブランチへ復帰し、一時ファイルを削除
-trap 'run git checkout "$ORIGINAL_BRANCH" 2>/dev/null; rm -rf "$DELTA_DIR" ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
+# 終了時に元のブランチへ復帰し、stash した変更を復元、一時ファイルを削除
+trap 'run git checkout "$ORIGINAL_BRANCH" 2>/dev/null; [[ "$STASH_USED" -eq 1 ]] && run git stash pop 2>/dev/null; rm -rf "$DELTA_DIR" ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 readonly COMMIT_MSG="定期更新: Salesforce変更の自動反映 ($(date +'%Y-%m-%d'))"
 
@@ -116,6 +117,7 @@ phase_switch_to_main() {
     if ! run git diff-index --quiet HEAD --; then
         log "INFO" "ローカルの変更を一時退避します (git stash)..."
         run git stash || return $RET_NG
+        STASH_USED=1  # trap で stash pop するためフラグを立てる
     fi
 
     run git checkout main || return $RET_NG

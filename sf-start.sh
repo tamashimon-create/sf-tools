@@ -102,34 +102,17 @@ fi
 # ------------------------------------------------------------------------------
 # 6. バックグラウンド処理（VS Code 起動後に実行）
 # ------------------------------------------------------------------------------
+# sf-install.sh が以下をすべて担当する:
+#   - sf-tools 最新化 (git pull)
+#   - GitHub Actions ワークフロー更新
+#   - Git フック (pre-push) インストール
+#   - リリース管理ディレクトリ準備 & branch_name.txt 更新
+#   - npm install / sf-upgrade.sh (24h スロットル)
 (
-    # sf-tools 最新化
     if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
         log "INFO" "sf-tools を最新化します（バックグラウンド）"
         bash "$HOME/sf-tools/sf-install.sh" "$@" \
             || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
-    fi
-
-    # Git フック有効化（sf-unhook.sh で一時的に無効化可能）
-    if [ -x "$HOME/sf-tools/sf-hook.sh" ]; then
-        log "INFO" "Git フックを有効化します（バックグラウンド）"
-        bash "$HOME/sf-tools/sf-hook.sh" "$@" \
-            || log "WARNING" "Git フックの有効化に失敗しました（続行します）"
-    fi
-
-    # リリース管理ディレクトリの準備 & ブランチ名保存
-    log "INFO" "リリース管理用のディレクトリを準備します..."
-    BRANCH_NAME=$(run git symbolic-ref --short HEAD)
-    if [ -n "$BRANCH_NAME" ]; then
-        RELEASE_DIR="sf-tools/release/${BRANCH_NAME}"
-        run mkdir -p "$RELEASE_DIR"
-        [ ! -f "${RELEASE_DIR}/deploy-target.txt" ] \
-            && run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${RELEASE_DIR}/deploy-target.txt"
-        [ ! -f "${RELEASE_DIR}/remove-target.txt" ] \
-            && run cp "$HOME/sf-tools/templates/release/remove-target.txt"  "${RELEASE_DIR}/remove-target.txt"
-        run mkdir -p "sf-tools/release"
-        printf '%s\n' "$BRANCH_NAME" | run tee "sf-tools/release/branch_name.txt" > /dev/null
-        log "INFO" "ブランチ: ${BRANCH_NAME} / branch_name.txt を保存しました"
     fi
 
     log "SUCCESS" "バックグラウンド処理が完了しました"
