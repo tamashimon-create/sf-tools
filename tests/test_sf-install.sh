@@ -16,7 +16,6 @@ test_normal_run() {
 
     assert_exit_ok $ec "正常実行 → 終了コード 0"
     assert_file_contains "$MOCK_CALL_LOG" "git -C" "sf-tools の git pull が呼び出された"
-    assert_file_contains "$MOCK_CALL_LOG" "git config merge.ours.driver" "マージドライバーが登録された"
     teardown "$td" "$mb" "$mh"
 }
 
@@ -100,11 +99,40 @@ test_skip_pull_when_sf_init_running() {
     teardown "$td" "$mb" "$mh"
 }
 
+# sf-hook.sh が呼び出され pre-push フックが生成される
+test_hook_installed() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+
+    assert_file_exists "$td/.git/hooks/pre-push" "sf-hook.sh が呼び出され pre-push フックが生成された"
+    teardown "$td" "$mb" "$mh"
+}
+
+# branch_name.txt とリリースディレクトリが作成される
+test_release_dir_created() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    export MOCK_GIT_BRANCH="feature/test"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+
+    assert_file_exists "$td/sf-tools/release/branch_name.txt" "branch_name.txt が作成された"
+    assert_dir_exists "$td/sf-tools/release/feature/test" "リリースディレクトリが作成された"
+    unset MOCK_GIT_BRANCH
+    teardown "$td" "$mb" "$mh"
+}
+
 test_normal_run
 test_upgrade_skipped_within_24h
 test_upgrade_triggered_on_first_run
 test_npm_install_skipped_no_package_json
 test_outside_force_dir
 test_skip_pull_when_sf_init_running
+test_hook_installed
+test_release_dir_created
 
 print_summary

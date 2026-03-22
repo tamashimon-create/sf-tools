@@ -106,10 +106,32 @@ test_outside_force_dir() {
     teardown "$rd" "$mb"
 }
 
+# feature ブランチ + ローカル変更あり → stash して処理し、終了後に stash pop
+test_stash_pop_on_exit() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+
+    export MOCK_GIT_BRANCH="feature/test"
+    # 1回目の diff-index (phase_switch_to_main): 1 = 変更あり → stash
+    # 2回目以降の diff-index (phase_git_update): 0 = main に変更なし
+    export MOCK_GIT_DIFF_EXIT=1
+    export MOCK_GIT_DIFF_EXIT_2ND=0
+    export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
+
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1 >/dev/null
+
+    assert_file_contains "$MOCK_CALL_LOG" "git stash" "ローカル変更あり → stash が実行された"
+    assert_file_contains "$MOCK_CALL_LOG" "git stash pop" "終了時に stash pop が実行された"
+    unset MOCK_GIT_BRANCH MOCK_GIT_DIFF_EXIT MOCK_GIT_DIFF_EXIT_2ND MOCK_SF_ORG_JSON
+    teardown "$td" "$mb"
+}
+
 test_changes_are_committed
 test_no_changes
 test_non_main_branch_switches
 test_staging_fail_dev_merges_main
 test_outside_force_dir
+test_stash_pop_on_exit
 
 print_summary
