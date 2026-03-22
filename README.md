@@ -1,592 +1,424 @@
-# 🚀 sf-tools — Salesforce 開発自動化ツールキット
+# sf-tools — Salesforce 開発自動化ツールキット
 
-Salesforce 開発の「面倒な作業」をすべて自動化するシェルスクリプト集です。
-環境構築・デプロイ・メタデータ同期・品質チェックまで、コマンド一つで完結します。
+> **本ドキュメントの範囲:** sf-tools の機能概要・使い方・スクリプト一覧。実装の詳細（フロー・ファイルパス等）はコードのヘッダーコメントを正とします。
 
----
-
-## 📋 目次
-
-1. [できること](#-できること)
-2. [前提条件](#-前提条件)
-3. [インストール](#-インストール)
-4. [Salesforce プロジェクトの作成](#️-salesforce-プロジェクトの作成)
-5. [スクリプト一覧](#-スクリプト一覧)
-6. [日常の開発フロー](#-日常の開発フロー)
-7. [スクリプト詳細](#-スクリプト詳細)
-8. [デプロイ対象ファイルの書き方](#-デプロイ対象ファイルの書き方)
-9. [ログの確認方法](#-ログの確認方法)
-10. [リポジトリ構成](#-リポジトリ構成)
-11. [設計思想](#-設計思想)
+Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェック、メタデータ同期をまとめて自動化するシェルスクリプト集です。  
+`~/sf-tools` に配置し、各 Salesforce プロジェクト (`force-*` ディレクトリ) から呼び出して使います。
 
 ---
 
-## ✨ できること
+## 1. できること
 
-| 機能 | 説明 |
-|:---|:---|
-| ⚡ **ワンコマンド起動** | `sf-start.sh` 一発で接続確認〜VS Code 起動まで完全自動 |
-| 🚢 **安全なデプロイ** | テキストにパスを書くだけ。マニフェスト自動生成→デプロイ実行 |
-| 🛡️ **push 前の自動検証** | `git push` のたびに Salesforce 組織への検証を自動実行。エラーがあれば push を自動阻止 |
-| 🔄 **メタデータ自動同期** | GitHub Actions で定期実行し、組織の最新メタデータを取得してメインブランチを常に最新化 |
-| 🔀 **組織の切り替え** | コマンド一つで接続先 Sandbox・組織を切り替え |
+- `sf-start.sh` で開発環境セットアップを一括実行
+- `sf-init.sh` で新規 Salesforce プロジェクトを初期セットアップ
+- `sf-branch.sh` でブランチ構成を対話式に設定
+- `sf-next.sh` で次に出すべき PR 先ブランチを確認
+- `sf-release.sh` で dry-run / 本番デプロイを実行
+- `sf-deploy.sh` で強制デプロイを簡易実行
+- `sf-hook.sh` / `sf-unhook.sh` で pre-push フックを管理
+- `sf-prepush.sh` で push 前に main 同期チェックを実行
+- `sf-metasync.sh` で組織の最新メタデータを Git へ自動同期
+- `sf-check.sh` でデプロイ対象ファイルの構文を検証
+- `sf-restart.sh` で接続先組織を切り替え
+- `sf-install.sh` / `sf-upgrade.sh` でツール群を最新化
 
 ---
 
-## 🔧 前提条件
+## 2. 前提条件
 
-以下がインストール済みであること。
+以下のコマンドが使えること。
 
 | ツール | 確認コマンド | 用途 |
-|:---|:---|:---|
-| **Git** | `git --version` | バージョン管理・フック実行 |
-| **Salesforce CLI** | `sf --version` | 組織接続・デプロイ実行 |
-| **Visual Studio Code** | `code --version` | エディタ起動（PATH に `code` が必要） |
+|---|---|---|
+| Git | `git --version` | Git Bash / フック / バージョン管理 |
+| Salesforce CLI | `sf --version` | 組織接続、デプロイ、retrieve |
+| Visual Studio Code | `code --version` | エディタ起動 |
 
-> 💡 **Windows の場合**: Git Bash での実行を推奨します。
-
-> ⚠️ **実行場所**: すべてのスクリプトは `force-*` という名前のディレクトリ内から実行してください。
+補足:
+- Windows では Git Bash での実行を前提とします
+- `sf-init.sh` を除くすべてのスクリプトは `force-*` ディレクトリ内から実行してください
+- `sf-init.sh` のみ `force-*` の**外**（親ディレクトリ）から実行します
 
 ---
 
-## 📦 インストール
+## 3. インストール
 
-**Step 1**: sf-tools をホームディレクトリへクローン（初回のみ・一度だけ実行）。
+### 3.1 sf-tools の配置
 
 ```bash
 git clone <sf-tools のリポジトリ URL> ~/sf-tools
 ```
 
-**以降は `force-*` プロジェクトで `sf-start.sh` を実行するだけで OK。**
+### 3.2 基本の使い方
+
+Salesforce プロジェクト側で `sf-start.sh` を実行します。
 
 ```bash
 cd force-xxxxx
-bash sf-start.sh
+bash ~/sf-tools/sf-start.sh
 ```
 
-起動のたびに以下が自動で行われます:
+これで次の処理が自動実行されます。
 
-```
-✅ sf-tools を最新化（git pull）
-✅ sf-start.sh / sf-restart.sh をプロジェクトへ再生成
-✅ Git / npm / Salesforce CLI をアップデート
-✅ Sandbox への接続確認・VS Code 起動
-```
+- 接続先組織の確認
+- 必要時のみログイン
+- VS Code 起動
+- `sf-tools` の更新
+- pre-push フックのインストール
+- `release/<branch>/` の準備
 
 ---
 
-## 🏗️ Salesforce プロジェクトの作成
+## 4. Salesforce プロジェクトの作成
 
-### プロジェクト生成コマンド
+### 4.1 プロジェクト生成コマンド
 
-リポジトリ名は必ず **`force-`** で始めてください（sf-tools が `force-*` ディレクトリを実行条件としています）。
+リポジトリ名は必ず `force-` で始めてください。
 
 ```bash
-# Salesforce DX プロジェクトを新規作成
 sf project generate --name force-xxxxx
-
-# 例: force-tama という名前で作成する場合
-sf project generate --name force-tama
 ```
 
-### 生成されるディレクトリ構成
+### 4.2 最低限の想定構成
 
-```
-force-tama/
-├── config/
-│   └── project-scratch-def.json   # Scratch org の定義ファイル
+```text
+force-xxxxx/
 ├── force-app/
 │   └── main/
-│       └── default/               # メタデータの格納先（Apex・LWC・オブジェクト等）
-│           ├── classes/           # Apex クラス
-│           ├── lwc/               # Lightning Web Component
-│           ├── objects/           # カスタムオブジェクト・項目
-│           ├── layouts/           # ページレイアウト
-│           ├── flexipages/        # Flexiページ（App Builder）
-│           ├── flows/             # フロー
-│           └── permissionsets/    # 権限セット
+│       └── default/
 ├── scripts/
-│   ├── apex/                      # 匿名 Apex スクリプト置き場
-│   └── soql/                      # SOQL クエリ置き場
-├── .forceignore                   # Salesforce CLI が無視するファイルパターン
-├── .gitattributes                 # 行末処理・マージ戦略の設定
+├── .forceignore
+├── .gitattributes
 ├── .gitignore
-├── .prettierignore
-├── .prettierrc                    # コードフォーマット設定
-├── eslint.config.js               # ESLint 設定
-├── jest.config.js                 # LWC ユニットテスト設定
 ├── package.json
-└── sfdx-project.json              # Salesforce DX プロジェクト定義（API バージョン等）
+└── sfdx-project.json
 ```
 
-### sf-tools 導入後の最終構成
+### 4.3 sf-tools 導入後に追加される主なもの
 
-sf-tools を導入して開発を進めると、以下のファイル・ディレクトリが追加されます。
-
-```
-force-tama/
-├── .github/
-│   └── workflows/
-│       ├── wf-metasync.yml        # ⭐ GitHub Actions：sf-metasync.sh を定期実行してメインブランチを最新化
-│       ├── wf-release.yml         # ⭐ GitHub Actions：PR マージ時に対応 Salesforce 組織へ自動リリース + Slack 通知
-│       ├── wf-propagate.yml       # ⭐ GitHub Actions：main マージ時に staging・develop へ直接伝播
-│       └── wf-sequence.yml        # ⭐ GitHub Actions：マージ順序チェック（Slack 通知付き）
+```text
+force-xxxxx/
+├── .github/workflows/
 ├── .vscode/
-│   ├── extensions.json            # 推奨拡張機能
-│   ├── launch.json                # デバッグ設定
-│   └── settings.json              # VS Code プロジェクト設定
 ├── release/
-│   ├── branch_name.txt            # ⭐ リリース対象ブランチ名を記録（release/<ブランチ名>/ のパス解決に使用）
-│   ├── develop/
-│   │   ├── deploy-target.txt      # ⭐ develop ブランチのデプロイ対象リスト
-│   │   └── remove-target.txt      # ⭐ develop ブランチの削除対象リスト
-│   └── main/
-│       ├── deploy-target.txt      # ⭐ main ブランチのデプロイ対象リスト
-│       └── remove-target.txt      # ⭐ main ブランチの削除対象リスト
-├── sf-start.sh                    # ⭐ sf-tools/sf-start.sh へのショートカット（.gitignore 済み）
-└── sf-restart.sh                  # ⭐ sf-tools/sf-restart.sh へのショートカット（.gitignore 済み）
+│   ├── branch_name.txt
+│   └── <branch>/
+│       ├── deploy-target.txt
+│       └── remove-target.txt
+├── sf-start.sh
+└── sf-restart.sh
 ```
 
-> 📦 **サンプルリポジトリ**: [force-tama](https://github.com/tama-create/force-tama) — 実際に sf-tools を導入した Salesforce プロジェクトの構成例です。
-
 ---
 
-## 📜 スクリプト一覧
+## 5. 日常の開発フロー
 
-| スクリプト | 用途 | よく使うタイミング |
-|:---|:---|:---|
-| 🟢 `sf-start.sh` | 開発環境の一括セットアップ | **毎朝の作業開始時** |
-| 🚢 `sf-release.sh` | デプロイ・検証の実行 | コンポーネントをリリースするとき |
-| 🔥 `sf-deploy.sh` | 強制デプロイ（`--release --force` 固定） | Sandbox 切替後・強制上書きしたいとき |
-| 🔄 `sf-metasync.sh` | 組織→Git のメタデータ自動同期 | **GitHub Actions で定期実行**してメインブランチを常に最新化 |
-| 🔀 `sf-restart.sh` | 接続先組織の切り替え | 別の Sandbox・組織へ乗り換えるとき |
-| 🪝 `sf-hook.sh` | pre-push フックのインストール | プロジェクト参加時・フックを有効化したいとき |
-| ✂️ `sf-unhook.sh` | pre-push フックの削除 | フックを一時的に無効化したいとき |
-| 🔍 `sf-prepush.sh` | プッシュ前 main 同期チェック | pre-push フックから自動呼び出し（通常は直接実行不要） |
-| ⬆️ `sf-upgrade.sh` | Git / Salesforce CLI のアップデート | ツールを最新版に更新したいとき |
-| 🔧 `sf-install.sh` | sf-tools 最新化・ラッパー生成・ツール更新 | **`sf-start.sh` から自動呼び出し**（通常は直接実行不要） |
-
----
-
-## 🗓️ 日常の開発フロー
-
-### ① 開発ブランチの作成とクローン
+### 5.1 開発ブランチを作る
 
 ```bash
-# 1. Salesforce 開発用リポジトリで開発ブランチを作成
 git checkout -b feature/my-feature
-
-# 2. 作業ディレクトリへ移動（force-* ディレクトリ）
-cd ~/dev/force-myproject
 ```
 
----
-
-### ② 開発環境のセットアップ（sf-start.sh）
+### 5.2 開発環境を立ち上げる
 
 ```bash
-# force-* ディレクトリ内で実行
-bash sf-start.sh
+bash ~/sf-tools/sf-start.sh
 ```
 
-自動で以下をすべて実行してくれます:
+### 5.3 デプロイ対象を記述する
 
-```
-【VS Code 起動まで（同期処理）】
-✅ Sandbox への接続確認（未接続ならブラウザでログイン）
-✅ VS Code の設定ファイル（接続先 Sandbox）を更新
-✅ VS Code を起動 → Sandbox に接続された状態で開発開始！
+`release/<branch>/deploy-target.txt` と `remove-target.txt` を更新します。
 
-【VS Code 起動後（バックグラウンド処理）】
-✅ sf-tools を最新化（git pull）
-✅ sf-start.sh / sf-restart.sh をプロジェクトへ再生成
-✅ npm / Git / Salesforce CLI をアップデート
-✅ pre-push フックを有効化
-✅ リリース管理ディレクトリ (release/<ブランチ名>/) を作成
-```
-
-> 💡 **接続済みの場合はログインをスキップ**して即 VS Code が起動します。
-> 別の Sandbox に切り替えたい場合は `sf-restart.sh` を使ってください。
-
----
-
-### ③ コンポーネントをデプロイする
-
-ブランチ構成は案件の Sandbox 数に合わせて選択してください。
-push・PR・マージはコマンド・VS Code・TortoiseGit など方法は問いません。
-
-> 💡 **現在の実装構成**: `main` のみ（パターン A）
-
----
-
-**🟢 パターン A — `main` のみ（Sandbox 1つ・小規模向け）**
-
-```
-feature/xxx  →  main
-     │            │
-  Sandbox       本番組織
-```
-
-**Step 1**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
-
-```
-# Apex クラス
-force-app/main/default/classes/MyClass.cls
-force-app/main/default/classes/MyClass.cls-meta.xml
-
-# Lightning Web Component
-force-app/main/default/lwc/myComponent
-```
-
-**Step 2**: push → pre-push フックが main 同期チェックを自動実行。
-
-```
-  ↓ main ブランチと同期されています → push 継続 ✅
-  ↓ main が更新されています → push ブロック 🛑（main の最新コミットを取り込んでから再度 push）
-```
-
-**Step 3**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
-
----
-
-**🔵 パターン B — `develop` → `main`（Sandbox 2つ・小〜中規模向け）**
-
-```
-feature/xxx  →  develop  →  main
-     │               │            │
-  Sandbox A       Sandbox B     本番組織
-```
-
-**Step 1**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
-
-**Step 2**: push → pre-push フックが main 同期チェックを自動実行。
-
-**Step 3**: `develop` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox B へリリース。動作確認を行う。
-
-**Step 4**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
-
----
-
-**🟠 パターン C — `feature` → `develop` → `staging` → `main`（Sandbox 3つ以上・チーム開発向け）**
-
-```
-feature/xxx  →  develop  →  staging  →  main
-     │               │              │          │
-  Sandbox A       Sandbox B      Sandbox C   本番組織
-```
-
-**Step 1**: `develop` ブランチから `feature/xxx` を作成。
-
-**Step 2**: `release/feature-xxx/deploy-target.txt` にリリースするコンポーネントのパスを記入。
-
-**Step 3**: push → pre-push フックが main 同期チェックを自動実行。
-
-**Step 4**: `develop` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox B へリリース。動作確認を行う。
-
-**Step 5**: `staging` へ PR・レビュー・マージ → GitHub Actions が自動で Sandbox C へリリース。最終確認を行う。
-
-**Step 6**: `main` へ PR・レビュー・マージ → GitHub Actions が自動で本番組織へリリース。
-
----
-
-### ④ Sandbox を切り替える
+### 5.4 dry-run で検証する
 
 ```bash
-bash sf-restart.sh
+bash ~/sf-tools/sf-release.sh
 ```
 
-現在の接続設定をクリアしてブラウザログインを促します。
-接続先エイリアスを入力するだけで切り替え完了です。
-
----
-
-### ⑤ git push 前の自動検証（フックが有効な場合）
-
-`git push` を実行するだけで自動的に main 同期チェックが走ります。
-
-```
-  ↓ main ブランチと同期されています → push 継続 ✅
-  ↓ main が更新されています → push ブロック 🛑（main の最新コミットを取り込んでから再度 push）
-```
-
----
-
-## 📖 スクリプト詳細
-
-### 🟢 sf-start.sh — 開発環境の一括セットアップ
+### 5.5 必要なら本番デプロイする
 
 ```bash
-bash sf-start.sh
+bash ~/sf-tools/sf-release.sh --release
 ```
 
-**同期処理（VS Code 起動まで）:**
+### 5.6 push 前の自動チェックを通す
 
-| ステップ | 処理内容 |
-|:---:|:---|
-| 1️⃣ | `sf org display` で接続確認 → 未接続または `FORCE_RELOGIN=1` の場合はブラウザログイン |
-| 2️⃣ | `.sf/config.json` / `.sfdx/sfdx-config.json` を接続組織のエイリアスで更新 |
-| 3️⃣ | `code .` で VS Code を起動 |
-
-**バックグラウンド処理（VS Code 起動後に並行実行）:**
-
-| ステップ | 処理内容 |
-|:---:|:---|
-| 4️⃣ | `sf-install.sh` を実行して sf-tools を最新化・ラッパー生成・ツール更新 |
-| 5️⃣ | `sf-hook.sh` を実行して pre-push フックを有効化 |
-| 6️⃣ | `release/<ブランチ名>/` ディレクトリとリストのテンプレートを作成 |
+pre-push フックが有効なら、`git push` 時に main 同期チェックが自動実行されます。
 
 ---
 
-### 🚢 sf-release.sh — デプロイ・検証の実行
+## 6. スクリプト一覧
+
+| スクリプト | 用途 | 主な利用タイミング |
+|---|---|---|
+| `sf-start.sh` | 開発環境の一括セットアップ | 開発開始時 |
+| `sf-init.sh` | 新規プロジェクトの初期セットアップ | 新規案件開始時 |
+| `sf-branch.sh` | ブランチ構成の設定と作成 | 初期構成時 |
+| `sf-next.sh` | 次に出す PR 先ブランチの案内 | PR 作成前 |
+| `sf-install.sh` | sf-tools 更新、フック、release 準備 | `sf-start.sh` から自動実行 |
+| `sf-release.sh` | dry-run / 本番デプロイ | 日常の検証・リリース |
+| `sf-deploy.sh` | 強制デプロイ | 特殊ケース |
+| `sf-check.sh` | deploy-target / remove-target の構文確認 | リリース前 |
+| `sf-metasync.sh` | 組織 → Git の自動同期 | GitHub Actions / 手動 |
+| `sf-restart.sh` | 接続先組織の切り替え | Sandbox 切替時 |
+| `sf-hook.sh` | pre-push フック有効化 | フック導入時 |
+| `sf-unhook.sh` | pre-push フック削除 | フック停止時 |
+| `sf-prepush.sh` | main 同期チェック | pre-push から自動実行 |
+| `sf-upgrade.sh` | npm / sf / Git 更新 | ツール更新時 |
+
+---
+
+## 7. スクリプト詳細
+
+### 7.1 `sf-start.sh`
+
+```bash
+bash ~/sf-tools/sf-start.sh
+```
+
+役割:
+- 組織接続確認
+- 必要時のみログイン
+- `.sf/config.json` / `.sfdx/sfdx-config.json` 更新
+- `code .` 実行
+- `sf-install.sh` のバックグラウンド実行
+
+### 7.2 `sf-init.sh`
+
+```bash
+bash ~/sf-tools/sf-init.sh
+```
+
+新規 `force-*` プロジェクトの作成をまとめて行うセットアップスクリプトです。
+
+主な処理:
+- GitHub リポジトリ作成とクローン
+- `sf-install.sh` による初期ファイル生成
+- `sf-branch.sh` によるブランチ構成設定
+- GitHub Secrets の登録支援
+- 初回コミット、push、Ruleset 設定
+
+補足:
+- `force-*` ディレクトリの外で実行します
+- Salesforce ログイン、PAT 作成、Slack 設定など一部は対話操作が必要です
+
+### 7.3 `sf-branch.sh`
+
+```bash
+bash ~/sf-tools/sf-branch.sh
+```
+
+`main / staging / develop` などのブランチ構成を選ぶと、`sf-tools/config/branches.txt` を更新し、必要なブランチを GitHub に作成します。
+
+補足:
+- 対話式で 3 段階、2 段階、`main` のみ、から選びます
+- 既存ブランチはスキップされます
+- `force-*` ディレクトリ内で実行します
+
+### 7.4 `sf-next.sh`
+
+```bash
+bash ~/sf-tools/sf-next.sh
+```
+
+現在の feature ブランチが、`develop` / `staging` / `main` のどこまでマージ済みかを確認し、次に出すべき PR 先ブランチを案内します。
+
+補足:
+- 保護ブランチ上では実行できません
+- 必要なら案内先ブランチの PR 作成画面を開けます
+
+### 7.5 `sf-release.sh`
 
 ```bash
 bash ~/sf-tools/sf-release.sh [オプション]
 ```
 
-**オプション一覧:**
+主なオプション:
 
-| オプション | 説明 | デフォルト |
-|:---|:---|:---:|
-| *(なし)* | 🔍 **検証モード (Dry-Run)** — 組織に変更を加えない安全な実行 | ✅ |
-| `-r` / `--release` | 🚢 **本番リリース** — 組織へ実際にデプロイ | — |
-| `-n` / `--no-open` | 🚫 ブラウザを開かない（CI/CD・自動化向け） | — |
-| `-f` / `--force` | 💪 コンフリクトを無視して強制デプロイ | — |
-| `-t ALIAS` / `--target ALIAS` | 🎯 接続先組織のエイリアスを明示指定 | — |
+| オプション | 内容 |
+|---|---|
+| `--release`, `-r` | 本番デプロイ |
+| `--no-open`, `-n` | ブラウザを開かない |
+| `--force`, `-f` | `--ignore-conflicts` を付与 |
+| `--target`, `-t` | 対象組織エイリアス指定 |
 
-**処理フロー:**
+デフォルトは dry-run です。
 
-```
-① deploy-target.txt / remove-target.txt の確認（なければテンプレートを自動生成）
-② テキストリストから package.xml / destructiveChanges.xml を自動生成
-③ sf project deploy start を実行（--dry-run または本番）
-```
+補足:
+- `--json`, `-j` で `sf` コマンド出力を JSON 形式で表示できます
+- `--verbose`, `-v` でコマンド出力をコンソールにも表示できます
 
-> 💡 **ポイント**: `deploy-target.txt` にパスが1件も書かれていない場合は、
-> デプロイを実行せず `[WARNING] デプロイ対象がありません` と表示して終了します。
-
----
-
-### 🔥 sf-deploy.sh — 強制デプロイ
+### 7.6 `sf-deploy.sh`
 
 ```bash
-bash ~/sf-tools/sf-deploy.sh [追加オプション]
+bash ~/sf-tools/sf-deploy.sh [オプション]
 ```
 
-`sf-release.sh --release --force` を固定で呼び出すショートカットです。
+`sf-release.sh --release --force` を簡単に呼ぶラッパーです。
 
-- **`--release`**: 本番リリースモードで実行（Dry-Run しない）
-- **`--force`**: `--ignore-conflicts` を付与し、競合を無視して強制デプロイ
+追加で使えるオプション:
+- `--no-open`, `-n`
+- `--target`, `-t`
+- `--verbose`, `-v`
 
-**使いどころ:**
-- Sandbox を切り替えた直後（ソーストラッキングがリセットされた状態）
-- 現在開発中のコンポーネントを強制的にリリースしたいとき
-
-追加オプション（`-n`, `-t` など）は `sf-release.sh` へそのまま転送されます。
-
----
-
-### 🔄 sf-metasync.sh — メタデータ自動同期
-
-**GitHub Actions などのサーバー環境で定期実行することを前提としたスクリプトです。**
-Salesforce 組織上で直接行われた設定変更・開発作業を定期的に取得し、
-メインブランチを常に組織の最新状態に保ち続けます。
-
-```yaml
-# GitHub Actions の設定例（毎日 9:00 JST に自動実行）
-on:
-  schedule:
-    - cron: '0 0 * * *'  # UTC 0:00 = JST 9:00
-```
+### 7.7 `sf-install.sh`
 
 ```bash
-# 手動実行する場合（force-* ディレクトリ内で）
+bash ~/sf-tools/sf-install.sh
+```
+
+`sf-tools` 自体の更新と、プロジェクト側の初期ファイル整備を行います。通常は `sf-start.sh` から自動実行されます。
+
+主な処理:
+- `~/sf-tools` の最新化
+- GitHub Actions ワークフローファイル更新
+- 設定ファイル雛形の生成
+- `npm install`
+- pre-push フックのインストール
+- `release/<branch>/` の準備
+- 必要に応じた `sf-upgrade.sh` のバックグラウンド実行
+
+### 7.8 `sf-check.sh`
+
+```bash
+bash ~/sf-tools/sf-check.sh [deploy-target.txt] [remove-target.txt]
+```
+
+`deploy-target.txt` / `remove-target.txt` の構文をチェックします。通常は `sf-release.sh` や `sf-prepush.sh` から自動実行されます。
+
+補足:
+- 引数省略時は現在ブランチの `release/<branch>/` 配下を自動解決します
+- 終了コードは `0` が正常、`1` が構文エラーです
+
+### 7.9 `sf-metasync.sh`
+
+```bash
 bash ~/sf-tools/sf-metasync.sh
 ```
 
-**実行制約:**
+役割:
+- 組織の最新メタデータを取得
+- Git へ反映
+- 変更がある場合のみ commit / push
 
-- どのブランチからでも実行可能。スクリプトが自動的に `main` ブランチへ切り替えて処理を実行する
-- Sandbox 組織に接続中の場合はエラー終了（`sf org display --json` の `isSandbox` フィールドで判定）
-- main ブランチにローカルの未コミット変更がある場合はエラー終了（Salesforce 組織の内容を正とするため）
+主に GitHub Actions からの定期実行を想定しています。
 
-| ステップ | 処理内容 |
-|:---:|:---|
-| 1️⃣ | ローカル変更なし確認 → `git fetch` / `git pull --rebase` でリモートを最新化 |
-| 2️⃣ | SGD (`sf sgd source delta`) で前回同期からの差分を解析 → `package.xml` を自動生成 |
-| 3️⃣ | 差分ファイルを組織から retrieve（SGD の package.xml 使用） |
-| 4️⃣ | 主要メタデータタイプを一括 retrieve して整合性を確保 |
-| 5️⃣ | 変更がある場合のみ `git commit` & `git push` → 下流ブランチ（main → staging、main → develop）へ直接伝播 |
-
-> 💡 **ポイント**: 変更がない場合は commit も push も行わず `SUCCESS` で正常終了します。
-> CI のログが不必要に汚れません。
-
-**自動取得されるメタデータタイプ:**
-
-`ApexClass` / `ApexPage` / `LightningComponentBundle` / `CustomObject` / `CustomField` / `Layout` / `FlexiPage` / `Flow` / `PermissionSet` / `CustomLabels`
-
----
-
-### 🔀 sf-restart.sh — 接続先組織の切り替え
+### 7.10 `sf-restart.sh`
 
 ```bash
-bash sf-restart.sh
+bash ~/sf-tools/sf-restart.sh
 ```
 
-現在の接続設定（`.sf/config.json` / `.sfdx/sfdx-config.json`）をクリアし、
-`FORCE_RELOGIN=1` フラグを立てて `sf-start.sh` を呼び出します。
-新しい組織のエイリアスを入力してブラウザログインするだけで切り替え完了です。
+接続先組織を切り替えたいときに使います。
 
----
+### 7.11 `sf-hook.sh` / `sf-unhook.sh`
 
-### ⬆️ sf-upgrade.sh — 開発ツールのアップデート
+```bash
+bash ~/sf-tools/sf-hook.sh
+bash ~/sf-tools/sf-unhook.sh
+```
+
+役割:
+- `sf-hook.sh`: `.git/hooks/pre-push` にフックをインストール
+- `sf-unhook.sh`: `.git/hooks/pre-push` を削除
+
+### 7.12 `sf-prepush.sh`
+
+`git push` 前に自動で実行されるチェックスクリプトです。
+
+主な処理:
+- `main` への直接 push を禁止
+- 自分のブランチのリモート差分を先に同期
+- `main` の未取り込み更新を確認し、必要なら自動 rebase
+- `sf-check.sh` でターゲットファイル構文を検証
+
+### 7.13 `sf-upgrade.sh`
 
 ```bash
 bash ~/sf-tools/sf-upgrade.sh
 ```
 
-npm / Salesforce CLI / Git を最新バージョンにアップデートします。実行順序に意味があります。
-
-| 順序 | ツール | 備考 |
-|:---:|:---|:---|
-| 1️⃣ | npm | Salesforce CLI の更新前に npm を最新化 |
-| 2️⃣ | Salesforce CLI | `sf update` |
-| 3️⃣ | Git | Windows のみ（GUI インストーラーが起動するため最後に実行） |
+npm / Salesforce CLI / Git を更新します。
 
 ---
 
-### 🔍 sf-prepush.sh — プッシュ前 main 同期チェック
+## 8. デプロイ対象ファイルの書き方
 
-`hooks/pre-push` から自動呼び出される。通常は直接実行しない。
+`release/<branch>/` の下に 2 ファイルを置きます。
 
-`git push` 前にリモートの `main` ブランチが更新されているか確認し、取り込みが必要な場合はプッシュをブロックする。
+- `deploy-target.txt`
+- `remove-target.txt`
 
-**オプション:**
+### 8.1 `deploy-target.txt`
 
-| オプション | 説明 |
-|:---|:---|
-| `--verbose` / `-v` | 詳細ログを表示（pre-push から呼び出し時に自動付与） |
-
----
-
-### 🪝 sf-hook.sh / ✂️ sf-unhook.sh — Git フック管理
-
-```bash
-bash ~/sf-tools/sf-hook.sh    # ✅ フックを有効化
-bash ~/sf-tools/sf-unhook.sh  # ❌ フックを無効化
-```
-
-**sf-hook.sh の動作:**
-- `.git/hooks/pre-push` に `~/sf-tools/hooks/pre-push` を呼び出すラッパーを生成
-- ラッパー方式のため、sf-tools 本体を更新するだけで全プロジェクトへ即時反映
-
-**sf-unhook.sh の安全設計:**
-- sf-tools が管理するフック（識別マーカー付き）のみ削除
-- 手動で設置された別のフックは誤って削除しない
-
----
-
-## 📝 デプロイ対象ファイルの書き方
-
-`release/<ブランチ名>/` の下に2つのファイルを管理します。
-
-### deploy-target.txt（追加・更新）
-
-`[files]` / `[members]` の2セクション構成。
-
-```
+```text
 [files]
-# ファイルパス（force-app/main/default/ からの相対パス）で指定
-# VS Code で右クリック →「相対パスのコピー」が便利
-
-# --- Apex クラス（.cls を指定するだけで -meta.xml も自動処理）---
+# ファイルパスで指定
 force-app/main/default/classes/MyController.cls
-
-# --- Lightning Web Component（ディレクトリを指定）---
 force-app/main/default/lwc/myComponent
 
-# --- カスタムオブジェクト（ディレクトリ指定で項目・ルール等すべて含む）---
-force-app/main/default/objects/MyObject__c
-
 [members]
-# 1ファイルに複数メンバーが集約されているコンポーネントを部分指定
-# 書き方: メタデータ種別名:メンバー名
-
+# メタデータ種別:メンバー名
 # CustomLabel:MyLabel
 # Profile:Admin
-# Translations:ja
 ```
 
-- `[files]` — パス指定（通常はこちら）
-- `[members]` — カスタムラベル・プロファイル・翻訳など部分デプロイ時に使用
-- 行頭 `#` はコメント、空行は無視される
+ルール:
+- `[files]` と `[members]` の 2 セクション構成
+- 行頭 `#` はコメント
+- 空行は無視
 
-### remove-target.txt（削除）
+### 8.2 `remove-target.txt`
 
+```text
+# 削除対象のパスを列挙
+force-app/main/default/classes/OldClass.cls
 ```
-# ============================================================
-# 組織から削除するコンポーネントのパスを記述してください
-# ============================================================
-
-# force-app/main/default/classes/OldClass.cls
-```
-
-> ⚠️ **注意**: `remove-target.txt` に記載したコンポーネントは組織から**完全に削除**されます。
-> 記入前によく確認してください。
 
 ---
 
-## 🔍 ログの確認方法
+## 9. ログの確認
 
-各スクリプトはすべての処理をログファイルに記録します。
-
-| スクリプト | ログファイル |
-|:---|:---|
-| `sf-start.sh` | `./logs/sf-start.log` |
-| `sf-install.sh` | `./logs/sf-install.log` |
-| `sf-release.sh` | `./logs/sf-release.log` |
-| `sf-deploy.sh` | `./logs/sf-deploy.log`（デプロイ本体は `sf-release.log`） |
-| `sf-metasync.sh` | `./logs/sf-metasync.log` |
-| `sf-restart.sh` | `./logs/sf-restart.log` |
-| `sf-upgrade.sh` | `./logs/sf-upgrade.log` |
-
-> 💡 ログは実行ごとにリセットされます（`LOG_MODE=NEW`）。
-> エラー発生時はまずこのログを確認してください。
+- `sf-init.sh` のログは `~/sf-tools/logs/sf-init.log`（sf-tools 側）
+- それ以外のスクリプトのログは、実行した `force-*` ディレクトリ内に `sf-tools/logs/<スクリプト名>.log` として出力されます
 
 ---
 
-## 🗂️ リポジトリ構成
+## 10. リポジトリ構成
 
-```
+```text
 sf-tools/
 ├── lib/
-│   └── common.sh              # 全スクリプト共通ライブラリ
-│                              #   ログ出力 / コマンド実行ラッパー / エラー停止 等
+│   └── common.sh
 ├── hooks/
-│   └── pre-push               # git push 時に sf-prepush.sh を呼び出す実体フック（main 同期チェック）
+│   └── pre-push
 ├── templates/
-│   ├── deploy-template.txt    # deploy-target.txt の雛形（初回自動生成時に使用）
-│   └── remove-template.txt    # remove-target.txt の雛形（初回自動生成時に使用）
-├── sf-start.sh                # 🟢 開発環境の一括セットアップ
-├── sf-install.sh              # 🔧 sf-tools 最新化・ラッパー生成・ツール更新（sf-start.sh から自動呼び出し）
-├── sf-release.sh              # 🚢 デプロイ・検証の実行
-├── sf-deploy.sh               # 🔥 強制デプロイ（--release --force 固定）
-├── sf-metasync.sh             # 🔄 Salesforce→Git メタデータ自動同期
-├── sf-restart.sh              # 🔀 接続先組織の切り替え
-├── sf-hook.sh                 # 🪝 pre-push フックのインストール
-├── sf-prepush.sh           # 🔍 プッシュ前 main 同期チェック（pre-push から自動呼び出し）
-├── sf-unhook.sh               # ✂️ pre-push フックの削除
-├── sf-upgrade.sh              # ⬆️ npm / Salesforce CLI / Git のアップデート
-└── tests/                     # 🧪 テストスイート（test_helper.sh + 各スクリプトのテストファイル）
+│   ├── config/
+│   ├── release/
+│   └── .github/workflows/
+├── doc/
+├── tests/
+├── sf-init.sh
+├── sf-start.sh
+├── sf-install.sh
+├── sf-branch.sh
+├── sf-next.sh
+├── sf-release.sh
+├── sf-deploy.sh
+├── sf-check.sh
+├── sf-metasync.sh
+├── sf-restart.sh
+├── sf-hook.sh
+├── sf-prepush.sh
+├── sf-unhook.sh
+└── sf-upgrade.sh
 ```
 
 ---
 
-## 💡 設計思想
+## 11. 設計方針
 
-| 方針 | 内容 |
-|:---|:---|
-| ⚡ **シンプルさ** | 開発者は難しいコマンドを覚える必要なし。`sf-start.sh` を実行するだけ |
-| 👁️ **透明性** | 実行した全コマンドと結果がログファイルに記録される |
-| 🛡️ **堅牢性** | エラー発生時は後続処理を即停止。中途半端な状態にならない |
-| 🌐 **環境非依存** | `jq` などの追加ツール不要。Git Bash 標準コマンドのみで動作（Windows/Mac/Linux 共通） |
-| 🔒 **安全優先** | デプロイのデフォルトは Dry-Run。明示的に `--release` を付けない限り組織を変更しない |
+- シンプルなコマンドで毎日の作業を自動化する
+- 失敗時はログで原因を追いやすくする
+- 追加依存を減らし、Git Bash 前提で動く構成を維持する
+- まず dry-run を基本にし、必要時のみ本番実行する
