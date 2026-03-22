@@ -89,7 +89,7 @@ test_members_invalid_format() {
     echo "$out" | grep -q ":2" \
         && pass "[members] コロンなし → 行番号が表示された" \
         || fail "[members] コロンなし → 行番号が表示された"
-    echo "$out" | grep -q "書式エラー" \
+    echo "$out" | grep -q "書式エラー（種別名:メンバー名）" \
         && pass "[members] コロンなし → 書式エラーメッセージが表示された" \
         || fail "[members] コロンなし → 書式エラーメッセージが表示された"
     teardown "$td"
