@@ -92,8 +92,8 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "Salesforce 検証（本番反映なし・確認のみ）", "integration_id": 15368 },
-          { "context": "マージ順序を検証（プロモーション順序チェック）", "integration_id": 15368 }
+          { "context": "デプロイ検証", "integration_id": 15368 },
+          { "context": "順序チェック", "integration_id": 15368 }
         ]
       }
     }
@@ -105,7 +105,7 @@ echo "  ✓ protect-main を作成しました"
 echo "    - 対象ブランチ: main"
 echo "    - 削除禁止: 有効"
 echo "    - 強制プッシュ禁止: 有効"
-echo "    - Required status checks: デプロイ検証, マージ順序を検証"
+echo "    - Required status checks: デプロイ検証, 順序チェック"
 echo "    - Bypass: Repository admin (always)"
 
 # ------------------------------------------------------------------------------
@@ -149,8 +149,8 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "Salesforce 検証（本番反映なし・確認のみ）", "integration_id": 15368 },
-          { "context": "マージ順序を検証（プロモーション順序チェック）", "integration_id": 15368 }
+          { "context": "デプロイ検証", "integration_id": 15368 },
+          { "context": "順序チェック", "integration_id": 15368 }
         ]
       }
     }
@@ -162,7 +162,7 @@ echo "  ✓ protect-staging を作成しました"
 echo "    - 対象ブランチ: staging"
 echo "    - 削除禁止: 有効"
 echo "    - 強制プッシュ禁止: 有効"
-echo "    - Required status checks: デプロイ検証, マージ順序を検証"
+echo "    - Required status checks: デプロイ検証, 順序チェック"
 echo "    - Bypass: Repository admin (always)"
 
 # ------------------------------------------------------------------------------

@@ -27,7 +27,7 @@
 #   Salesforce 側では「クイック デプロイ」の資格取得チェックが行われるが、実際の反映はされない。
 #
 # ==============================================================================
-name: Salesforce デプロイ前検証（PR 自動チェック）
+name: "[validate] デプロイ前検証"
 
 on:
   pull_request:
@@ -35,7 +35,7 @@ on:
 
 jobs:
   check-branch:
-    name: デプロイ対象ブランチを確認
+    name: 対象ファイル確認
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.check.outputs.skip }}
@@ -61,7 +61,7 @@ jobs:
           fi
 
   validate:
-    name: Salesforce 検証（本番反映なし・確認のみ）
+    name: デプロイ検証
     needs: check-branch
     if: needs.check-branch.outputs.skip != 'true'
     runs-on: ubuntu-latest

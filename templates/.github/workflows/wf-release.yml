@@ -27,7 +27,7 @@
 #   SLACK_CHANNEL_ID   : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
-name: Salesforce 本番リリース（PR マージ後自動実行）
+name: "[release] デプロイ"
 
 on:
   pull_request:
@@ -40,7 +40,7 @@ on:
 
 jobs:
   check-branch:
-    name: デプロイ対象ブランチを確認
+    name: 対象ファイル確認
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.check.outputs.skip }}
@@ -70,7 +70,7 @@ jobs:
           fi
 
   release:
-    name: Salesforce リリースを実行
+    name: リリース実行
     needs: check-branch
     if: (github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch') && needs.check-branch.outputs.skip != 'true'
     runs-on: ubuntu-latest
