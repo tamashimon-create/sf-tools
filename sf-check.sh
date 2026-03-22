@@ -60,24 +60,15 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 4. Rust スタイルエラー出力関数
+# 4. GCC/Clang スタイルエラー出力関数
 # ------------------------------------------------------------------------------
 
-# Rust スタイルでエラーを表示する
+# GCC/Clang スタイルでエラーを表示する
 # 引数: $1 = ファイル名, $2 = 行番号, $3 = 行内容, $4 = エラーメッセージ
-print_rust_error() {
+print_gcc_error() {
     local file="$1" lineno="$2" content="$3" message="$4"
-    local carets
-    # content の文字数分 ^ を生成
-    printf -v carets '%*s' "${#content}" ''
-    carets="${carets// /^}"
-
-    printf "${CLR_ERR}error${CLR_RESET}: %s\n" "$message"
-    printf " ${CLR_INFO}-->${CLR_RESET} %s:%s\n" "$file" "$lineno"
-    printf "  ${CLR_INFO}|${CLR_RESET}\n"
-    printf "${CLR_INFO}%2s |${CLR_RESET} %s\n" "$lineno" "$content"
-    printf "  ${CLR_INFO}|${CLR_RESET} ${CLR_ERR}%s${CLR_RESET}\n" "$carets"
-    printf "  ${CLR_INFO}|${CLR_RESET}\n"
+    printf "  ${CLR_INFO}%s:%s:${CLR_RESET} ${CLR_ERR}error:${CLR_RESET} %s\n" "$file" "$lineno" "$message"
+    printf "    ${CLR_WARNING}→${CLR_RESET} %s\n" "$content"
 }
 
 # ------------------------------------------------------------------------------
@@ -122,13 +113,13 @@ check_target_file() {
         if [[ "$section" == "files" ]]; then
             # [files]: パスがリポジトリ内に存在するか
             if [[ ! -e "$clean" ]]; then
-                print_rust_error "$label" "$lineno" "$clean" "パスが存在しません"
+                print_gcc_error "$label" "$lineno" "$clean" "パスが存在しません"
                 error_count=$(( error_count + 1 ))
             fi
         else
             # [members]: 「種別名:メンバー名」形式チェック
             if [[ "$clean" != *:* ]]; then
-                print_rust_error "$label" "$lineno" "$clean" "書式エラー（「種別名:メンバー名」形式で記述してください）"
+                print_gcc_error "$label" "$lineno" "$clean" "書式エラー（種別名:メンバー名）"
                 error_count=$(( error_count + 1 ))
             fi
         fi

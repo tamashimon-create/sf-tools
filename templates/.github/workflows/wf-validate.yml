@@ -47,8 +47,8 @@ jobs:
         name: デプロイ対象ファイルを確認
         run: |
           HEAD="${{ github.event.pull_request.head.ref }}"
-          DEPLOY="release/${HEAD}/deploy-target.txt"
-          REMOVE="release/${HEAD}/remove-target.txt"
+          DEPLOY="sf-tools/release/${HEAD}/deploy-target.txt"
+          REMOVE="sf-tools/release/${HEAD}/remove-target.txt"
           # コメント行・空行を除いた実質的な内容があるか確認
           has_content() {
             [[ -f "$1" ]] && grep -qvE '^\s*(#|$|\[files\]|\[members\])' "$1"
