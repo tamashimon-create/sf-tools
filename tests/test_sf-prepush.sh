@@ -234,11 +234,62 @@ test_block_push_to_develop() {
 }
 
 # ------------------------------------------------------------------------------
+# 構文エラーあり → プッシュを中断
+# ------------------------------------------------------------------------------
+test_syntax_error_blocks_push() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    export MOCK_GIT_BRANCH="feature/test"
+    create_mock_git "$mb"
+
+    # 存在しないパスを記述した deploy-target.txt を作成
+    mkdir -p "$td/sf-tools/release/feature/test"
+    echo "feature/test" > "$td/sf-tools/release/branch_name.txt"
+    printf '[files]\nforce-app/main/default/classes/NotExist.cls\n' \
+        > "$td/sf-tools/release/feature/test/deploy-target.txt"
+    printf '[files]\n' > "$td/sf-tools/release/feature/test/remove-target.txt"
+
+    local out; out=$(run_prepush "$td" "$mb")
+    local ec=$?
+
+    assert_exit_fail $ec "構文エラーあり → プッシュを中断"
+    echo "$out" | grep -q "構文エラー" \
+        && pass "構文エラーメッセージが表示された" \
+        || fail "構文エラーメッセージが表示された"
+    teardown "$td" "$mb"
+    unset MOCK_GIT_BRANCH
+}
+
+# ------------------------------------------------------------------------------
+# branch_name.txt がない → スキップして正常終了
+# ------------------------------------------------------------------------------
+test_syntax_skip_when_no_branch_name() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    export MOCK_GIT_BRANCH="feature/test"
+    export MOCK_GIT_LOG_BRANCH_OUTPUT=""
+    export MOCK_GIT_LOG_MAIN_OUTPUT=""
+    create_mock_git "$mb"
+
+    # branch_name.txt を作成しない（setup_force_dir のデフォルト状態）
+    local out; out=$(run_prepush "$td" "$mb")
+    local ec=$?
+
+    assert_exit_ok $ec "branch_name.txt なし → スキップして正常終了"
+    teardown "$td" "$mb"
+    unset MOCK_GIT_BRANCH MOCK_GIT_LOG_BRANCH_OUTPUT MOCK_GIT_LOG_MAIN_OUTPUT
+}
+
+# ------------------------------------------------------------------------------
 # 実行
 # ------------------------------------------------------------------------------
 test_block_push_to_main
 test_block_push_to_staging
 test_block_push_to_develop
+test_syntax_error_blocks_push
+test_syntax_skip_when_no_branch_name
 test_all_synced
 test_own_branch_not_on_remote
 test_own_branch_behind_merge_ok

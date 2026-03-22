@@ -39,6 +39,7 @@ sf-tools/
 ├── sf-init.sh             # 新規プロジェクトの初期セットアップ（リポジトリ作成〜Ruleset 設定まで一括）
 ├── sf-start.sh            # メインスクリプト（接続→VS Code 起動→バックグラウンドで環境構築）
 ├── sf-install.sh          # sf-tools 最新化・ラッパー生成・マージドライバー登録（sf-start.sh から自動呼び出し）
+├── sf-check.sh            # deploy-target.txt / remove-target.txt の構文チェッカー（sf-release.sh から自動呼び出し・単体実行も可）
 ├── sf-release.sh          # デプロイ/検証スクリプト（manifest 自動生成→sf deploy）
 ├── sf-deploy.sh           # 強制デプロイラッパー（--release --force 固定で sf-release.sh を呼び出す）
 ├── sf-metasync.sh         # Salesforce メタデータを組織から取得して Git へ自動同期

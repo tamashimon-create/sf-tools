@@ -1,13 +1,14 @@
 #!/bin/bash
 # ==============================================================================
-# sf-push.sh - プッシュ前 main 同期チェックスクリプト
+# sf-push.sh - プッシュ前チェックスクリプト
 # ==============================================================================
-# git push 実行前に main ブランチとの同期状態を検証します。
+# git push 実行前に main ブランチとの同期状態と構文を検証します。
 #
 # 【検証内容】
 #   - main ブランチへの直接プッシュを禁止
 #   - リモート main に未取り込みコミットがある場合は自動的に rebase して取り込む
 #   - rebase でコンフリクトが発生した場合のみプッシュを中断
+#   - deploy-target.txt / remove-target.txt の構文チェック（sf-check.sh）
 #
 # 【オプション】
 #   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
@@ -121,6 +122,12 @@ phase_check_main() {
     return $RET_OK
 }
 
+# 【SYNTAX】deploy-target.txt / remove-target.txt の構文チェック
+phase_check_syntax() {
+    bash "${SCRIPT_DIR}/sf-check.sh" || die "deploy-target.txt / remove-target.txt に構文エラーがあります。プッシュを中断しました。"
+    return $RET_OK
+}
+
 # ------------------------------------------------------------------------------
 # 6. メイン実行フロー
 # ------------------------------------------------------------------------------
@@ -131,11 +138,13 @@ if is_protected_branch "$CURRENT_BRANCH"; then
     die "${CURRENT_BRANCH} ブランチへの直接プッシュは禁止されています。PR を作成してください。"
 fi
 
+phase_check_syntax || die "構文チェックに失敗しました。"
+
 phase_fetch "$CURRENT_BRANCH" || die "リモート情報の取得に失敗しました。"
 
 phase_pull_own "$CURRENT_BRANCH" || die "自ブランチのリモート同期に失敗しました。"
 
 phase_check_main "$CURRENT_BRANCH" || die "main ブランチとの同期確認に失敗しました。"
-log "SUCCESS" "すべての同期チェックが完了しました。プッシュを継続します。"
+log "SUCCESS" "すべてのチェックが完了しました。プッシュを継続します。"
 
 exit $RET_OK

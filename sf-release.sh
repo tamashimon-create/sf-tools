@@ -124,6 +124,10 @@ phase_check_target() {
 
     # 新規作成された場合はユーザーに記入を促すため停止
     [[ "$created" -eq 1 ]] && die "リストを作成しました。中身を記入して再実行してください。"
+
+    # 構文チェック
+    bash "${SCRIPT_DIR}/sf-check.sh" "$DEPLOY_LIST" "$REMOVE_LIST" \
+        || die "deploy-target.txt / remove-target.txt に構文エラーがあります。上記のエラーを修正してください。"
     return $RET_OK
 }
 
