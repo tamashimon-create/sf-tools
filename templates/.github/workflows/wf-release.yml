@@ -60,7 +60,7 @@ jobs:
           DEPLOY="release/${HEAD}/deploy-target.txt"
           REMOVE="release/${HEAD}/remove-target.txt"
           has_content() {
-            [[ -f "$1" ]] && grep -qvE '^\s*(#|$)' "$1"
+            [[ -f "$1" ]] && grep -qvE '^\s*(#|$|\[files\]|\[members\])' "$1"
           }
           if ! has_content "$DEPLOY" && ! has_content "$REMOVE"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
