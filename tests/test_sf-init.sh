@@ -213,6 +213,33 @@ test_sf_login_failure() {
 }
 
 # ==============================================================================
+# テスト: 許可されていないユーザーは実行できない
+# ==============================================================================
+test_unauthorized_user() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 許可されていないユーザー → 実行拒否${CLR_RST}"
+
+    local mb mock_home
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+
+    create_all_mocks "$mb"
+    export MOCK_GH_API_USER="stranger123"
+
+    local exit_code
+    printf 'x\n' \
+        | HOME="$mock_home" PATH="$mb:$PATH" \
+          bash "$mock_home/sf-tools/sf-init.sh" > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_fail "$exit_code" "許可されていないユーザーは失敗終了する"
+
+    unset MOCK_GH_API_USER
+    teardown "$mb" "$mock_home"
+}
+
+# ==============================================================================
 # テスト実行
 # ==============================================================================
 echo ""
@@ -224,5 +251,6 @@ test_happy_path_3branches
 test_missing_tool_gh
 test_repo_create_failure
 test_sf_login_failure
+test_unauthorized_user
 
 print_summary

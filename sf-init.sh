@@ -162,6 +162,9 @@ phase_check_environment() {
         log "WARNING" "GitHub CLI が未認証です。ログインします..."
         run gh auth login || die "GitHub 認証に失敗しました。"
     fi
+
+    check_authorized_user
+
     log "SUCCESS" "環境チェック完了。"
     return $RET_OK
 }

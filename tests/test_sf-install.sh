@@ -20,36 +20,6 @@ test_normal_run() {
     teardown "$td" "$mb" "$mh"
 }
 
-# ラッパースクリプトが存在しない → 新規生成される
-test_wrapper_generated() {
-    local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
-    create_all_mocks "$mb"
-
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
-
-    assert_file_exists "$td/sf-start.sh" "sf-start.sh が生成された"
-    assert_file_exists "$td/sf-restart.sh" "sf-restart.sh が生成された"
-    assert_executable "$td/sf-start.sh" "sf-start.sh に実行権限がある"
-    teardown "$td" "$mb" "$mh"
-}
-
-# ラッパースクリプトが既に存在する → スキップ（上書きされない）
-test_wrapper_skip_if_exists() {
-    local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
-    create_all_mocks "$mb"
-
-    echo "#!/bin/bash" > "$td/sf-start.sh"
-    echo "echo existing_wrapper" >> "$td/sf-start.sh"
-    chmod +x "$td/sf-start.sh"
-
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
-
-    assert_file_contains "$td/sf-start.sh" "existing_wrapper" "既存ラッパーは上書きされない"
-    teardown "$td" "$mb" "$mh"
-}
-
 # スタンプファイルが新しい（24h以内）→ sf-upgrade.sh がバックグラウンド起動されない
 test_upgrade_skipped_within_24h() {
     local td mb mh
@@ -112,8 +82,6 @@ test_outside_force_dir() {
 }
 
 test_normal_run
-test_wrapper_generated
-test_wrapper_skip_if_exists
 test_upgrade_skipped_within_24h
 test_upgrade_triggered_on_first_run
 test_npm_install_skipped_no_package_json

@@ -16,6 +16,7 @@
 #   die MESSAGE [EXIT_CODE]   ... エラーログを出力して終了
 #   get_target_org [ALIAS]    ... 接続先組織エイリアスを解決
 #   check_force_dir           ... force-* ディレクトリ内か確認
+#   check_authorized_user     ... sf-tools 実行許可ユーザーか確認（マスター固定 + 外部ファイル）
 #
 # 【戻り値定数】
 #   RET_OK=0        正常終了
@@ -363,6 +364,43 @@ is_protected_branch() {
     branches=$(get_branch_list)
     echo "$branches" | grep -qx "$branch" && return $RET_OK
     return $RET_NG
+}
+
+# check_authorized_user - sf-tools の実行許可ユーザーか確認する
+# ------------------------------------------------------------------------------
+# マスターユーザー（tama-create）は常に許可。
+# 追加ユーザーは ~/sf-tools/config/allowed-users.txt で管理する。
+#
+# 【使い方】
+#   check_authorized_user
+#
+# 【戻り値】
+#   許可ユーザーなら処理を続行。不許可なら die で即終了。
+# ------------------------------------------------------------------------------
+check_authorized_user() {
+    local master_user="tama-create"
+    local allowed_file="$HOME/sf-tools/config/allowed-users.txt"
+
+    log "INFO" "実行ユーザーを確認中..."
+    local current_user
+    current_user=$(gh api user --jq '.login') \
+        || die "GitHub ユーザー情報を取得できませんでした。"
+
+    # マスターユーザーは常に許可
+    if [[ "$current_user" == "$master_user" ]]; then
+        log "INFO" "実行ユーザーを確認しました（${current_user}）"
+        return $RET_OK
+    fi
+
+    # 外部ファイルの許可ユーザーをチェック
+    if [[ -f "$allowed_file" ]]; then
+        if grep -v '^[[:space:]]*#' "$allowed_file" | grep -qx "$current_user"; then
+            log "INFO" "実行ユーザーを確認しました（${current_user}）"
+            return $RET_OK
+        fi
+    fi
+
+    die "実行権限がありません（${current_user}）。~/sf-tools/config/allowed-users.txt にユーザーを追加してください。"
 }
 
 # Y または N を明示的に入力させる（Enter のみは無効）
