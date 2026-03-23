@@ -18,6 +18,7 @@ CLR_RST='\033[0m'
 # ------------------------------------------------------------------------------
 pass() { echo -e "  ${CLR_PASS}[PASS]${CLR_RST} $1"; TESTS_PASSED=$((TESTS_PASSED + 1)); }
 fail() { echo -e "  ${CLR_FAIL}[FAIL]${CLR_RST} $1${2:+  → $2}"; TESTS_FAILED=$((TESTS_FAILED + 1)); }
+skip() { echo -e "  \033[33m[SKIP]\033[0m $1"; }
 
 assert_exit_ok()         { [[ $1 -eq 0 ]]  && pass "$2" || fail "$2" "終了コード: $1（期待: 0）"; }
 assert_exit_fail()       { [[ $1 -ne 0 ]]  && pass "$2" || fail "$2" "終了コード 0（期待: 非ゼロ）"; }

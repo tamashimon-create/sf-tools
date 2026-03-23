@@ -7,6 +7,13 @@
 #   引数あり → 指定したテストのみ実行（例: bash run_tests.sh test_sf-hook.sh）
 # ==============================================================================
 
+# Windows Git Bash の場合は WSL で自動リダイレクト（高速化）
+if [[ "$(uname -s)" =~ MINGW|MSYS ]] && command -v wsl >/dev/null 2>&1; then
+    WSL_SCRIPT=$(echo "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")" \
+        | sed 's|^/\([a-z]\)/|/mnt/\1/|')
+    MSYS_NO_PATHCONV=1 exec wsl bash "$WSL_SCRIPT" "$@"
+fi
+
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$TESTS_DIR/../logs"
 mkdir -p "$LOG_DIR"

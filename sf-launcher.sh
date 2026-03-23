@@ -28,12 +28,12 @@ RESET='\033[0m'
 # VSCode 内では start / restart を除外（code . の二重起動・表示乱れ防止）
 # ------------------------------------------------------------------------------
 MENU_ITEMS_ALL=(
-    "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
-    "sf-restart  | 接続組織を切り替えて再起動"
     "sf-release  | 現在接続中のSandboxへリリース検証"
     "sf-deploy   | 現在接続中のSandboxへリリース"
     "sf-check    | deploy-target.txt の構文チェック"
     "sf-next     | 次の PR 先ブランチを確認"
+    "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
+    "sf-restart  | 接続組織を切り替えて再起動"
 )
 
 # VSCode 内では start / restart を除外
