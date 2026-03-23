@@ -359,6 +359,7 @@ phase_setup_pat_token() {
     echo "$pat_token" | run gh secret set PAT_TOKEN -R "$REPO_FULL_NAME" \
         || die "PAT_TOKEN の登録に失敗しました。"
 
+    PAT_TOKEN_VALUE="$pat_token"   # 初回 push（workflow スコープ必要）で使用
     log "SUCCESS" "PAT_TOKEN を登録しました。"
     return $RET_OK
 }
@@ -372,7 +373,7 @@ phase_setup_slack() {
     echo ""
     echo "    1. 「Create New App」→「From scratch」をクリック"
     echo "    2. 以下を設定して「Create App」をクリック:"
-    echo "       App Name  : sf-notify"
+    echo "       App Name  : sf-notify-${PROJECT_NAME}"
     echo "       Workspace : 通知先のワークスペースを選択"
     echo "    3. 左メニュー「OAuth & Permissions」をクリック"
     echo "    4. 「ボットトークンのスコープ」→「OAuth スコープを追加する」をクリック"
@@ -432,8 +433,16 @@ phase_initial_commit() {
 
     run git commit -m "chore: sf-tools 初期セットアップ" \
         || die "git commit に失敗しました。"
+
+    # PAT トークン（workflow スコープ付き）で push
+    # gh の OAuth 認証は workflow スコープを持たないため PAT を使用する
+    local origin_url
+    origin_url=$(git remote get-url origin)
+    local pat_url="https://${PAT_TOKEN_VALUE}@github.com/${REPO_FULL_NAME}.git"
+    git remote set-url origin "$pat_url"
     run git push --no-verify origin main \
-        || die "git push に失敗しました。"
+        || { git remote set-url origin "$origin_url"; die "git push に失敗しました。"; }
+    git remote set-url origin "$origin_url"
 
     log "SUCCESS" "初回コミット＆プッシュ完了。"
     return $RET_OK
