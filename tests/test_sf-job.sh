@@ -4,8 +4,8 @@
 # ==============================================================================
 #
 # 【テストケース】
-#   1. ハッピーパス（設定ファイルあり）     - フルフロー正常終了
-#   2. ハッピーパス（設定ファイルなし）     - 初回: オーナー入力→保存→正常終了
+#   1. ハッピーパス                         - フルフロー正常終了
+#   2. フォルダからオーナー名自動取得        - REPO_FULL_NAME が正しく構成される
 #   3. init フォルダから実行               - 環境チェックで失敗
 #   4. force-* フォルダから実行            - 環境チェックで失敗
 #   5. リポジトリが存在しない              - プロジェクト情報確認で失敗
@@ -66,21 +66,24 @@ _stub_job_subscripts() {
 }
 
 # ==============================================================================
-# ヘルパー：company ディレクトリ（basename = yamada）を作成
+# ヘルパー：{github-owner}/{company}/ ディレクトリを作成して company パスを返す
+# teardown には $(dirname "$(dirname "$cdir")") を渡すこと
 # ==============================================================================
 setup_company_dir() {
+    local github_owner="${1:-tamashimon-org}"
+    local company="${2:-yamada}"
     local base
     base=$(mktemp -d "${TMPDIR:-/tmp}/test-cmp-XXXX")
-    mkdir -p "$base/yamada"
-    echo "$base/yamada"
+    mkdir -p "$base/$github_owner/$company"
+    echo "$base/$github_owner/$company"
 }
 
 # ==============================================================================
-# テスト 1: ハッピーパス（設定ファイルあり）
+# テスト 1: ハッピーパス
 # ==============================================================================
-test_happy_path_with_config() {
+test_happy_path() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] ハッピーパス（設定ファイルあり）${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] ハッピーパス${CLR_RST}"
 
     local mb mock_home cdir
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
@@ -89,9 +92,6 @@ test_happy_path_with_config() {
     create_mock_git "$mb"
     create_mock_gh_for_job "$mb"
     _stub_job_subscripts "$mock_home"
-
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
 
     local ec
     printf 'JOB-test\nY\n' \
@@ -105,42 +105,37 @@ test_happy_path_with_config() {
     assert_file_contains "$MOCK_CALL_LOG" "git/refs"        "ブランチ作成 API が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "git clone"       "git clone が呼ばれる"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
-# テスト 2: ハッピーパス（設定ファイルなし - 初回）
+# テスト 2: フォルダ名から GitHub オーナー名が自動取得される
 # ==============================================================================
-test_happy_path_first_run() {
+test_owner_auto_derive() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] ハッピーパス（設定ファイルなし - 初回）${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] フォルダ名から GitHub オーナー名を自動取得${CLR_RST}"
 
     local mb mock_home cdir
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    mock_home=$(setup_mock_home); cdir=$(setup_company_dir)
+    mock_home=$(setup_mock_home)
+    # 異なるオーナー名でフォルダを作成
+    cdir=$(setup_company_dir "my-org-name" "yamada")
 
     create_mock_git "$mb"
     create_mock_gh_for_job "$mb"
     _stub_job_subscripts "$mock_home"
 
-    rm -f "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec
-    printf 'tamashimon-org\nJOB-test\nY\n' \
+    printf 'JOB-test\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
-    assert_exit_ok $ec "初回実行 → 正常終了"
-    assert_file_exists \
-        "$mock_home/sf-tools/config/github-owner-yamada.txt" \
-        "github-owner-yamada.txt が保存される"
-    assert_file_contains \
-        "$mock_home/sf-tools/config/github-owner-yamada.txt" \
-        "tamashimon-org" \
-        "オーナーが正しく保存される"
+    assert_exit_ok  $ec                                                  "正常終了する"
+    # REPO_FULL_NAME = my-org-name/force-yamada が使われていること
+    assert_file_contains "$MOCK_CALL_LOG" "my-org-name/force-yamada"     "フォルダ名からオーナーが正しく導出される"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -214,9 +209,6 @@ test_repo_not_found() {
     _stub_job_subscripts "$mock_home"
     export MOCK_GH_REPO_VIEW_EXIT=1
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec
     printf 'q\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GH_REPO_VIEW_EXIT="$MOCK_GH_REPO_VIEW_EXIT"; \
@@ -227,7 +219,7 @@ test_repo_not_found() {
     assert_exit_fail $ec "リポジトリ未発見 → エラー終了"
 
     unset MOCK_GH_REPO_VIEW_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -245,8 +237,6 @@ test_local_job_dir_duplicate() {
     create_mock_gh_for_job "$mb"
     _stub_job_subscripts "$mock_home"
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
     mkdir -p "$cdir/JOB-existing"
 
     local ec out
@@ -260,7 +250,7 @@ test_local_job_dir_duplicate() {
         || fail "ローカル重複 WARNING が表示される" "WARNING が見つからない"
     assert_file_contains "$MOCK_CALL_LOG" "git clone" "git clone が呼ばれる"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -291,9 +281,6 @@ EOF
     create_mock_git "$mb"
     _stub_job_subscripts "$mock_home"
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec out
     out=$(printf 'JOB-existing\nJOB-newname\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") 2>&1)
@@ -304,7 +291,7 @@ EOF
         && pass "GitHub ブランチ重複 WARNING が表示される" \
         || fail "GitHub ブランチ重複 WARNING が表示される" "WARNING が見つからない"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -322,9 +309,6 @@ test_invalid_job_name() {
     create_mock_gh_for_job "$mb"
     _stub_job_subscripts "$mock_home"
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec out
     out=$(printf 'JOB INVALID\nJOB-valid\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") 2>&1)
@@ -335,7 +319,7 @@ test_invalid_job_name() {
         && pass "無効なジョブ名 WARNING が表示される" \
         || fail "無効なジョブ名 WARNING が表示される" "WARNING が見つからない"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -354,9 +338,6 @@ test_branch_create_failure() {
     _stub_job_subscripts "$mock_home"
     export MOCK_GH_CREATE_BRANCH_EXIT=1
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec
     printf 'JOB-test\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GH_CREATE_BRANCH_EXIT="$MOCK_GH_CREATE_BRANCH_EXIT"; \
@@ -367,7 +348,7 @@ test_branch_create_failure() {
     assert_exit_fail $ec "ブランチ作成失敗 → エラー終了"
 
     unset MOCK_GH_CREATE_BRANCH_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -386,9 +367,6 @@ test_clone_failure() {
     _stub_job_subscripts "$mock_home"
     export MOCK_GIT_CLONE_EXIT=1
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec
     printf 'JOB-test\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GIT_CLONE_EXIT="$MOCK_GIT_CLONE_EXIT"; \
@@ -399,7 +377,7 @@ test_clone_failure() {
     assert_exit_fail $ec "クローン失敗 → エラー終了"
 
     unset MOCK_GIT_CLONE_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -416,9 +394,6 @@ test_quit_with_q() {
     create_mock_gh_for_job "$mb"
     _stub_job_subscripts "$mock_home"
 
-    mkdir -p "$mock_home/sf-tools/config"
-    echo "tamashimon-org" > "$mock_home/sf-tools/config/github-owner-yamada.txt"
-
     local ec
     printf 'q\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
@@ -427,7 +402,7 @@ test_quit_with_q() {
 
     assert_exit_fail $ec "q 入力 → 中断終了"
 
-    teardown "$mb" "$mock_home" "$(dirname "$cdir")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
 }
 
 # ==============================================================================
@@ -438,8 +413,8 @@ echo -e "${CLR_HEAD}========================================"
 echo "  sf-job.sh テスト"
 echo -e "========================================${CLR_RST}"
 
-test_happy_path_with_config
-test_happy_path_first_run
+test_happy_path
+test_owner_auto_derive
 test_from_init_dir
 test_from_force_dir
 test_repo_not_found

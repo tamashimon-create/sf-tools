@@ -6,13 +6,14 @@
 # 一連のセットアップを自動化する。
 #
 # 【前提フォルダ構成】
-#   C:\home\
-#   └── company\        ← プロジェクト名として使用（例: yamada → force-yamada）
-#       └── init\       ← このフォルダをカレントにして実行すること
+#   ~/home/
+#   └── {github-owner}/   ← GitHub ユーザー名（フォルダ名から自動取得）
+#       └── {company}/    ← プロジェクト名として使用（例: yamada → force-yamada）
+#           └── init/     ← このフォルダをカレントにして実行すること
 #
 # 【処理フロー】
 #   Phase 1: 環境チェック（ツール確認・GitHub CLI 認証確認）
-#   Phase 2: プロジェクト情報の入力（owner のみ。プロジェクト名は親フォルダ名から自動導出）
+#   Phase 2: プロジェクト情報の確認（フォルダ構成からOWNERとプロジェクト名を自動導出）
 #   Phase 3: リポジトリ作成（gh repo create + git clone）
 #   Phase 4: ファイル生成（sf-install.sh / sf-hook.sh）
 #   Phase 5: ブランチ構成（sf-branch.sh）
@@ -26,7 +27,8 @@
 #   - Slack App の作成・Bot Token の取得
 #
 # 【使い方】
-#   mkdir -p ~/home/company/init && cd ~/home/company/init
+#   mkdir -p ~/home/{github-owner}/{company}/init
+#   cd ~/home/{github-owner}/{company}/init
 #   ~/sf-tools/sf-init.sh
 # ==============================================================================
 
@@ -156,8 +158,8 @@ phase_check_environment() {
     if [[ "$current_dir" != "init" ]]; then
         die "このスクリプトは init フォルダから実行してください。
 実行方法:
-  mkdir -p ~/home/company/init
-  cd ~/home/company/init
+  mkdir -p ~/home/{github-owner}/{company}/init
+  cd ~/home/{github-owner}/{company}/init
   ~/sf-tools/sf-init.sh"
     fi
 
@@ -189,25 +191,28 @@ phase_check_environment() {
     return $RET_OK
 }
 
-# 【INPUT】プロジェクト情報の入力（プロジェクト名は親フォルダから自動導出）
-phase_ask_project_info() {
-    log "INFO" "プロジェクト情報を確認・入力してください。"
-    echo ""
+# 【INFO】プロジェクト情報の確認（フォルダ構成から OWNER とプロジェクト名を自動導出）
+phase_load_project_info() {
+    log "INFO" "プロジェクト情報を確認中..."
 
-    # プロジェクト名: init の親フォルダ名から自動導出
+    # init の 1つ上 = {company}、2つ上 = {github-owner}
     PROJECT_NAME=$(basename "$(dirname "$PWD")")
+    GITHUB_OWNER=$(basename "$(dirname "$(dirname "$PWD")")")
     REPO_NAME="force-${PROJECT_NAME}"
+    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
     REPO_DIR="$(pwd)/${REPO_NAME}"
 
-    log "INFO" "  プロジェクト名（自動導出）: ${REPO_NAME}"
-    echo ""
+    # GitHub オーナー名バリデーション（英数字・ハイフンのみ・先頭末尾はハイフン不可）
+    if [[ -z "$GITHUB_OWNER" ]] || \
+       [[ ! "$GITHUB_OWNER" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$ ]]; then
+        die "GitHub オーナー名が無効です: \"${GITHUB_OWNER}\"
+  2つ上のフォルダ名を GitHub ユーザー名として使用します。
+  正しいフォルダ構成で実行してください:
+    ~/home/{github-owner}/{company}/init/"
+    fi
 
-    # --- GitHub オーナー ---
-    while [[ -z "$GITHUB_OWNER" ]]; do
-        read_or_quit GITHUB_OWNER "  GitHub ユーザー名または組織名（q で中断）: "
-    done
-
-    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
+    log "INFO" "  GitHub オーナー（フォルダ自動取得）: ${GITHUB_OWNER}"
+    log "INFO" "  リポジトリ名（自動導出）: ${REPO_NAME}"
 
     # --- 確認表示 ---
     echo ""
@@ -454,7 +459,7 @@ log "INFO" "セットアップ中は Ctrl+C が無効です。中断するには
 phase_check_environment      || die "環境チェックに失敗しました。"
 log "SUCCESS" "環境チェック完了。"
 
-phase_ask_project_info       || die "プロジェクト情報の入力に失敗しました。"
+phase_load_project_info      || die "プロジェクト情報の確認に失敗しました。"
 
 phase_create_repository      || die "リポジトリの作成に失敗しました。"
 
