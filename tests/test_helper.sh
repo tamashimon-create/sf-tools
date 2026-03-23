@@ -64,8 +64,14 @@ setup_mock_bin() {
 setup_mock_home() {
     local dir
     dir=$(mktemp -d "${TMPDIR:-/tmp}/mock-home-XXXX")
-    cp -r "$SF_TOOLS_DIR" "$dir/sf-tools"
-    rm -rf "$dir/sf-tools/.git"  # git 履歴は不要
+    mkdir -p "$dir/sf-tools"
+    # .git / logs / config/github-owner-*.txt は不要なので除外してコピー（tar で高速化）
+    (cd "$SF_TOOLS_DIR" && tar cf - \
+        --exclude='.git' \
+        --exclude='logs' \
+        --exclude='config/github-owner-*.txt' \
+        . ) | tar xf - -C "$dir/sf-tools/"
+    mkdir -p "$dir/sf-tools/logs" "$dir/sf-tools/config"
     echo "$dir"
 }
 

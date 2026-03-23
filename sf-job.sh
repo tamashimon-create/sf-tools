@@ -150,8 +150,16 @@ phase_load_project_info() {
 
     # リポジトリの存在確認
     if ! gh repo view "$REPO_FULL_NAME" --json name &>/dev/null; then
+        local hint=""
+        if [[ -f "$OWNER_CONFIG_FILE" ]]; then
+            hint="
+  オーナー \"${GITHUB_OWNER}\" は ${OWNER_CONFIG_FILE} より読み込みました。
+  誤っている場合はこのファイルを削除して再実行してください:
+    rm \"${OWNER_CONFIG_FILE}\""
+        fi
         die "リポジトリが見つかりません: ${REPO_FULL_NAME}
-  sf-init.sh で先にプロジェクトを初期化してください。"
+  フォルダ名 \"${COMPANY_NAME}\" から ${REPO_NAME} を自動導出しました。
+  正しい company フォルダから実行しているか確認してください。${hint}"
     fi
 
     log "SUCCESS" "プロジェクト情報確認完了: ${REPO_FULL_NAME}"
