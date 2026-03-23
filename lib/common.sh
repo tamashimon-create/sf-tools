@@ -409,11 +409,12 @@ ask_yn() {
     local prompt="$1"
     local answer
     while true; do
-        echo -ne "  ${prompt} [Y/N]: " >&2
+        echo -ne "  ${prompt} [Y/N/q]: " >&2
         read -r answer
         case "$answer" in
             [Yy]|[Yy][Ee][Ss]) return 0 ;;
             [Nn]|[Nn][Oo])     return 1 ;;
+            [Qq])               die "中断しました。" ;;
             *) echo -e "  Y または N を入力してください。" >&2 ;;
         esac
     done

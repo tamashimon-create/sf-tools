@@ -5,9 +5,14 @@
 # 新しい force-xxx プロジェクトを GitHub に作成し、sf-tools と連携させるまでの
 # 一連のセットアップを自動化する。
 #
+# 【前提フォルダ構成】
+#   C:\home\
+#   └── company\        ← プロジェクト名として使用（例: yamada → force-yamada）
+#       └── init\       ← このフォルダをカレントにして実行すること
+#
 # 【処理フロー】
 #   Phase 1: 環境チェック（ツール確認・GitHub CLI 認証確認）
-#   Phase 2: プロジェクト情報の入力（owner・プロジェクト名・開発組織エイリアス）
+#   Phase 2: プロジェクト情報の入力（owner のみ。プロジェクト名は親フォルダ名から自動導出）
 #   Phase 3: リポジトリ作成（gh repo create + git clone）
 #   Phase 4: ファイル生成（sf-install.sh / sf-hook.sh）
 #   Phase 5: ブランチ構成（sf-branch.sh）
@@ -17,10 +22,11 @@
 #
 # 【手動操作が必要なステップ】
 #   - Salesforce 組織へのブラウザログイン
-#   - GitHub Fine-grained PAT トークンの作成
+#   - GitHub Classic PAT トークンの作成（repo + workflow スコープ）
 #   - Slack App の作成・Bot Token の取得
 #
 # 【使い方】
+#   mkdir -p ~/home/company/init && cd ~/home/company/init
 #   ~/sf-tools/sf-init.sh
 # ==============================================================================
 
@@ -76,11 +82,22 @@ open_browser() {
     fi
 }
 
-# Enter キー待ち
+# Enter キー待ち（q で中断）
 press_enter() {
-    local msg="${1:-続行するには Enter キーを押してください...}"
+    local msg="${1:-続行するには Enter キーを押してください（q で中断）...}"
     echo ""
-    read -rp "  ▶ $msg"
+    local _input
+    read -rp "  ▶ $msg" _input
+    [[ "$_input" == "q" || "$_input" == "Q" ]] && die "セットアップを中断しました。"
+}
+
+# 入力を受け取る（q で中断）
+# 使い方: read_or_quit 変数名 "プロンプト"
+read_or_quit() {
+    local -n _rq_var=$1
+    local prompt="$2"
+    read -rp "$prompt" _rq_var
+    [[ "$_rq_var" == "q" || "$_rq_var" == "Q" ]] && die "セットアップを中断しました。"
 }
 
 # Salesforce 認証 URL を取得して GitHub Secret に登録する
@@ -133,12 +150,15 @@ register_sf_secret() {
 
 # 【CHECK】必要なツールと GitHub CLI 認証の確認
 phase_check_environment() {
-    # force-* ディレクトリ内からの実行を禁止
+    # init フォルダからのみ実行を許可
     local current_dir
     current_dir=$(basename "$PWD")
-    if [[ "$current_dir" == force-* ]]; then
-        die "force-* ディレクトリ内から実行しています。
-親ディレクトリから実行してください。"
+    if [[ "$current_dir" != "init" ]]; then
+        die "このスクリプトは init フォルダから実行してください。
+実行方法:
+  mkdir -p ~/home/company/init
+  cd ~/home/company/init
+  ~/sf-tools/sf-init.sh"
     fi
 
     log "INFO" "必要なツールを確認中..."
@@ -169,23 +189,25 @@ phase_check_environment() {
     return $RET_OK
 }
 
-# 【INPUT】プロジェクト情報の入力（全テキスト入力をまとめて収集・確認）
+# 【INPUT】プロジェクト情報の入力（プロジェクト名は親フォルダから自動導出）
 phase_ask_project_info() {
-    log "INFO" "プロジェクト情報を入力してください。"
+    log "INFO" "プロジェクト情報を確認・入力してください。"
     echo ""
 
-    # --- GitHub / リポジトリ情報 ---
-    while [[ -z "$GITHUB_OWNER" ]]; do
-        read -rp "  GitHub ユーザー名または組織名: " GITHUB_OWNER
-    done
-
-    while [[ -z "$PROJECT_NAME" ]]; do
-        read -rp "  プロジェクト名（force- の後の部分、例: yamada）: " PROJECT_NAME
-    done
-
+    # プロジェクト名: init の親フォルダ名から自動導出
+    PROJECT_NAME=$(basename "$(dirname "$PWD")")
     REPO_NAME="force-${PROJECT_NAME}"
-    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
     REPO_DIR="$(pwd)/${REPO_NAME}"
+
+    log "INFO" "  プロジェクト名（自動導出）: ${REPO_NAME}"
+    echo ""
+
+    # --- GitHub オーナー ---
+    while [[ -z "$GITHUB_OWNER" ]]; do
+        read_or_quit GITHUB_OWNER "  GitHub ユーザー名または組織名（q で中断）: "
+    done
+
+    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
 
     # --- 確認表示 ---
     echo ""
@@ -325,7 +347,7 @@ phase_setup_pat_token() {
 
     local pat_token=""
     while [[ -z "$pat_token" ]]; do
-        read -rp "  生成されたトークンを貼り付けてください: " pat_token
+        read_or_quit pat_token "  生成されたトークンを貼り付けてください（q で中断）: "
         echo ""
     done
 
@@ -359,7 +381,7 @@ phase_setup_slack() {
 
     local slack_token=""
     while [[ -z "$slack_token" ]]; do
-        read -rp "  Bot User OAuth Token を貼り付けてください: " slack_token
+        read_or_quit slack_token "  Bot User OAuth Token を貼り付けてください（q で中断）: "
         echo ""
     done
 
@@ -375,7 +397,7 @@ phase_setup_slack() {
 
     local channel_id=""
     while [[ -z "$channel_id" ]]; do
-        read -rp "  チャンネル ID: " channel_id
+        read_or_quit channel_id "  チャンネル ID（q で中断）: "
     done
 
     echo "$channel_id" | run gh secret set SLACK_CHANNEL_ID -R "$REPO_FULL_NAME" \
@@ -458,16 +480,20 @@ run bash "$SCRIPT_DIR/sf-hook.sh" \
 phase_setup_rulesets     || log "WARNING" "Ruleset の設定に失敗しました（無料プランでは利用不可の場合があります。スキップして続行します）。"
 
 echo "-------------------------------------------------------"
-# セットアップ用クローンを削除（開発時は別途クローンし直すため）
-cd "$(dirname "$REPO_DIR")" || true
-if [[ -d "$REPO_DIR/.git" ]]; then
-    printf "  ▶ セットアップ用クローン（%s）を削除してよいですか？ [Y/N]: " "$REPO_DIR"
+# init フォルダごと削除（開発時は別途クローンし直すため）
+local INIT_DIR
+INIT_DIR="$(dirname "$REPO_DIR")"   # init フォルダのパス
+cd "$(dirname "$INIT_DIR")" || true
+if [[ -d "$INIT_DIR" ]]; then
+    printf "  ▶ init フォルダ（%s）を削除してよいですか？ [Y/N/q]: " "$INIT_DIR"
+    local answer
     read -r answer
+    [[ "$answer" == "q" || "$answer" == "Q" ]] && { log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"; exit $RET_OK; }
     if [[ "$answer" =~ ^[Yy]$ ]]; then
-        rm -rf "$REPO_DIR"
-        log "SUCCESS" "セットアップ用クローンを削除しました。"
+        rm -rf "$INIT_DIR"
+        log "SUCCESS" "init フォルダを削除しました。"
     else
-        log "INFO" "削除をスキップしました。手動で削除してください: ${REPO_DIR}"
+        log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"
     fi
 fi
 
