@@ -6,14 +6,15 @@
 # GitHub 上にブランチを作成し、ローカルにクローンして sf-start.sh まで一気に実行する。
 #
 # 【前提フォルダ構成】
-#   C:\home\
-#   └── company\        ← このフォルダをカレントにして実行すること
-#       └── JOB-xxx\    ← sf-job.sh が作成するジョブフォルダ
-#           └── force-company\  ← クローン先
+#   ~/home/
+#   └── {github-owner}/          ← GitHub ユーザー名（フォルダ名から自動取得）
+#       └── {company}/           ← このフォルダをカレントにして実行すること
+#           └── JOB-xxx/         ← sf-job.sh が作成するジョブフォルダ
+#               └── force-company/  ← クローン先
 #
 # 【処理フロー】
 #   Phase 1: 環境チェック（company フォルダから実行されているか確認）
-#   Phase 2: プロジェクト情報の確認（company名→REPO_NAME自動導出・OWNER読込または入力）
+#   Phase 2: プロジェクト情報の確認（フォルダ構成からOWNERとREPO_NAMEを自動導出）
 #   Phase 3: ジョブ名の入力と重複チェック（ローカル・GitHub ブランチ）
 #   Phase 4: GitHub 上にジョブブランチを作成
 #   Phase 5: ローカルにクローン
@@ -21,7 +22,7 @@
 #   Phase 7: sf-launcher.sh を起動
 #
 # 【使い方】
-#   cd ~/home/company
+#   cd ~/home/{github-owner}/{company}
 #   ~/sf-tools/sf-job.sh
 # ==============================================================================
 
@@ -54,13 +55,12 @@ trap '' INT  # Ctrl+C を無効化（q で中断すること）
 # ------------------------------------------------------------------------------
 COMPANY_NAME=""       # company フォルダ名（カレントディレクトリ名）
 REPO_NAME=""          # force-company 形式のリポジトリ名
-GITHUB_OWNER=""       # GitHub ユーザー名または組織名
+GITHUB_OWNER=""       # GitHub ユーザー名または組織名（1つ上のフォルダ名から自動取得）
 REPO_FULL_NAME=""     # OWNER/REPO 形式
 JOB_NAME=""           # ジョブ名（例: JOB-20260323）
 JOB_DIR=""            # ジョブフォルダの絶対パス
 REPO_DIR=""           # クローン先の絶対パス
 BASE_BRANCH=""        # ジョブブランチの分岐元ブランチ
-OWNER_CONFIG_FILE=""  # GitHub オーナー設定ファイルのパス
 
 # ------------------------------------------------------------------------------
 # 4. ヘルパー関数
@@ -116,42 +116,33 @@ phase_check_environment() {
     return $RET_OK
 }
 
-# 【INFO】プロジェクト情報の確認（REPO_NAME 自動導出・OWNER 読込または入力）
+# 【INFO】プロジェクト情報の確認（フォルダ構成から OWNER と REPO_NAME を自動導出）
 phase_load_project_info() {
     log "INFO" "プロジェクト情報を確認中..."
 
     COMPANY_NAME=$(basename "$PWD")
+    GITHUB_OWNER=$(basename "$(dirname "$PWD")")
     REPO_NAME="force-${COMPANY_NAME}"
-    OWNER_CONFIG_FILE="${SCRIPT_DIR}/config/github-owner-${COMPANY_NAME}.txt"
+    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
 
-    log "INFO" "  リポジトリ名（自動導出）: ${REPO_NAME}"
-
-    # GitHub オーナーをキャッシュから読み込む
-    if [[ -f "$OWNER_CONFIG_FILE" ]]; then
-        GITHUB_OWNER=$(cat "$OWNER_CONFIG_FILE")
-        log "INFO" "  GitHub オーナー（設定ファイルより）: ${GITHUB_OWNER}"
-    else
-        echo ""
-        while true; do
-            read_or_quit GITHUB_OWNER "  GitHub ユーザー名または組織名（q で中断）: "
-            # バリデーション: 英数字・ハイフンのみ・1〜39文字・先頭末尾はハイフン不可
-            if [[ -z "$GITHUB_OWNER" ]]; then
-                log "WARNING" "入力してください。"
-            elif [[ ! "$GITHUB_OWNER" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$ ]]; then
-                log "WARNING" "無効な値です。英数字・ハイフンのみ使用可能です（例: yamada-org）"
-                GITHUB_OWNER=""
-            else
-                break
-            fi
-        done
+    # GitHub オーナー名バリデーション（英数字・ハイフンのみ・先頭末尾はハイフン不可）
+    if [[ -z "$GITHUB_OWNER" ]] || \
+       [[ ! "$GITHUB_OWNER" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$ ]]; then
+        die "GitHub オーナー名が無効です: \"${GITHUB_OWNER}\"
+  1つ上のフォルダ名を GitHub ユーザー名として使用します。
+  正しいフォルダ構成で実行してください:
+    ~/home/{github-owner}/{company-name}/"
     fi
 
-    REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
+    log "INFO" "  GitHub オーナー（フォルダ自動取得）: ${GITHUB_OWNER}"
+    log "INFO" "  リポジトリ名（自動導出）: ${REPO_NAME}"
 
     # リポジトリの存在確認
     if ! gh repo view "$REPO_FULL_NAME" --json name &>/dev/null; then
         die "リポジトリが見つかりません: ${REPO_FULL_NAME}
-  sf-init.sh で先にプロジェクトを初期化してください。"
+  フォルダ構成 \"{github-owner}/{company-name}\" から自動導出しました。
+  正しいフォルダ構成で実行しているか確認してください:
+    ~/home/{github-owner}/{company-name}/"
     fi
 
     log "SUCCESS" "プロジェクト情報確認完了: ${REPO_FULL_NAME}"
@@ -284,15 +275,6 @@ phase_sf_launcher() {
     return $RET_OK
 }
 
-# 【SAVE】GitHub オーナーをキャッシュに保存（初回のみ）
-save_github_owner() {
-    if [[ ! -f "$OWNER_CONFIG_FILE" ]]; then
-        mkdir -p "$(dirname "$OWNER_CONFIG_FILE")"
-        echo "$GITHUB_OWNER" > "$OWNER_CONFIG_FILE"
-        log "INFO" "GitHub オーナーを保存しました: ${OWNER_CONFIG_FILE}"
-    fi
-}
-
 # ------------------------------------------------------------------------------
 # 6. メイン実行フロー
 # ------------------------------------------------------------------------------
@@ -308,9 +290,6 @@ phase_ask_job_name        || die "ジョブ名の入力に失敗しました。"
 phase_create_branch       || die "ジョブブランチの作成に失敗しました。"
 
 phase_clone_repository    || die "クローンに失敗しました。"
-
-# 正常にここまで来たら GitHub オーナーをキャッシュに保存
-save_github_owner
 
 phase_sf_start            || die "sf-start.sh の実行に失敗しました。"
 

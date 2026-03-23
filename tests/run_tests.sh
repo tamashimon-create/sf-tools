@@ -32,6 +32,7 @@ TEST_FILES=(
     test_sf-release.sh
     test_sf-deploy.sh
     test_repo-settings.sh
+    test_sf-job.sh
 )
 
 # 引数指定があれば対象を絞る
