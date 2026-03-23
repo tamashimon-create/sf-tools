@@ -226,15 +226,11 @@ phase_ask_job_name() {
 phase_create_branch() {
     log "INFO" "分岐元ブランチを確認中..."
 
-    # develop → staging → main の優先順位で分岐元を選択
-    for candidate in develop staging main; do
-        if gh api "repos/${REPO_FULL_NAME}/branches/${candidate}" &>/dev/null 2>&1; then
-            BASE_BRANCH="$candidate"
-            break
-        fi
-    done
-
-    [[ -z "$BASE_BRANCH" ]] && die "分岐元ブランチ（develop / staging / main）が見つかりません。"
+    # 作業用ブランチは常に main から作成する
+    BASE_BRANCH="main"
+    if ! gh api "repos/${REPO_FULL_NAME}/branches/${BASE_BRANCH}" &>/dev/null 2>&1; then
+        die "分岐元ブランチ（main）が見つかりません。"
+    fi
 
     log "INFO" "ジョブブランチを作成中: ${JOB_NAME}（分岐元: ${BASE_BRANCH}）"
 
