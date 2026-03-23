@@ -88,7 +88,13 @@ NEXT_TARGET=""
 STATUSES=()
 
 for target in "${REVERSED[@]}"; do
-    if git merge-base --is-ancestor HEAD "origin/$target" 2>/dev/null; then
+    # 現在ブランチ独自のコミット数を確認
+    unique_commits=$(git log "origin/${target}..HEAD" --oneline 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$unique_commits" -eq 0 ]]; then
+        # 独自コミットなし = まだ作業を開始していない（未着手）
+        STATUSES+=("none")
+        [[ -z "$NEXT_TARGET" ]] && NEXT_TARGET="$target"
+    elif git merge-base --is-ancestor HEAD "origin/$target" 2>/dev/null; then
         STATUSES+=("merged")
     else
         STATUSES+=("none")
