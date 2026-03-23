@@ -81,6 +81,7 @@ check_target_file() {
     local file="$1"
     local label="$2"
     local error_count=0
+    local entry_count=0
     local section="files"
     local lineno=0
 
@@ -110,6 +111,8 @@ check_target_file() {
             section="members"; continue
         fi
 
+        entry_count=$(( entry_count + 1 ))
+
         if [[ "$section" == "files" ]]; then
             # [files]: パスがリポジトリ内に存在するか
             if [[ ! -e "$clean" ]]; then
@@ -124,6 +127,11 @@ check_target_file() {
             fi
         fi
     done < "$file"
+
+    if [[ "$entry_count" -eq 0 ]]; then
+        log "WARNING" "${label}: 何も書かれていません。"
+        return 0
+    fi
 
     if [[ "$error_count" -eq 0 ]]; then
         log "SUCCESS" "${label}: 問題なし。"

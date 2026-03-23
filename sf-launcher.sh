@@ -106,6 +106,14 @@ run_command() {
 # メイン処理
 # ------------------------------------------------------------------------------
 main() {
+    # force-* ディレクトリチェック
+    if [[ ! "$(basename "$PWD")" =~ ^force- ]]; then
+        echo -e "${YELLOW}  ⚠ force-* ディレクトリ内で実行してください。${RESET}"
+        echo -e "${DIM}  現在: ${PWD}${RESET}"
+        echo ""
+        exit 1
+    fi
+
     # fzf モード
     if [[ "$1" == "--fzf" ]]; then
         fzf_mode

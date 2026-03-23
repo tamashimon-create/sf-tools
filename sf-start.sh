@@ -110,12 +110,10 @@ fi
 #   - npm install / sf-upgrade.sh (24h スロットル)
 (
     if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
-        log "INFO" "sf-tools を最新化します（バックグラウンド）"
-        bash "$HOME/sf-tools/sf-install.sh" "$@" \
-            || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
+        bash "$HOME/sf-tools/sf-install.sh" "$@" 2>&1 \
+            || true
     fi
-
-    log "SUCCESS" "バックグラウンド処理が完了しました"
-) &
+) >> "$LOG_FILE" 2>&1 &
+disown   # ジョブ完了通知をターミナルに表示しない
 
 exit $RET_OK
