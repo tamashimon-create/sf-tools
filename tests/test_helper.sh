@@ -153,6 +153,7 @@ case "$1" in
         fi
         exit "${MOCK_GIT_DIFF_EXIT:-0}" ;;
     config)         exit 0 ;;
+    remote)         echo "https://github.com/mock-owner/mock-repo.git"; exit 0 ;;
     ls-remote)      exit "${MOCK_GIT_LS_REMOTE_EXIT:-0}" ;;
     update-git-for-windows) exit 0 ;;
     *)              exit 0 ;;
