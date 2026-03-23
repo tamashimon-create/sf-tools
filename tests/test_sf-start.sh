@@ -10,6 +10,8 @@ test_connected_org() {
     local td mb mh
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
+    printf '#!/bin/bash\necho "sf-launcher called" >> "%s"\n' "$MOCK_CALL_LOG" > "$mh/sf-tools/sf-launcher.sh"
+    chmod +x "$mh/sf-tools/sf-launcher.sh"
 
     # 接続済みを示す設定ファイルを用意
     echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
@@ -30,6 +32,7 @@ test_config_files_written() {
     local td mb mh
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
+    printf '#!/bin/bash\nexit 0\n' > "$mh/sf-tools/sf-launcher.sh"; chmod +x "$mh/sf-tools/sf-launcher.sh"
 
     echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -48,6 +51,7 @@ test_force_relogin() {
     local td mb mh
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
+    printf '#!/bin/bash\nexit 0\n' > "$mh/sf-tools/sf-launcher.sh"; chmod +x "$mh/sf-tools/sf-launcher.sh"
 
     echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -62,11 +66,30 @@ test_force_relogin() {
     teardown "$td" "$mb" "$mh"
 }
 
+# sf-start.sh → sf-launcher.sh が呼ばれる
+test_launcher_called() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    printf '#!/bin/bash\necho "sf-launcher called" >> "%s"\n' "$MOCK_CALL_LOG" > "$mh/sf-tools/sf-launcher.sh"
+    chmod +x "$mh/sf-tools/sf-launcher.sh"
+
+    echo '{"target-org":"testorg"}' > "$td/.sf/config.json"
+    export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-start.sh" 2>&1 >/dev/null
+
+    assert_file_contains "$MOCK_CALL_LOG" "sf-launcher called" "sf-launcher.sh が呼び出された"
+    unset MOCK_SF_ORG_JSON
+    teardown "$td" "$mb" "$mh"
+}
+
 # force-* 以外で実行 → エラー
 test_outside_force_dir() {
     local rd mb mh
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
+    printf '#!/bin/bash\nexit 0\n' > "$mh/sf-tools/sf-launcher.sh"; chmod +x "$mh/sf-tools/sf-launcher.sh"
 
     local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-start.sh" 2>&1)
     local ec=$?
@@ -78,6 +101,7 @@ test_outside_force_dir() {
 test_connected_org
 test_config_files_written
 test_force_relogin
+test_launcher_called
 test_outside_force_dir
 
 print_summary
