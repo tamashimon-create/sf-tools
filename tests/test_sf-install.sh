@@ -126,13 +126,85 @@ test_release_dir_created() {
     teardown "$td" "$mb" "$mh"
 }
 
+# sf-upgrade.sh が呼び出された（初回実行時）
+test_upgrade_called_on_first_run() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    rm -f "$mh/.sf-tools-last-update"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    sleep 2
+
+    grep -q "sf update" "$MOCK_CALL_LOG" \
+        && pass "sf-upgrade.sh が呼び出された" \
+        || fail "sf-upgrade.sh が呼び出された"
+    teardown "$td" "$mb" "$mh"
+}
+
+# sf-upgrade.sh が呼び出されない（24h以内）
+test_upgrade_not_called_within_24h() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    touch -t "$(date -d '1 hour ago' +'%Y%m%d%H%M' 2>/dev/null || date -v -1H +'%Y%m%d%H%M' 2>/dev/null || date +'%Y%m%d%H%M')" "$mh/.sf-tools-last-update" 2>/dev/null \
+        || touch "$mh/.sf-tools-last-update"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    sleep 1
+
+    grep -q "sf update" "$MOCK_CALL_LOG" \
+        && fail "sf-upgrade.sh が呼び出されていない（24h以内）" \
+        || pass "sf-upgrade.sh が呼び出されていない（24h以内）"
+    teardown "$td" "$mb" "$mh"
+}
+
+# deploy-target.txt と remove-target.txt が作成される
+test_deploy_remove_target_created() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    export MOCK_GIT_BRANCH="feature/test"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+
+    assert_file_exists "$td/sf-tools/release/feature/test/deploy-target.txt" "deploy-target.txt が作成された"
+    assert_file_exists "$td/sf-tools/release/feature/test/remove-target.txt" "remove-target.txt が作成された"
+    unset MOCK_GIT_BRANCH
+    teardown "$td" "$mb" "$mh"
+}
+
+# release 初期化に失敗 → WARNING が出力される（SUCCESS にならない）
+test_release_dir_init_fail() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    export MOCK_GIT_BRANCH="feature/test"
+    rm -f "$mh/sf-tools/templates/release/deploy-target.txt"
+
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+
+    echo "$out" | grep -q "リリース管理ディレクトリの準備に失敗" \
+        && pass "release 初期化失敗 → WARNING が出力された" \
+        || fail "release 初期化失敗 → WARNING が出力された"
+    echo "$out" | grep -q "リリース管理ディレクトリの準備が完了" \
+        && fail "release 初期化失敗 → SUCCESS ログが出ていない" \
+        || pass "release 初期化失敗 → SUCCESS ログが出ていない"
+    unset MOCK_GIT_BRANCH
+    teardown "$td" "$mb" "$mh"
+}
+
 test_normal_run
 test_upgrade_skipped_within_24h
 test_upgrade_triggered_on_first_run
+test_upgrade_called_on_first_run
+test_upgrade_not_called_within_24h
 test_npm_install_skipped_no_package_json
 test_outside_force_dir
 test_skip_pull_when_sf_init_running
 test_hook_installed
 test_release_dir_created
+test_deploy_remove_target_created
+test_release_dir_init_fail
 
 print_summary

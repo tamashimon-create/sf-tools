@@ -215,12 +215,12 @@ run() {
     fi
 
     local is_success=$RET_NG
-    # A. 変更なし（NothingToDeploy）の検知
+    # A. 変更なし（NothingToDeploy）の検知（終了コードより優先）
     if grep -qE "NothingToDeploy|No local changes to deploy" "$tmp_out"; then
         log "WARNING" "組織との差分が検出されませんでした (NothingToDeploy)。ローカルのソースはすでに組織と一致しています。"
         is_success=$RET_NO_CHANGE
-    # B. 成功判定（終了コード優先、Salesforce CLI の非ゼロ成功に備えて出力も確認）
-    elif [[ $status -eq 0 ]] || grep -qE "Success|successfully|Succeeded|Deployed|Successfully|status\": 0" "$tmp_out"; then
+    # B. 成功判定（終了コードのみを信頼する）
+    elif [[ $status -eq 0 ]]; then
         is_success=$RET_OK
     fi
 
@@ -409,12 +409,11 @@ ask_yn() {
     local prompt="$1"
     local answer
     while true; do
-        echo -ne "  ${prompt} [Y/N/q]: " >&2
+        echo -ne "  ${prompt} [Y/N]: " >&2
         read -r answer
         case "$answer" in
             [Yy]|[Yy][Ee][Ss]) return 0 ;;
             [Nn]|[Nn][Oo])     return 1 ;;
-            [Qq])               die "中断しました。" ;;
             *) echo -e "  Y または N を入力してください。" >&2 ;;
         esac
     done
