@@ -65,7 +65,12 @@ phase_fetch() {
     log "INFO" "リモート(origin)の最新情報を確認中..."
     local branches
     branches=$(get_branch_list)
-    run git fetch origin "$current_branch" $branches -q || return $RET_NG
+    # 現在のブランチがリモートに存在する場合のみ fetch 対象に含める（新規ブランチは除外）
+    local fetch_targets="$branches"
+    if git ls-remote --exit-code origin "$current_branch" > /dev/null 2>&1; then
+        fetch_targets="$current_branch $branches"
+    fi
+    run git fetch origin $fetch_targets -q || return $RET_NG
     return $RET_OK
 }
 
