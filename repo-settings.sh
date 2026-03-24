@@ -92,9 +92,10 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "対象ファイル確認", "integration_id": 15368 },
-          { "context": "デプロイ検証", "integration_id": 15368 },
-          { "context": "順序チェック", "integration_id": 15368 }
+          { "context": "validate / 対象ファイル確認", "integration_id": 15368 },
+          { "context": "validate / デプロイ検証", "integration_id": 15368 },
+          { "context": "sequence / 対象ファイル確認", "integration_id": 15368 },
+          { "context": "sequence / 順序チェック", "integration_id": 15368 }
         ]
       }
     }
@@ -106,7 +107,7 @@ echo "  ✓ protect-main を作成しました"
 echo "    - 対象ブランチ: main"
 echo "    - 削除禁止: 有効"
 echo "    - 強制プッシュ禁止: 有効"
-echo "    - Required status checks: 対象ファイル確認, デプロイ検証, 順序チェック"
+echo "    - Required status checks: validate / デプロイ検証, sequence / 順序チェック"
 echo "    - Bypass: Repository admin (always)"
 
 # ------------------------------------------------------------------------------
@@ -150,9 +151,10 @@ gh api --method POST "repos/${REPO}/rulesets" \
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "対象ファイル確認", "integration_id": 15368 },
-          { "context": "デプロイ検証", "integration_id": 15368 },
-          { "context": "順序チェック", "integration_id": 15368 }
+          { "context": "validate / 対象ファイル確認", "integration_id": 15368 },
+          { "context": "validate / デプロイ検証", "integration_id": 15368 },
+          { "context": "sequence / 対象ファイル確認", "integration_id": 15368 },
+          { "context": "sequence / 順序チェック", "integration_id": 15368 }
         ]
       }
     }
@@ -164,7 +166,7 @@ echo "  ✓ protect-staging を作成しました"
 echo "    - 対象ブランチ: staging"
 echo "    - 削除禁止: 有効"
 echo "    - 強制プッシュ禁止: 有効"
-echo "    - Required status checks: デプロイ検証, 順序チェック"
+echo "    - Required status checks: validate / デプロイ検証, sequence / 順序チェック"
 echo "    - Bypass: Repository admin (always)"
 
 # ------------------------------------------------------------------------------
