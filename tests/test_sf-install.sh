@@ -126,6 +126,20 @@ test_release_dir_created() {
     teardown "$td" "$mb" "$mh"
 }
 
+# main ブランチでは release ディレクトリを作成しない
+test_release_dir_skipped_on_main() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+    export MOCK_GIT_BRANCH="main"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+
+    assert_dir_not_exists "$td/sf-tools/release/main" "main の release ディレクトリが作成されない"
+    unset MOCK_GIT_BRANCH
+    teardown "$td" "$mb" "$mh"
+}
+
 # sf-upgrade.sh が呼び出された（初回実行時）
 test_upgrade_called_on_first_run() {
     local td mb mh

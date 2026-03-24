@@ -145,6 +145,10 @@ phase_setup_release_dir() {
         log "WARNING" "ブランチ名を取得できませんでした。スキップします。"
         return $RET_OK
     fi
+    if [[ "$branch_name" == "main" ]]; then
+        log "INFO" "main ブランチはリリース対象外のため、release ディレクトリの作成をスキップします。"
+        return $RET_OK
+    fi
     local release_dir="sf-tools/release/${branch_name}"
     run mkdir -p "$release_dir" || return $RET_NG
     [[ ! -f "${release_dir}/deploy-target.txt" ]] \
