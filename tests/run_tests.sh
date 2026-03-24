@@ -42,6 +42,7 @@ TEST_FILES=(
     test_common.sh
     test_sf-unhook.sh
     test_sf-hook.sh
+    test_sf-init.sh
     test_sf-upgrade.sh
     test_sf-install.sh
     test_sf-start.sh
