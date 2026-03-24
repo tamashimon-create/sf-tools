@@ -14,6 +14,17 @@ if [[ "$(uname -s)" =~ MINGW|MSYS ]] && command -v wsl >/dev/null 2>&1; then
     MSYS_NO_PATHCONV=1 exec wsl bash "$WSL_SCRIPT" "$@"
 fi
 
+# WSL で /mnt/ 配下（Windows FS）から実行された場合、ネイティブ FS に同期して再実行
+# /mnt/c/ 経由の tar / rsync は 9P プロトコルのオーバーヘッドで極めて遅いため、
+# ~/sf-tools（ext4）に一度同期してから実行することで大幅に高速化する。
+if [[ "$(uname -s)" == "Linux" ]] && [[ "${BASH_SOURCE[0]}" == /mnt/* ]]; then
+    _src="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    _dst="${HOME}/sf-tools"
+    echo "  [run_tests] WSL ネイティブ FS に同期中: ${_dst} ..."
+    rsync -a --delete "${_src}/" "${_dst}/"
+    exec bash "${_dst}/tests/run_tests.sh" "$@"
+fi
+
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$TESTS_DIR/../logs"
 mkdir -p "$LOG_DIR"
@@ -58,24 +69,63 @@ echo "========================================"
 echo "  sf-tools テストスイート"
 echo "========================================"
 
-for test_file in "${TEST_FILES[@]}"; do
-    test_path="$TESTS_DIR/$test_file"
-    if [[ ! -f "$test_path" ]]; then
-        echo -e "${CLR_FAIL}[SKIP] $test_file が見つかりません${CLR_RST}" | tee_log
-        continue
-    fi
-
+# 引数1件のみ（単一ファイル指定）の場合は並列化不要なのでそのまま実行
+_run_single() {
+    local test_path="$1"
     echo "" | tee_log
-    # サブシェルで実行してカウンターを独立させる
+    local output
     output=$(bash "$test_path" 2>&1)
     echo "$output" | tee_log
+    TOTAL_PASSED=$(( TOTAL_PASSED + $(echo "$output" | grep -c '\[PASS\]' || true) ))
+    TOTAL_FAILED=$(( TOTAL_FAILED + $(echo "$output" | grep -c '\[FAIL\]'  || true) ))
+}
 
-    # PASS / FAIL 件数を集計（ANSI カラーコードが含まれるため ^ アンカーなし）
-    passed=$(echo "$output" | grep -c '\[PASS\]' || true)
-    failed=$(echo "$output" | grep -c '\[FAIL\]' || true)
-    TOTAL_PASSED=$((TOTAL_PASSED + passed))
-    TOTAL_FAILED=$((TOTAL_FAILED + failed))
-done
+if [[ ${#TEST_FILES[@]} -eq 1 ]]; then
+    # 単一ファイル: 逐次実行
+    test_path="$TESTS_DIR/${TEST_FILES[0]}"
+    if [[ ! -f "$test_path" ]]; then
+        echo -e "${CLR_FAIL}[SKIP] ${TEST_FILES[0]} が見つかりません${CLR_RST}" | tee_log
+    else
+        _run_single "$test_path"
+    fi
+else
+    # 複数ファイル: 並列実行（各ファイルをバックグラウンドで起動し tmp に出力を保存）
+    declare -a _pids=()
+    declare -a _tmps=()
+
+    for test_file in "${TEST_FILES[@]}"; do
+        test_path="$TESTS_DIR/$test_file"
+        if [[ ! -f "$test_path" ]]; then
+            _pids+=(-1)
+            _tmps+=("")
+            continue
+        fi
+        tmp=$(mktemp /tmp/sftest-XXXX)
+        bash "$test_path" > "$tmp" 2>&1 &
+        _pids+=($!)
+        _tmps+=("$tmp")
+    done
+
+    # 起動順に wait → 出力を順番に表示・集計
+    for i in "${!TEST_FILES[@]}"; do
+        test_file="${TEST_FILES[$i]}"
+        pid="${_pids[$i]}"
+        tmp="${_tmps[$i]}"
+
+        if [[ "$pid" == "-1" ]]; then
+            echo -e "${CLR_FAIL}[SKIP] ${test_file} が見つかりません${CLR_RST}" | tee_log
+            continue
+        fi
+
+        wait "$pid"
+        echo "" | tee_log
+        output=$(cat "$tmp")
+        echo "$output" | tee_log
+        TOTAL_PASSED=$(( TOTAL_PASSED + $(echo "$output" | grep -c '\[PASS\]' || true) ))
+        TOTAL_FAILED=$(( TOTAL_FAILED + $(echo "$output" | grep -c '\[FAIL\]'  || true) ))
+        rm -f "$tmp"
+    done
+fi
 
 # 総合サマリー
 TOTAL=$((TOTAL_PASSED + TOTAL_FAILED))

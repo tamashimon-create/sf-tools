@@ -127,9 +127,11 @@ register_sf_secret() {
         fi
     fi
 
+    # sf org login web は MINGW64 等の環境で exit code が信頼できないため直接実行する。
+    # 成否は続く sf org display の auth_url 取得で判定する（exit code は無視）。
+    log "CMD" "[${SCRIPT_NAME}] sf org login web ${login_opts}"
     # shellcheck disable=SC2086
-    run sf org login web $login_opts \
-        || die "${label}へのログインに失敗しました。"
+    sf org login web $login_opts || true
 
     log "INFO" "認証 URL を取得中..."
     local sf_json auth_url
@@ -233,9 +235,13 @@ phase_create_repository() {
         log "WARNING" "リポジトリはすでに存在します。作成をスキップします: ${REPO_FULL_NAME}"
     else
         log "INFO" "GitHub リポジトリを作成中..."
+        # tama-create 配下はテスト用リポジトリのため Public で作成（Ruleset 利用可）
+        # その他の組織・ユーザーは Private で作成
+        local visibility_opt="--private"
+        [[ "$GITHUB_OWNER" == "tama-create" ]] && visibility_opt="--public"
         run gh repo create "$REPO_FULL_NAME" \
             --template tama-create/force-template \
-            --private
+            "$visibility_opt"
         # gh repo create --template はテンプレートコピーで非ゼロを返す場合がある。
         # 実際にリポジトリが存在するか確認して判定する。
         if ! run gh repo view "$REPO_FULL_NAME" --json name 2>/dev/null; then
