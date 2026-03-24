@@ -52,6 +52,7 @@ TEST_FILES=(
     test_sf-deploy.sh
     test_repo-settings.sh
     test_sf-job.sh
+    test_sf-next.sh
 )
 
 # 引数指定があれば対象を絞る

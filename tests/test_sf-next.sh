@@ -44,7 +44,7 @@ test_next_is_staging() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS="develop"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "develop 済み → 終了コード 0"
@@ -68,7 +68,7 @@ test_next_is_main() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS="develop staging"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "develop+staging 済み → 終了コード 0"
@@ -92,7 +92,7 @@ test_all_merged() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS="develop staging main"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "全ブランチマージ済み → 終了コード 0"
@@ -112,7 +112,7 @@ test_none_merged() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS=""
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "未マージ → 終了コード 0"
@@ -138,7 +138,7 @@ test_two_branches_none_merged() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS=""
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "2ブランチ未マージ → 終了コード 0"
@@ -159,7 +159,7 @@ test_protected_branch_blocked() {
 
     export MOCK_GIT_BRANCH="main"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "保護ブランチ → エラー終了"
@@ -181,7 +181,7 @@ test_single_branch_none_merged() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS=""
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "1ブランチ未マージ → 終了コード 0"
@@ -202,7 +202,7 @@ test_single_branch_merged() {
     export MOCK_GIT_BRANCH="feature/my-feature"
     export MOCK_GIT_MERGED_TARGETS="main"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "1ブランチマージ済み → 終了コード 0"
