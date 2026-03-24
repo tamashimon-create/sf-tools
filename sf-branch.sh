@@ -34,7 +34,7 @@
 # 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
-readonly LOG_FILE="./logs/${SCRIPT_NAME}.log"
+readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
 
 # ------------------------------------------------------------------------------
