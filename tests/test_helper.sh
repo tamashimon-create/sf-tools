@@ -176,6 +176,7 @@ case "$1 $2" in
             | sed 's/[,{]/&\n/g'
         exit "${MOCK_SF_ORG_DISPLAY_EXIT:-0}" ;;
     "org login")    exit "${MOCK_SF_LOGIN_EXIT:-0}" ;;
+    "org logout")   exit 0 ;;
     "org open")     exit 0 ;;
     "alias unset")  exit 0 ;;
     "config set")   exit 0 ;;

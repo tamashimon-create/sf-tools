@@ -127,6 +127,12 @@ register_sf_secret() {
         fi
     fi
 
+    # ログイン前に既存エイリアスをクリアする。
+    # これにより、ログイン失敗・中断時でも古い credentials が sf org display に残らず、
+    # 後続の auth_url チェックで確実に失敗を検出できる。
+    log "CMD" "[${SCRIPT_NAME}] sf org logout --target-org ${org_alias} --no-prompt"
+    sf org logout --target-org "$org_alias" --no-prompt 2>/dev/null || true
+
     # sf org login web は MINGW64 等の環境で exit code が信頼できないため直接実行する。
     # 成否は続く sf org display の auth_url 取得で判定する（exit code は無視）。
     log "CMD" "[${SCRIPT_NAME}] sf org login web ${login_opts}"

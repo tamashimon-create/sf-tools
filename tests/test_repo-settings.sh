@@ -19,12 +19,11 @@ _extract_contexts() {
 }
 
 # ワークフロー yml から job name を抽出する内部関数（4スペースインデントの name: 行）
-# 内部チェックジョブ（"デプロイ対象ブランチを確認"・"対象ファイル確認"）は除外する
+# 内部チェックジョブ（"デプロイ対象ブランチを確認"）は required_status_checks 対象外のため除外する
 _extract_job_names() {
     grep -h '^    name:' "$WORKFLOWS_DIR"/*.yml \
         | sed 's/^    name: //' \
         | grep -v "デプロイ対象ブランチを確認" \
-        | grep -v "対象ファイル確認" \
         | sort -u
 }
 
