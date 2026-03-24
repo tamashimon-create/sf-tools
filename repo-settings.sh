@@ -2,7 +2,7 @@
 # ==============================================================================
 # repo-settings.sh — GitHub リポジトリ設定の再現スクリプト
 # ==============================================================================
-# このスクリプトは force-tama リポジトリの設定を再現します。
+# このスクリプトは force-test リポジトリの設定を再現します。
 # 新しいリポジトリに同じ設定を適用する場合に使用してください。
 #
 # 【前提条件】
@@ -12,12 +12,12 @@
 #
 # 【使い方】
 #   bash scripts/repo-settings.sh <owner/repo>
-#   例: bash scripts/repo-settings.sh tama-create/force-tama
+#   例: bash scripts/repo-settings.sh tama-create/force-test
 # ==============================================================================
 
 set -euo pipefail
 
-REPO="${1:-tama-create/force-tama}"
+REPO="${1:-tama-create/force-test}"
 
 echo "=================================================="
 echo " リポジトリ設定の適用: ${REPO}"

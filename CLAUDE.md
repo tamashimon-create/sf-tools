@@ -66,7 +66,7 @@ Claude が作業上で意識すべき主なディレクトリ・ファイル:
 | `hooks/pre-push` | git push フックの実体。`sf-hook.sh` がプロジェクト側へコピーする |
 | `templates/` | 各プロジェクトへ配布する雛形（ワークフロー・設定ファイル・release テンプレート）|
 | `tests/` | モックベースの単体テスト一式 |
-| `tests/integration/` | 実プロジェクト（force-tama）を使う統合テスト |
+| `tests/integration/` | 実プロジェクト（force-test）を使う統合テスト |
 
 ## 共通ライブラリ (`lib/common.sh`)
 
@@ -183,7 +183,7 @@ bash tests/run_tests.sh test_sf-metasync.sh
 
 ### 統合テスト (`tests/integration/`)
 
-実際の GitHub リポジトリと `force-tama` を使う統合テスト。`gh` CLI と管理権限が必要。
+実際の GitHub リポジトリと `force-test` を使う統合テスト。`gh` CLI と管理権限が必要。
 
 ```bash
 bash ~/sf-tools/tests/integration/test-sequence-check.sh
@@ -262,9 +262,9 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh
 
 | ディレクトリ | 作業ブランチ | 用途 |
 |---|---|---|
-| `C:\home\dev\main\force-tama` | `test` | 開発作業用 |
-| `C:\home\dev\test\force-tama` | `main` | main ブランチ確認用 |
-| `C:\home\dev\staging\force-tama` | `staging` | staging ブランチ確認用 |
+| `C:\home\dev\main\force-test` | `test` | 開発作業用 |
+| `C:\home\dev\test\force-test` | `main` | main ブランチ確認用 |
+| `C:\home\dev\staging\force-test` | `staging` | staging ブランチ確認用 |
 
-- 開発は基本的に `C:\home\dev\main\force-tama` で行うこと
+- 開発は基本的に `C:\home\dev\main\force-test` で行うこと
 - 検証のために一時的にブランチを切り替えることは許可されるが、作業完了後は元のブランチに戻すこと

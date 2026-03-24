@@ -10,6 +10,8 @@
 #   4. Salesforce ログイン失敗      - sf org login が exit 1 を返す
 #   5. 許可されていないユーザー     - check_authorized_user で失敗
 #   6. 無効なフォルダ構成           - GitHub オーナー名バリデーション失敗
+#   7. リポジトリ visibility (Public) - tama-create → --public
+#   8. リポジトリ visibility (Private) - 他オーナー → --private
 # ==============================================================================
 
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
@@ -50,12 +52,13 @@ case "$1 $2" in
         if [[ -n "${MOCK_GH_REPO_CREATE_EXIT:-}" && "${MOCK_GH_REPO_CREATE_EXIT}" != "0" ]]; then
             exit 1
         fi
-        # 初回: 未存在（create をトリガー） / 2回目以降: 存在（作成確認 OK）
-        _cnt_file="${MOCK_CALL_LOG%/*}/repo_view.cnt"
-        _cnt=$(cat "$_cnt_file" 2>/dev/null || echo 0)
-        _cnt=$((_cnt + 1))
-        echo "$_cnt" > "$_cnt_file"
-        [[ $_cnt -eq 1 ]] && exit 1 || exit 0 ;;
+        # センチネル方式: 初回呼出しのみ exit 1（repo 未存在）、2回目以降 exit 0
+        _sentinel="${MOCK_CALL_LOG%/*}/.repo_view_called"
+        if [[ ! -f "$_sentinel" ]]; then
+            touch "$_sentinel"
+            exit 1
+        fi
+        exit 0 ;;
     "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
     "secret set")  exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
     "api user")    echo "${MOCK_GH_API_USER:-tama-create}" ;;
@@ -247,7 +250,9 @@ test_sf_login_failure() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
+    # ログイン失敗かつ org 接続も不可（= 本当の失敗）をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
+    export MOCK_SF_ORG_DISPLAY_EXIT=1
 
     # confirm + prod の press_enter まで入力（sf org login で失敗するため以降は不要）
     local exit_code
@@ -260,6 +265,7 @@ test_sf_login_failure() {
     assert_file_contains "$MOCK_CALL_LOG" "sf org login"                      "sf org login が試みられる"
 
     unset MOCK_SF_LOGIN_EXIT
+    unset MOCK_SF_ORG_DISPLAY_EXIT
     teardown "$mb" "$mock_home" "$init_base"
 }
 
@@ -325,6 +331,68 @@ test_invalid_owner_folder() {
 }
 
 # ==============================================================================
+# テスト 7: リポジトリ visibility - tama-create → --public で作成
+# ==============================================================================
+test_repo_visibility_public_for_tama_create() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] tama-create オーナー → --public で作成${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tama-create" "testproject")
+    init_dir="$init_base/tama-create/testproject/init"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+    _stub_subscripts "$mock_home"
+
+    export MOCK_SF_ORG_JSON='{"result":{"alias":"prod","sfdxAuthUrl":"force://fakeurl@test.com","id":"00D000000000001AAA"}}'
+
+    _make_input_3branches \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+
+    assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
+    assert_file_contains "$MOCK_CALL_LOG" "--public"        "tama-create は --public で作成される"
+
+    unset MOCK_SF_ORG_JSON
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
+# テスト 8: リポジトリ visibility - 他オーナー → --private で作成
+# ==============================================================================
+test_repo_visibility_private_for_other_owner() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 他オーナー（tamashimon）→ --private で作成${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/tamashimon/testproject/init"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+    _stub_subscripts "$mock_home"
+
+    export MOCK_SF_ORG_JSON='{"result":{"alias":"prod","sfdxAuthUrl":"force://fakeurl@test.com","id":"00D000000000001AAA"}}'
+
+    _make_input_3branches \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+
+    assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
+    assert_file_contains "$MOCK_CALL_LOG" "--private"       "他オーナーは --private で作成される"
+
+    unset MOCK_SF_ORG_JSON
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
 # テスト実行
 # ==============================================================================
 echo ""
@@ -338,5 +406,7 @@ test_repo_create_failure
 test_sf_login_failure
 test_unauthorized_user
 test_invalid_owner_folder
+test_repo_visibility_public_for_tama_create
+test_repo_visibility_private_for_other_owner
 
 print_summary
