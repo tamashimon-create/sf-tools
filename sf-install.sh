@@ -146,6 +146,7 @@ phase_setup_release_dir() {
         return $RET_OK
     fi
     run mkdir -p "sf-tools/release" || return $RET_NG
+    [[ ! -f "sf-tools/release/.gitkeep" ]] && touch "sf-tools/release/.gitkeep"
     if [[ "$branch_name" == "main" ]]; then
         log "INFO" "main ブランチはリリース対象外のため、release/<branch> ディレクトリの作成をスキップします。"
         return $RET_OK
