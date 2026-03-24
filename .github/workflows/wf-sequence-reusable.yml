@@ -1,0 +1,160 @@
+# ==============================================================================
+# wf-sequence-reusable.yml - Salesforce マージ順序チェック（再利用可能ワークフロー）
+# ==============================================================================
+#
+# 【概要】
+#   PR のマージ順序（プロモーション順序）を自動検証する。
+#   force-* リポジトリの wf-sequence.yml（caller）から workflow_call で起動される。
+#
+# 【必要な GitHub Secrets（呼び出し元リポジトリに設定すること）】
+#   SLACK_BOT_TOKEN  : Slack API の Bot Token（順序未確認時の通知に使用）
+#   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
+#
+# ==============================================================================
+on:
+  workflow_call:
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: false
+      SLACK_CHANNEL_ID:
+        required: false
+
+jobs:
+  check-branch:
+    name: 対象ファイル確認
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: デプロイ対象ファイルを確認
+        run: |
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          DEPLOY="sf-tools/release/${HEAD}/deploy-target.txt"
+          REMOVE="sf-tools/release/${HEAD}/remove-target.txt"
+          has_content() {
+            [[ -f "$1" ]] && grep -qvE '^\s*(#|$|\[files\]|\[members\])' "$1"
+          }
+          if ! has_content "$DEPLOY" && ! has_content "$REMOVE"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "デプロイ対象なし（${DEPLOY} / ${REMOVE} に内容なし）のためスキップします。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  check-promotion-order:
+    name: 順序チェック
+    needs: check-branch
+    if: needs.check-branch.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # --------------------------------------------------------------------------
+      # Step 1: 全履歴付きでリポジトリをチェックアウト
+      # --------------------------------------------------------------------------
+      - name: ソースコードを取得
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --------------------------------------------------------------------------
+      # Step 2: マージ順序の検証
+      # --------------------------------------------------------------------------
+      - name: マージ順序を検証
+        id: sequence_check
+        run: |
+          FEATURE="${{ github.event.pull_request.head.ref || github.ref_name }}"
+          BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
+
+          # branches.txt は常に main ブランチから読み込む
+          BRANCH_FILE=$(mktemp)
+          trap 'rm -f "$BRANCH_FILE"' EXIT
+          git fetch origin main -q
+          if ! git show origin/main:sf-tools/config/branches.txt > "$BRANCH_FILE" 2>/dev/null; then
+            echo "::notice::branches.txt が見つかりません。チェックをスキップします。"
+            exit 0
+          fi
+
+          # コメントと空行を除外してブランチ一覧を取得
+          BRANCHES=$(grep -v '^[[:space:]]*#' "$BRANCH_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')
+
+          # 環境ブランチ間の直接 PR はエラーでブロック
+          if echo "$BRANCHES" | grep -qx "$FEATURE"; then
+            echo "::error title=マージ元ブランチ不正::${FEATURE} からのPRは許可されていません。必ずフィーチャーブランチからPRを作成してください。"
+            exit 1
+          fi
+
+          # base_ref が branches.txt に含まれていない場合はスキップ
+          if ! echo "$BRANCHES" | grep -qx "$BASE"; then
+            echo "::notice::チェック対象外のブランチです: $BASE"
+            exit 0
+          fi
+
+          # base_ref より下位のブランチ（前段ブランチ）を取得
+          PREV_LIST=""
+          FOUND=false
+          while IFS= read -r line; do
+            line=$(echo "$line" | tr -d '\r')
+            echo "$line" | grep -q '^[[:space:]]*#' && continue
+            [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
+            if [ "$FOUND" = true ]; then
+              PREV_LIST="${PREV_LIST:+$PREV_LIST }$line"
+            fi
+            [ "$line" = "$BASE" ] && FOUND=true
+          done < "$BRANCH_FILE"
+
+          # 前段ブランチがない場合（最下位ブランチ or main のみ構成）
+          if [ -z "$PREV_LIST" ]; then
+            echo "::notice title=チェック完了::${BASE} への PR に前段ブランチの確認は不要です"
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          MISSING=""
+          for PREV in $PREV_LIST; do
+            git fetch origin $PREV
+            if git merge-base --is-ancestor origin/$FEATURE origin/$PREV; then
+              echo "::notice title=プロモーション順序OK::✓ ${FEATURE} は ${PREV} にマージ済みです"
+            else
+              echo "::warning title=⚠ プロモーション順序未確認::${FEATURE} は ${PREV} にまだマージされていません。意図的な場合はそのまま進めてください。"
+              MISSING="${MISSING:+$MISSING, }${PREV}"
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "out_of_order=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "out_of_order=true"  >> "$GITHUB_OUTPUT"
+            echo "feature=${FEATURE}" >> "$GITHUB_OUTPUT"
+            echo "prev=${MISSING}"    >> "$GITHUB_OUTPUT"
+          fi
+
+      # --------------------------------------------------------------------------
+      # Step 3: 順序未確認時の Slack 通知
+      # --------------------------------------------------------------------------
+      - name: Slack に順序未確認を通知
+        if: steps.sequence_check.outputs.out_of_order == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          FEATURE="${{ steps.sequence_check.outputs.feature }}"
+          PREV="${{ steps.sequence_check.outputs.prev }}"
+          PR_TITLE="${{ github.event.pull_request.title || '' }}"
+          PR_NUMBER="${{ github.event.pull_request.number || '' }}"
+          PR_URL="${{ github.event.pull_request.html_url || '' }}"
+          BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
+          DATETIME=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M:%S JST')
+
+          MESSAGE=":warning: *マージ順序の確認が必要です*\n• ブランチ \`${FEATURE}\` は \`${PREV}\` にまだマージされていません\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>\n• 対象: \`${FEATURE}\` → \`${BASE}\`\n• 実行日時: ${DATETIME}\n• 意図的な場合はそのままマージを進めてください"
+          PAYLOAD="{\"channel\": \"${SLACK_CHANNEL_ID}\", \"text\": \"${MESSAGE}\"}"
+
+          curl -s -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"

@@ -1,29 +1,8 @@
 # ==============================================================================
-# wf-propagate.yml - ブランチへ変更を伝播（main マージ後自動実行）
+# wf-propagate.yml - ブランチ伝播（caller）
 # ==============================================================================
-#
-# 【概要】
-#   main への PR マージ後、staging と develop ブランチへ変更を直接伝播する。
-#
-# 【処理フロー】
-#   1. 全履歴付きでリポジトリをチェックアウト
-#   2. GitHub Actions ボットとして git コミットできるようユーザー情報を設定
-#   3. main → staging へ git merge & push（コンフリクト時は Slack 通知）
-#   4. main → develop へ git merge & push（コンフリクト時は Slack 通知）
-#
-# 【伝播ルール】
-#   - base_ref が 'main' の場合のみ staging / develop へ伝播する
-#   - staging または develop への PR マージ時は何も行わない
-#
-# 【注意】
-#   - sf-metasync.sh による自動 push（ボット push）ではこのワークフローは発火しない
-#     （on: pull_request は PR マージ時のみトリガー）
-#   - Salesforce メタデータの下流伝播は sf-metasync.sh 自身が担う
-#
-# 【必要な GitHub Secrets】
-#   SLACK_BOT_TOKEN  : Slack API の Bot Token（コンフリクト時の通知に使用）
-#   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
-#
+# ロジックは tama-create/sf-tools の wf-propagate-reusable.yml に集約されています。
+# このファイルはトリガーと secrets の受け渡しのみを担います。
 # ==============================================================================
 name: "[propagate] ブランチ伝播"
 
@@ -34,125 +13,12 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   propagate:
-    name: 下流伝播
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      # --------------------------------------------------------------------------
-      # Step 1: 全履歴付きでリポジトリをチェックアウト
-      # --------------------------------------------------------------------------
-      # fetch-depth: 0 で全履歴を取得。
-      # git merge 後の push に Ruleset bypass のため PAT_TOKEN を使用する。
-      - name: ソースコードを取得
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-
-      # --------------------------------------------------------------------------
-      # Step 2: Git コミット用ユーザー情報の設定
-      # --------------------------------------------------------------------------
-      # merge コミットが作成される場合のコミッター情報を設定する。
-      # GitHub Actions のボットアカウント形式にすることで手動コミットと区別できる。
-      - name: Git ユーザー情報を設定
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      # --------------------------------------------------------------------------
-      # Step 3: main → staging へ変更を伝播
-      # --------------------------------------------------------------------------
-      # base_ref が main の場合のみ実行。
-      # origin/main の内容を staging にマージし、リモートへ push する。
-      # --no-edit: マージコミットメッセージをデフォルトのままにして入力待ちを防ぐ。
-      # コンフリクト発生時はマージを中止し、結果を GITHUB_OUTPUT に記録する。
-      - name: main から staging へ変更を伝播
-        id: merge_staging
-        if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'main' }}
-        run: |
-          git checkout staging
-          if git merge origin/main --no-edit; then
-            git push origin staging
-            echo "result=success" >> "$GITHUB_OUTPUT"
-          else
-            git merge --abort
-            echo "result=conflict" >> "$GITHUB_OUTPUT"
-            echo "::error title=コンフリクト::main → staging のマージでコンフリクトが発生しました。手動で解消してください。"
-          fi
-
-      # --------------------------------------------------------------------------
-      # Step 4: main → develop へ変更を伝播
-      # --------------------------------------------------------------------------
-      # base_ref が main の場合のみ実行。staging と同様の処理を develop に対して行う。
-      - name: main から develop へ変更を伝播
-        id: merge_develop
-        if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'main' }}
-        run: |
-          git checkout develop
-          if git merge origin/main --no-edit; then
-            git push origin develop
-            echo "result=success" >> "$GITHUB_OUTPUT"
-          else
-            git merge --abort
-            echo "result=conflict" >> "$GITHUB_OUTPUT"
-            echo "::error title=コンフリクト::main → develop のマージでコンフリクトが発生しました。手動で解消してください。"
-          fi
-
-      # --------------------------------------------------------------------------
-      # Step 5: コンフリクト発生時の Slack 通知
-      # --------------------------------------------------------------------------
-      # staging または develop でコンフリクトが発生した場合のみ実行。
-      # どのブランチでコンフリクトが発生したかを明示し、手動対応を促す。
-      - name: コンフリクト発生時に Slack へ通知
-        if: |
-          always() && (github.event.pull_request.base.ref || github.ref_name) == 'main' && (
-            steps.merge_staging.outputs.result == 'conflict' ||
-            steps.merge_develop.outputs.result == 'conflict'
-          )
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-        run: |
-          CONFLICTS=""
-          if [ "${{ steps.merge_staging.outputs.result }}" = "conflict" ]; then
-            CONFLICTS="staging"
-          fi
-          if [ "${{ steps.merge_develop.outputs.result }}" = "conflict" ]; then
-            CONFLICTS="${CONFLICTS:+$CONFLICTS, }develop"
-          fi
-
-          PR_TITLE="${{ github.event.pull_request.title || '' }}"
-          PR_NUMBER="${{ github.event.pull_request.number || '' }}"
-          PR_URL="${{ github.event.pull_request.html_url || '' }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          DATETIME=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M:%S JST')
-
-          PR_TEXT=""
-          if [ -n "$PR_NUMBER" ]; then
-            PR_TEXT="\n• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}>"
-          fi
-
-          MESSAGE=":rotating_light: *ブランチ伝播でコンフリクトが発生しました*\n• main → \`${CONFLICTS}\` のマージに失敗\n• 手動でコンフリクトを解消してください${PR_TEXT}\n• 実行日時: ${DATETIME}\n• <${RUN_URL}|Actions ログを見る>"
-          PAYLOAD="{\"channel\": \"${SLACK_CHANNEL_ID}\", \"text\": \"${MESSAGE}\"}"
-
-          curl -s -X POST "https://slack.com/api/chat.postMessage" \
-            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD"
-
-      # --------------------------------------------------------------------------
-      # Step 6: コンフリクトがあった場合はジョブを失敗させる
-      # --------------------------------------------------------------------------
-      - name: コンフリクト発生時はジョブを失敗させる
-        if: |
-          always() && (github.event.pull_request.base.ref || github.ref_name) == 'main' && (
-            steps.merge_staging.outputs.result == 'conflict' ||
-            steps.merge_develop.outputs.result == 'conflict'
-          )
-        run: exit 1
+    uses: tama-create/sf-tools/.github/workflows/wf-propagate-reusable.yml@main
+    permissions:
+      contents: write
+    secrets:
+      PAT_TOKEN:        ${{ secrets.PAT_TOKEN }}
+      SLACK_BOT_TOKEN:  ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
