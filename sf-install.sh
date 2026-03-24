@@ -8,12 +8,16 @@
 #
 # 【処理の流れ】
 #   1. ~/sf-tools を git pull で最新化
-#   2. GitHub Actions ワークフローファイルを更新（毎回上書き）
-#   3. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
-#   4. package.json があれば npm install を実行
-#   5. Git フック (pre-push) をインストール
-#   6. リリース管理ディレクトリの準備 & branch_name.txt を更新
-#   7. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
+#   2. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
+#   3. package.json があれば npm install を実行
+#   4. Git フック (pre-push) をインストール
+#   5. リリース管理ディレクトリの準備 & branch_name.txt を更新
+#   6. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
+#
+# 【WF について】
+#   GitHub Actions ワークフローは force-template から引き継がれるため sf-install.sh では管理しない。
+#   WF のロジックは tama-create/sf-tools の wf-*-reusable.yml に集約されており、
+#   force-* 側は caller（薄いファイル）のみを持つ設計。
 #
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
@@ -113,36 +117,6 @@ phase_init_config() {
     return $RET_OK
 }
 
-# 【GITHUB WORKFLOW】GitHub Actions ワークフローファイルを生成（未存在時のみ）
-phase_generate_github_workflow() {
-    log "INFO" "GitHub Actions ワークフローを確認します..."
-    local workflow_dir=".github/workflows"
-    local template_dir="$HOME/sf-tools/templates/.github/workflows"
-
-    if [[ ! -d "$template_dir" ]]; then
-        log "INFO" "ワークフローテンプレートが見つかりません。スキップします。"
-        return $RET_OK
-    fi
-
-    run mkdir -p "$workflow_dir" || return $RET_NG
-
-    local any_generated=0
-    for template in "$template_dir"/*.yml; do
-        local filename
-        filename=$(basename "$template")
-        local dest="${workflow_dir}/${filename}"
-
-        run cp "$template" "$dest" || return $RET_NG
-        log "INFO" "${dest} を更新しました。"
-        any_generated=1
-    done
-
-    if [[ $any_generated -eq 1 ]]; then
-        log "INFO" "GitHub Secrets に SFDX_AUTH_URL_PROD / SFDX_AUTH_URL_STG / SFDX_AUTH_URL_DEV を設定してください。"
-    fi
-
-    return $RET_OK
-}
 
 # 【NPM INSTALL】依存パッケージのインストール（毎回実行）
 phase_npm_install() {
@@ -216,12 +190,6 @@ if phase_update; then
     log "SUCCESS" "sf-tools を最新化しました。"
 else
     log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
-fi
-
-if phase_generate_github_workflow; then
-    log "SUCCESS" "GitHub Actions ワークフローの確認が完了しました。"
-else
-    log "WARNING" "GitHub Actions ワークフローの生成に失敗しました（続行します）"
 fi
 
 phase_init_config || die "設定ファイルの初期化に失敗しました。"
