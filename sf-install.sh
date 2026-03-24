@@ -192,8 +192,13 @@ phase_upgrade_tools_bg() {
             return $RET_OK
         fi
         bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>&1 &
-        touch "$UPDATE_STAMP_FILE"
-        log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
+        local bg_pid=$!
+        if kill -0 "$bg_pid" 2>/dev/null; then
+            touch "$UPDATE_STAMP_FILE"
+            log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
+        else
+            log "WARNING" "sf-upgrade.sh の起動を確認できませんでした。スタンプは更新しません。"
+        fi
     else
         local last_update elapsed_h
         last_update=$(_get_mtime "$UPDATE_STAMP_FILE")
