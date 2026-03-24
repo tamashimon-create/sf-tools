@@ -32,6 +32,13 @@
 - `.github/workflows/` を変えた場合は Required Status Checks との整合を確認すること
 - UTF-8 / LF を維持すること
 
+### 6. デグレ防止チェックリスト
+- **既存ロジックを変更する場合**：変更前後の動作差分を必ずコメントまたはコミットメッセージに明記すること
+- **「修正」コミットを行う場合**：テスト実行結果（PASS/FAIL 件数）をコミットメッセージに含めること
+- **新規 `sf-*.sh` を追加した場合**：対応する `test_sf-*.sh` を作成し、`tests/run_tests.sh` の `TEST_FILES` に追加すること
+- **`ask_yn` を含むスクリプトのテスト**：`echo "n" |` または `run_script_with_no()` で stdin を供給すること（ブロック防止）
+- **テストスイート全実行**：`bash tests/run_tests.sh` で未登録テストの WARNING が出ないことを確認すること
+
 ### 5. このリポジトリ固有の前提
 - `~/sf-tools/` に設置して使う
 - 実行場所は各 Salesforce プロジェクト (`force-*`) 側

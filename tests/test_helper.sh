@@ -76,6 +76,13 @@ setup_mock_home() {
     echo "$dir"
 }
 
+# ask_yn を含むスクリプトのテスト用ヘルパー
+# stdin に "n" を流すことで対話プロンプトのブロックを防ぐ
+# 使い方: run_script_with_no "スクリプトパス" [追加引数...]
+run_script_with_no() {
+    echo "n" | bash "$@" 2>&1
+}
+
 # テスト環境を一括クリーンアップ（可変長引数）
 teardown() {
     local arg

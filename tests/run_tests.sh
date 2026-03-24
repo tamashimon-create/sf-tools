@@ -53,7 +53,35 @@ TEST_FILES=(
     test_repo-settings.sh
     test_sf-job.sh
     test_sf-next.sh
+    test_sf-branch.sh
+    test_sf-check.sh
+    test_sf-prepush.sh
 )
+
+# ------------------------------------------------------------------------------
+# テスト未登録チェック（引数なし＝全実行時のみ）
+# tests/test_*.sh が TEST_FILES に全て含まれているか検証する。
+# 漏れがあれば WARNING を表示してデグレ検知漏れを防ぐ。
+# ------------------------------------------------------------------------------
+if [[ $# -eq 0 ]]; then
+    _missing=()
+    for _f in "$TESTS_DIR"/test_*.sh; do
+        _name=$(basename "$_f")
+        _found=0
+        for _registered in "${TEST_FILES[@]}"; do
+            [[ "$_registered" == "$_name" ]] && { _found=1; break; }
+        done
+        [[ $_found -eq 0 ]] && _missing+=("$_name")
+    done
+    if [[ ${#_missing[@]} -gt 0 ]]; then
+        echo -e "${CLR_FAIL}[WARNING] 以下のテストファイルが TEST_FILES に未登録です:${CLR_RST}"
+        for _m in "${_missing[@]}"; do
+            echo -e "${CLR_FAIL}  - $_m${CLR_RST}"
+        done
+        echo -e "${CLR_FAIL}  run_tests.sh の TEST_FILES に追加してください。${CLR_RST}"
+        echo ""
+    fi
+fi
 
 # 引数指定があれば対象を絞る
 if [[ $# -gt 0 ]]; then
