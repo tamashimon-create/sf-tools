@@ -158,8 +158,7 @@ phase_npm_install() {
 # 【HOOK】Git フック (pre-push) のインストール
 phase_setup_hook() {
     log "INFO" "Git フックをインストールします..."
-    bash "$SCRIPT_DIR/sf-hook.sh" "$@" \
-        || log "WARNING" "Git フックのインストールに失敗しました（続行します）"
+    bash "$SCRIPT_DIR/sf-hook.sh" "$@" || return $RET_NG
     return $RET_OK
 }
 
@@ -173,13 +172,13 @@ phase_setup_release_dir() {
         return $RET_OK
     fi
     local release_dir="sf-tools/release/${branch_name}"
-    run mkdir -p "$release_dir"
+    run mkdir -p "$release_dir" || return $RET_NG
     [[ ! -f "${release_dir}/deploy-target.txt" ]] \
-        && run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${release_dir}/deploy-target.txt"
+        && { run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${release_dir}/deploy-target.txt" || return $RET_NG; }
     [[ ! -f "${release_dir}/remove-target.txt" ]] \
-        && run cp "$HOME/sf-tools/templates/release/remove-target.txt" "${release_dir}/remove-target.txt"
-    run mkdir -p "sf-tools/release"
-    printf '%s\n' "$branch_name" | run tee "sf-tools/release/branch_name.txt" > /dev/null
+        && { run cp "$HOME/sf-tools/templates/release/remove-target.txt" "${release_dir}/remove-target.txt" || return $RET_NG; }
+    run mkdir -p "sf-tools/release" || return $RET_NG
+    printf '%s\n' "$branch_name" | run tee "sf-tools/release/branch_name.txt" > /dev/null || return $RET_NG
     log "INFO" "ブランチ: ${branch_name} / branch_name.txt を保存しました"
     return $RET_OK
 }
@@ -188,6 +187,10 @@ phase_setup_release_dir() {
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
         log "INFO" "開発ツールのアップデートをバックグラウンドで開始します（sf-upgrade.sh）..."
+        if [[ ! -f "$SCRIPT_DIR/sf-upgrade.sh" ]]; then
+            log "WARNING" "sf-upgrade.sh が見つかりません。スキップします。"
+            return $RET_OK
+        fi
         bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>&1 &
         touch "$UPDATE_STAMP_FILE"
         log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
@@ -204,11 +207,17 @@ phase_upgrade_tools_bg() {
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
-phase_update           || log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
-log "SUCCESS" "sf-tools を最新化しました。"
+if phase_update; then
+    log "SUCCESS" "sf-tools を最新化しました。"
+else
+    log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
+fi
 
-phase_generate_github_workflow || log "WARNING" "GitHub Actions ワークフローの生成に失敗しました（続行します）"
-log "SUCCESS" "GitHub Actions ワークフローの確認が完了しました。"
+if phase_generate_github_workflow; then
+    log "SUCCESS" "GitHub Actions ワークフローの確認が完了しました。"
+else
+    log "WARNING" "GitHub Actions ワークフローの生成に失敗しました（続行します）"
+fi
 
 phase_init_config || die "設定ファイルの初期化に失敗しました。"
 log "SUCCESS" "設定ファイルの確認が完了しました。"
@@ -216,11 +225,17 @@ log "SUCCESS" "設定ファイルの確認が完了しました。"
 phase_npm_install
 log "SUCCESS" "npm install の確認が完了しました。"
 
-phase_setup_hook "$@"
-log "SUCCESS" "Git フックのインストールが完了しました。"
+if phase_setup_hook "$@"; then
+    log "SUCCESS" "Git フックのインストールが完了しました。"
+else
+    log "WARNING" "Git フックのインストールに失敗しました（続行します）"
+fi
 
-phase_setup_release_dir
-log "SUCCESS" "リリース管理ディレクトリの準備が完了しました。"
+if phase_setup_release_dir; then
+    log "SUCCESS" "リリース管理ディレクトリの準備が完了しました。"
+else
+    log "WARNING" "リリース管理ディレクトリの準備に失敗しました（続行します）"
+fi
 
 phase_upgrade_tools_bg
 
