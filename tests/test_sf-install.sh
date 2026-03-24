@@ -135,7 +135,8 @@ test_release_dir_skipped_on_main() {
 
     cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
 
-    assert_dir_not_exists "$td/sf-tools/release/main" "main の release ディレクトリが作成されない"
+    assert_dir_exists     "$td/sf-tools/release"      "sf-tools/release/ ベースディレクトリが作成された"
+    assert_dir_not_exists "$td/sf-tools/release/main" "main の release サブディレクトリが作成されない"
     unset MOCK_GIT_BRANCH
     teardown "$td" "$mb" "$mh"
 }

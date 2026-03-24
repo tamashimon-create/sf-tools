@@ -145,8 +145,9 @@ phase_setup_release_dir() {
         log "WARNING" "ブランチ名を取得できませんでした。スキップします。"
         return $RET_OK
     fi
+    run mkdir -p "sf-tools/release" || return $RET_NG
     if [[ "$branch_name" == "main" ]]; then
-        log "INFO" "main ブランチはリリース対象外のため、release ディレクトリの作成をスキップします。"
+        log "INFO" "main ブランチはリリース対象外のため、release/<branch> ディレクトリの作成をスキップします。"
         return $RET_OK
     fi
     local release_dir="sf-tools/release/${branch_name}"
@@ -155,7 +156,6 @@ phase_setup_release_dir() {
         && { run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${release_dir}/deploy-target.txt" || return $RET_NG; }
     [[ ! -f "${release_dir}/remove-target.txt" ]] \
         && { run cp "$HOME/sf-tools/templates/release/remove-target.txt" "${release_dir}/remove-target.txt" || return $RET_NG; }
-    run mkdir -p "sf-tools/release" || return $RET_NG
     printf '%s\n' "$branch_name" | run tee "sf-tools/release/branch_name.txt" > /dev/null || return $RET_NG
     log "INFO" "ブランチ: ${branch_name} / branch_name.txt を保存しました"
     return $RET_OK
