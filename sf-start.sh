@@ -75,7 +75,8 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
     run sf alias unset vscodeOrg --json
 
     log "INFO" "ブラウザでログインして接続を許可してください..."
-    run sf org login web --set-default --alias "$ORG_ALIAS" || die "Salesforce へのログインに失敗しました。"
+    run sf org logout --target-org "$ORG_ALIAS" --no-prompt 2>/dev/null || true
+    run sf org login web --set-default --alias "$ORG_ALIAS" || true
     log "SUCCESS" "接続完了！"
 fi
 
