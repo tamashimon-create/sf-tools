@@ -172,6 +172,18 @@ Claude が作業上で意識すべき主なディレクトリ・ファイル:
 6. メッセージ未入力なら何もせず正常終了
 7. `git commit` → `git push`
 
+### sf-update-secret.sh
+GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序は変更禁止）:
+
+1. `force-*` ディレクトリかチェック
+2. git remote から対象リポジトリ（OWNER/REPO）を自動取得
+3. `sf org display --verbose --json --target-org tama` で sfdxAuthUrl を取得
+   - 取得失敗（未接続）→ 「先に sf-start.sh を実行してください」でエラー中止
+4. 更新する Secret 一覧・組織情報を表示して確認（y/n）
+5. `gh secret set` で3つの Secret を更新
+   - `SFDX_AUTH_URL_PROD` / `SFDX_AUTH_URL_STG` / `SFDX_AUTH_URL_DEV`
+6. SUCCESS
+
 ### sf-hook.sh / sf-unhook.sh
 - `sf-hook.sh`: `.git/hooks/pre-push` を上書き生成し、`~/sf-tools/hooks/pre-push` をコピーする
 - `sf-unhook.sh`: `.git/hooks/pre-push` を削除する
