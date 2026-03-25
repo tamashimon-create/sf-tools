@@ -56,7 +56,7 @@ test_push_no_changes() {
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
     local ec=$?
-    assert_exit_fail $ec "変更なし → 終了コード 非0"
+    assert_exit_ok $ec "変更なし → 終了コード 0（WARNING で正常終了）"
     teardown "$td" "$mb"
 }
 

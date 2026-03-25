@@ -69,7 +69,8 @@ git -C "$REPO_ROOT" add --all -- "$TARGET_PATHSPEC" \
     || die $'git add \u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002'
 
 if git -C "$REPO_ROOT" diff --cached --quiet -- "$TARGET_PATHSPEC"; then
-    die $'\u73fe\u5728\u306e\u30c7\u30a3\u30ec\u30af\u30c8\u30ea\u914d\u4e0b\u306b\u3001\u30b3\u30df\u30c3\u30c8\u5bfe\u8c61\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u305b\u3093\u3002'
+    log "WARNING" $'\u73fe\u5728\u306e\u30c7\u30a3\u30ec\u30af\u30c8\u30ea\u914d\u4e0b\u306b\u3001\u30b3\u30df\u30c3\u30c8\u5bfe\u8c61\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u305b\u3093\u3002'
+    exit $RET_OK
 fi
 
 # ------------------------------------------------------------------------------
