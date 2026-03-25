@@ -2,5 +2,7 @@
   "files.exclude": {
     "**/.claude": true,
     ".gitignore": true
-  }
+  },
+  "files.autoSave": "onFocusChange",
+  "OpenInHidemaruEditor.Path": "[\"/j${line}\", \"${file}\"]"
 }

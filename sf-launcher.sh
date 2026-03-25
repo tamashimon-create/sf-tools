@@ -32,6 +32,7 @@ MENU_ITEMS_ALL=(
     "sf-deploy   | 現在接続中のSandboxへリリース"
     "sf-check    | deploy-target.txt の構文チェック"
     "sf-next     | 次の PR 先ブランチを確認"
+    "sf-push     | 変更をコミット＆プッシュ"
     "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
     "sf-restart  | 接続組織を切り替えて再起動"
 )

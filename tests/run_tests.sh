@@ -56,6 +56,7 @@ TEST_FILES=(
     test_sf-branch.sh
     test_sf-check.sh
     test_sf-prepush.sh
+    test_sf-push.sh
 )
 
 # ------------------------------------------------------------------------------
