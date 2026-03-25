@@ -7,7 +7,7 @@ echo -e "${CLR_HEAD}=== sf-push.sh ===${CLR_RST}"
 
 # git / code モック生成ヘルパー
 _create_mocks_push() {
-    local mb="$1" td="$2" mode="$3"  # mode: no_changes / cancel / success
+    local mb="$1" td="$2" mode="$3"  # mode: no_changes / cancel / success / conflict
     cat > "$mb/git" << EOF
 #!/bin/bash
 echo "git \$*" >> "\${MOCK_CALL_LOG:-/dev/null}"
@@ -25,6 +25,9 @@ case "\$cmd" in
         if [[ "\$next" == "--show-prefix" ]];   then echo "";    exit 0; fi
         exit 0 ;;
     symbolic-ref) echo "feature/test"; exit 0 ;;
+    fetch)  exit 0 ;;
+    merge)
+        [[ "$mode" == "conflict" ]] && exit 1 || exit 0 ;;
     add)    exit 0 ;;
     diff)
         [[ "$mode" == "no_changes" ]] && exit 0 || exit 1 ;;
@@ -105,9 +108,24 @@ test_push_check_fail() {
     teardown "$td" "$mb"
 }
 
+# --- マージコンフリクト → エラー中止 ---
+test_push_merge_conflict() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    _create_mocks_push "$mb" "$td" "conflict"
+
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local ec=$?
+    assert_exit_fail $ec "マージコンフリクト → エラー中止（終了コード 非0）"
+    echo "$out" > "$mb/push_out.log"
+    assert_file_contains "$mb/push_out.log" "コンフリクト" "コンフリクトメッセージが出力される"
+    teardown "$td" "$mb"
+}
+
 test_push_no_changes
 test_push_cancel
 test_push_check_fail
+test_push_merge_conflict
 test_push_success
 
 echo ""

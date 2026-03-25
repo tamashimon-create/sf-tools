@@ -41,6 +41,7 @@
 - **新規 `sf-*.sh` を追加した場合**：対応する `test_sf-*.sh` を作成し、`tests/run_tests.sh` の `TEST_FILES` に追加すること
 - **`ask_yn` を含むスクリプトのテスト**：`echo "n" |` または `run_script_with_no()` で stdin を供給すること（ブロック防止）
 - **テストスイート全実行**：`bash tests/run_tests.sh` で未登録テストの WARNING が出ないことを確認すること
+- **git 操作を含む新規スクリプトを作成する場合**：`CLAUDE.md` の「スクリプト別の処理概要」に実行フロー（ステップ順）を必ず記載してから実装すること。フローが未定義のまま実装するとステップ漏れが発生する
 
 ### 5. このリポジトリ固有の前提
 - `~/sf-tools/` に設置して使う
@@ -158,6 +159,18 @@ Claude が作業上で意識すべき主なディレクトリ・ファイル:
 ### sf-upgrade.sh
 - npm / Salesforce CLI / Git を更新
 - `sf-install.sh` から 24 時間間隔でバックグラウンド起動される
+
+### sf-push.sh
+カレントディレクトリ配下だけをコミット＆プッシュする。実行フロー（順序は変更禁止）:
+
+1. origin/main を fetch して現在ブランチにマージ（main ブランチ自身はスキップ）
+   - コンフリクト発生時は `merge --abort` してエラー中止
+2. カレント配下だけを `git add --all`
+3. 変更なしなら WARNING で正常終了
+4. `sf-check.sh` でターゲットファイルを検証（エラーなら中止）
+5. VS Code を別ウィンドウで開いてコミットメッセージを入力
+6. メッセージ未入力なら何もせず正常終了
+7. `git commit` → `git push`
 
 ### sf-hook.sh / sf-unhook.sh
 - `sf-hook.sh`: `.git/hooks/pre-push` を上書き生成し、`~/sf-tools/hooks/pre-push` をコピーする
