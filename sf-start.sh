@@ -91,8 +91,7 @@ log "INFO" "VS Code を起動中..."
 run mkdir -p .sfdx .sf || die "設定ディレクトリの作成に失敗しました。"
 printf '{"target-org": "%s"}\n'      "$ORG_ALIAS" | run tee .sf/config.json        || die "設定ファイル (.sf/config.json) の書き込みに失敗しました。"
 printf '{"defaultusername": "%s"}\n' "$ORG_ALIAS" | run tee .sfdx/sfdx-config.json || die "設定ファイル (.sfdx/sfdx-config.json) の書き込みに失敗しました。"
-run sf config set target-org="$ORG_ALIAS" --json || log "WARNING" "sf config set に失敗しました（続行します）"
-sleep 2  # VS Code 起動前に設定ファイルの書き込み完了を待機
+# sf config set は .sf/config.json の tee 書き込みで代替済みのため不要
 
 if command -v code >/dev/null 2>&1; then
     run code .
