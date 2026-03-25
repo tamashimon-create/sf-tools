@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# sf-push.sh - プッシュ前チェックスクリプト
+# sf-prepush.sh - プッシュ前チェックスクリプト
 # ==============================================================================
 # git push 実行前に main ブランチとの同期状態と構文を検証します。
 #
@@ -129,7 +129,7 @@ phase_check_main() {
 
 # 【SYNTAX】deploy-target.txt / remove-target.txt の構文チェック
 phase_check_syntax() {
-    bash "${SCRIPT_DIR}/sf-check.sh" || die "deploy-target.txt / remove-target.txt に構文エラーがあります。プッシュを中断しました。"
+    run bash "${SCRIPT_DIR}/sf-check.sh" || die "deploy-target.txt / remove-target.txt に構文エラーがあります。プッシュを中断しました。"
     return $RET_OK
 }
 

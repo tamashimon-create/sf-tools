@@ -126,7 +126,7 @@ phase_check_target() {
     [[ "$created" -eq 1 ]] && die "リストを作成しました。中身を記入して再実行してください。"
 
     # 構文チェック
-    bash "${SCRIPT_DIR}/sf-check.sh" "$DEPLOY_LIST" "$REMOVE_LIST" \
+    run bash "${SCRIPT_DIR}/sf-check.sh" "$DEPLOY_LIST" "$REMOVE_LIST" \
         || die "deploy-target.txt / remove-target.txt に構文エラーがあります。上記のエラーを修正してください。"
     return $RET_OK
 }

@@ -243,7 +243,7 @@ phase_create_branch() {
 # 【CLONE】ジョブフォルダを作成してクローン
 phase_clone_repository() {
     log "INFO" "ジョブフォルダを作成中: ${JOB_DIR}"
-    mkdir -p "$JOB_DIR" || die "ジョブフォルダを作成できません: ${JOB_DIR}"
+    run mkdir -p "$JOB_DIR" || die "ジョブフォルダを作成できません: ${JOB_DIR}"
 
     log "INFO" "リポジトリをクローン中（ブランチ: ${JOB_NAME}）..."
     run git clone \
@@ -261,7 +261,7 @@ phase_sf_start() {
     log "INFO" "sf-start.sh を起動します..."
     cd "$REPO_DIR" || die "ディレクトリに移動できません: ${REPO_DIR}"
 
-    bash "$SCRIPT_DIR/sf-start.sh" \
+    run bash "$SCRIPT_DIR/sf-start.sh" \
         || die "sf-start.sh の実行に失敗しました。"
 
     return $RET_OK

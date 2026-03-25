@@ -132,7 +132,7 @@ phase_npm_install() {
 # 【HOOK】Git フック (pre-push) のインストール
 phase_setup_hook() {
     log "INFO" "Git フックをインストールします..."
-    bash "$SCRIPT_DIR/sf-hook.sh" "$@" || return $RET_NG
+    run bash "$SCRIPT_DIR/sf-hook.sh" "$@" || return $RET_NG
     return $RET_OK
 }
 
@@ -146,7 +146,7 @@ phase_setup_release_dir() {
         return $RET_OK
     fi
     run mkdir -p "sf-tools/release" || return $RET_NG
-    [[ ! -f "sf-tools/release/.gitkeep" ]] && touch "sf-tools/release/.gitkeep"
+    [[ ! -f "sf-tools/release/.gitkeep" ]] && run touch "sf-tools/release/.gitkeep"
     if [[ "$branch_name" == "main" ]]; then
         log "INFO" "main ブランチはリリース対象外のため、release/<branch> ディレクトリの作成をスキップします。"
         return $RET_OK
@@ -173,7 +173,7 @@ phase_upgrade_tools_bg() {
         bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>&1 &
         local bg_pid=$!
         if kill -0 "$bg_pid" 2>/dev/null; then
-            touch "$UPDATE_STAMP_FILE"
+            run touch "$UPDATE_STAMP_FILE"
             log "INFO" "次回の自動アップデートは $((UPDATE_INTERVAL_SEC / 3600)) 時間後です。"
         else
             log "WARNING" "sf-upgrade.sh の起動を確認できませんでした。スタンプは更新しません。"

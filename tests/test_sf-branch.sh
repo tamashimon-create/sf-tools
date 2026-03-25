@@ -136,7 +136,7 @@ test_comment_header_preserved() {
 
     assert_exit_ok $ec "コメント付きファイルで正常終了"
     assert_file_contains "$td/sf-tools/config/branches.txt" "# branches.txt" "コメントヘッダーが保持されている"
-    assert_file_contains "$td/sf-tools/config/branches.txt" "# main は必須です" "ルール説明コメントが保持されている"
+    assert_file_contains "$td/sf-tools/config/branches.txt" "#   - main は必須です" "ルール説明コメントが保持されている"
     assert_file_contains "$td/sf-tools/config/branches.txt" "main" "ブランチ名も書き込まれている"
     teardown "$td" "$mb" "$mh"
 }

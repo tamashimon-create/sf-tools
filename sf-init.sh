@@ -270,7 +270,7 @@ phase_create_repository() {
         log "INFO" "リポジトリをクローン中..."
         local clone_base
         clone_base="$(dirname "$REPO_DIR")"
-        mkdir -p "$clone_base" || die "クローン先ディレクトリを作成できません: $clone_base"
+        run mkdir -p "$clone_base" || die "クローン先ディレクトリを作成できません: $clone_base"
         run git clone "https://github.com/${REPO_FULL_NAME}.git" "$REPO_DIR" \
             || die "クローンに失敗しました。"
         log "SUCCESS" "リポジトリをクローンしました: ${REPO_DIR}"
@@ -451,10 +451,10 @@ phase_initial_commit() {
     local origin_url
     origin_url=$(git remote get-url origin)
     local pat_url="https://${PAT_TOKEN_VALUE}@github.com/${REPO_FULL_NAME}.git"
-    git remote set-url origin "$pat_url"
+    run git remote set-url origin "$pat_url"
     run git push --no-verify origin main \
-        || { git remote set-url origin "$origin_url"; die "git push に失敗しました。"; }
-    git remote set-url origin "$origin_url"
+        || { run git remote set-url origin "$origin_url"; die "git push に失敗しました。"; }
+    run git remote set-url origin "$origin_url"
 
     log "SUCCESS" "初回コミット＆プッシュ完了。"
     return $RET_OK
@@ -515,7 +515,7 @@ if [[ -d "$INIT_DIR" ]]; then
     read -r answer
     [[ "$answer" == "q" || "$answer" == "Q" ]] && { log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"; exit $RET_OK; }
     if [[ "$answer" =~ ^[Yy]$ ]]; then
-        rm -rf "$INIT_DIR"
+        run rm -rf "$INIT_DIR"
         log "SUCCESS" "init フォルダを削除しました。"
     else
         log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"

@@ -116,7 +116,7 @@ run mkdir -p "sf-tools/config"
         echo "$b"
     done
 } > "${BRANCH_LIST_FILE}.tmp"
-mv "${BRANCH_LIST_FILE}.tmp" "$BRANCH_LIST_FILE"
+run mv "${BRANCH_LIST_FILE}.tmp" "$BRANCH_LIST_FILE"
 
 log "SUCCESS" "branches.txt を更新しました: ${BRANCHES[*]}"
 
