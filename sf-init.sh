@@ -149,7 +149,16 @@ if [[ -n "$REPO_DIR" ]]; then
             log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"
         elif [[ "$answer" =~ ^[Yy]$ ]]; then
             run rm -rf "$INIT_DIR"
-            log "SUCCESS" "init フォルダを削除しました。"
+            # Windows 環境では rm -rf で空フォルダが残る場合があるため cmd でも試みる
+            if [[ -d "$INIT_DIR" ]] && command -v cmd > /dev/null 2>&1; then
+                win_path=$(cygpath -w "$INIT_DIR" 2>/dev/null || echo "$INIT_DIR")  # VAR=$(cmd) のため run 不要
+                cmd //c "rmdir /s /q \"$win_path\"" 2>/dev/null || true  # 失敗しても続行
+            fi
+            if [[ -d "$INIT_DIR" ]]; then
+                log "WARNING" "init フォルダが残っています。手動で削除してください: rm -rf '${INIT_DIR}'"
+            else
+                log "SUCCESS" "init フォルダを削除しました。"
+            fi
         else
             log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"
         fi

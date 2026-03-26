@@ -65,6 +65,8 @@ gh auth switch --user tamashimon    # 完了後は必ず元に戻す
 ### 2.2 その他の規約
 
 - すべてのテキストファイルは UTF-8 / LF で統一すること
+  - **新規ファイル作成後は必ず LF 変換すること**（Write ツールは CRLF を生成するため）
+  - 変換コマンド: `wsl sed -i 's/\r//' <file>`
 - Bash / Windows / Mac / Linux 共通で動作すること
 - `jq` など追加依存は原則追加しないこと（`awk` / `sed` / `grep` など標準コマンドを使う）
 - エラー時は `die` で即終了すること
