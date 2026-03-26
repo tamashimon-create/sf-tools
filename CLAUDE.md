@@ -261,26 +261,44 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 ### 6.4 sf-install.sh
 
-- `~/sf-tools` を `git pull` で更新
-- `.github/workflows/*.yml` をテンプレートから更新
-- `config/*.txt` を不足時のみ補充
-- `package.json` がある場合は `npm install`
-- `sf-hook.sh` で Git Hook をインストール
-- `release/<branch>/` と `branch_name.txt` を準備
-- 24 時間以上経過していれば `sf-upgrade.sh` をバックグラウンド起動
+処理順（順序変更禁止）:
+1. `~/sf-tools` を `git pull` で更新
+2. `config/*.txt` を不足時のみ補充
+3. `sf-hook.sh` で Git Hook をインストール
+4. `release/<branch>/` と `branch_name.txt` を準備
+5. `package.json` がある場合は `npm install`
+6. 24 時間以上経過していれば `sf-upgrade.sh` をバックグラウンド起動
 
-### 6.5 sf-deploy.sh
+### 6.5 sf-next.sh
+
+現在の feature ブランチが各ターゲットブランチにどの状態かを判定し、次に PR を出すべきブランチを案内する。
+
+判定ロジック（優先順）:
+1. `gh pr list --state merged` で直接 PR のマージ済みを確認 → `merged`
+2. `git merge-base --is-ancestor` で間接伝播（上位ブランチ経由）を確認 → `synced`
+3. `gh pr list --state open` で PR 発行中を確認 → `pr_open`
+4. いずれも該当なし → `none`（NEXT_TARGET に設定）
+
+ステータスと表示:
+- `merged` → `✓ マージ済み`
+- `synced` → `✓ マージ済み（ブランチ同期）`（デプロイ WF 未実行）
+- `out_of_order` → `⚠ マージ済み（順序外）`（前に synced/pr_open/none があった merged）
+- `pr_open` → `→ PR発行中`
+- `none` かつ NEXT_TARGET → `▶ 次のPR先`
+- `none` → `✗`
+
+### 6.6 sf-deploy.sh
 
 - `sf-release.sh --release --force` のラッパー
 - `force-*` 以外では実行禁止
 - `main` / `staging` / `develop` ブランチでは実行禁止
 
-### 6.6 sf-upgrade.sh
+### 6.7 sf-upgrade.sh
 
 - npm / Salesforce CLI / Git を更新
 - `sf-install.sh` から 24 時間間隔でバックグラウンド起動される
 
-### 6.7 sf-push.sh
+### 6.8 sf-push.sh
 
 カレントディレクトリ配下だけをコミット＆プッシュする。実行フロー（順序は変更禁止）:
 
@@ -293,7 +311,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 6. メッセージ未入力なら何もせず正常終了
 7. `git commit` → `git push`
 
-### 6.8 sf-update-secret.sh
+### 6.9 sf-update-secret.sh
 
 GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序は変更禁止）:
 
@@ -305,12 +323,12 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 5. `gh secret set` で3つの Secret を更新（`SFDX_AUTH_URL_PROD` / `STG` / `DEV`）
 6. SUCCESS
 
-### 6.9 sf-hook.sh / sf-unhook.sh
+### 6.10 sf-hook.sh / sf-unhook.sh
 
 - `sf-hook.sh`: `.git/hooks/pre-push` と `.git/hooks/pre-commit` を上書き生成し、`~/sf-tools/hooks/` からコピーする
 - `sf-unhook.sh`: `.git/hooks/pre-push` を削除する
 
-### 6.10 sf-init.sh
+### 6.11 sf-init.sh
 
 新規 Salesforce プロジェクトの初期セットアップ。`phases/init/` 配下のフェーズスクリプトを順次実行する。
 

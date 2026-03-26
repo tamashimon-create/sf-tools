@@ -10,6 +10,7 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 ## 1. できること
 
 - `sf-start.sh` で開発環境セットアップを一括実行
+- `sf-job.sh` でジョブブランチの作成・環境立ち上げを一括実行
 - `sf-init.sh` で新規 Salesforce プロジェクトを初期セットアップ
 - `sf-branch.sh` でブランチ構成を対話式に設定
 - `sf-next.sh` で次に出すべき PR 先ブランチを確認
@@ -152,6 +153,7 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 | スクリプト | 用途 | 主な利用タイミング |
 |---|---|---|
 | `sf-start.sh` | 開発環境の一括セットアップ | 開発開始時 |
+| `sf-job.sh` | ジョブブランチの作成・環境立ち上げ | 作業開始時 |
 | `sf-init.sh` | 新規プロジェクトの初期セットアップ | 新規案件開始時 |
 | `sf-branch.sh` | ブランチ構成の設定と作成 | 初期構成時 |
 | `sf-next.sh` | 次に出す PR 先ブランチの案内 | PR 作成前 |
@@ -298,14 +300,13 @@ bash ~/sf-tools/sf-install.sh
 
 `sf-tools` 自体の更新と、プロジェクト側の初期ファイル整備を行います。通常は `sf-start.sh` から自動実行されます。
 
-主な処理:
-- `~/sf-tools` の最新化
-- GitHub Actions ワークフローファイル更新
-- 設定ファイル雛形の生成
-- `npm install`
-- pre-push フックのインストール
-- `release/<branch>/` の準備
-- 必要に応じた `sf-upgrade.sh` のバックグラウンド実行
+主な処理（順序）:
+1. `~/sf-tools` の最新化
+2. 設定ファイル雛形の生成
+3. pre-push フックのインストール
+4. `release/<branch>/` の準備
+5. `npm install`（package.json がある場合）
+6. 必要に応じた `sf-upgrade.sh` のバックグラウンド実行（24 時間間隔）
 
 ### 7.8 `sf-check.sh`
 
@@ -368,6 +369,23 @@ bash ~/sf-tools/sf-upgrade.sh
 ```
 
 npm / Salesforce CLI / Git を更新します。
+
+### 7.14 `sf-job.sh`
+
+```bash
+sf-job.sh
+```
+
+ジョブブランチの作成・クローン・`sf-start.sh` 起動を一括で行うランチャーです。`~/home/{owner}/{company}/` 階層で実行します。
+
+主な処理:
+- ジョブ番号を入力してブランチ名（`feature/{番号}`）を生成
+- `git worktree` または `git clone` で作業ディレクトリを作成
+- `sf-start.sh` を自動起動
+
+補足:
+- `~/home/{owner}/{company}/` 配下で実行してください
+- `force-*` ディレクトリの内側では実行できません
 
 ---
 
