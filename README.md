@@ -93,19 +93,51 @@ sf-init.sh
 
 > リポジトリ名は必ず `force-` で始めてください。
 
-sf-tools 導入後に追加される主なもの:
+`force-template` をベースに `sf-install.sh` が補完した完成形:
 
 ```text
 force-xxxxx/
-├── .github/workflows/    ← CI/CD ワークフロー一式
+├── .forceignore                         ← SF CLI の取得・デプロイ除外リスト
+├── .gitattributes                       ← Git の改行コード・diff 設定
+├── .gitignore                           ← Git 管理対象外ファイルの定義
+├── .prettierignore / .prettierrc        ← コードフォーマッター設定
+├── .github/
+│   └── workflows/                       ← CI/CD ワークフロー一式
+│       ├── wf-metasync.yml              ← 本番メタデータの自動同期
+│       ├── wf-propagate.yml             ← ブランチ間の自動伝播
+│       ├── wf-release.yml               ← 本番デプロイ
+│       ├── wf-sequence.yml              ← PR マージ順序チェック
+│       └── wf-validate.yml             ← PR 検証（デプロイチェック）
 ├── .vscode/
-└── sf-tools/
-    ├── config/           ← metadata.txt / branches.txt
+│   ├── extensions.json                  ← 推奨拡張機能リスト
+│   ├── launch.json                      ← デバッグ起動設定
+│   └── settings.json                    ← エディタ設定（フォーマット等）
+├── config/
+│   └── project-scratch-def.json        ← スクラッチ組織の定義ファイル
+├── eslint.config.js                     ← JavaScript 静的解析設定
+├── jest.config.js                       ← Jest テスト設定
+├── package.json                         ← npm 依存パッケージ定義
+├── sfdx-project.json                    ← SF プロジェクト定義（パスマッピング等）
+├── force-app/main/default/              ← Salesforce メタデータ本体
+│   ├── classes/                         ← Apex クラス
+│   ├── lwc/                             ← Lightning Web コンポーネント
+│   ├── objects/                         ← カスタムオブジェクト・項目
+│   ├── triggers/                        ← Apex トリガー
+│   └── ...（layouts/ permissionsets/ 等）
+├── scripts/
+│   ├── apex/hello.apex                  ← Apex スクリプトサンプル
+│   └── soql/account.soql               ← SOQL スクリプトサンプル
+├── sf-restart.sh                        ← sf-restart.sh の呼び出しラッパー
+├── sf-start.sh                          ← sf-start.sh の呼び出しラッパー
+└── sf-tools/                            ← sf-install.sh が補完
+    ├── config/
+    │   ├── metadata.txt                 ← 取得対象メタデータ種別の定義
+    │   └── branches.txt                 ← ブランチ↔組織エイリアスのマッピング
     └── release/
-        ├── branch_name.txt
-        └── <branch>/
-            ├── deploy-target.txt
-            └── remove-target.txt
+        ├── branch_name.txt              ← 現在の作業ブランチ名
+        └── <branch>/                    ← ブランチごとのターゲットファイル
+            ├── deploy-target.txt        ← デプロイ対象メタデータ一覧
+            └── remove-target.txt        ← 削除対象メタデータ一覧
 ```
 
 ### 3.2 新規作業を始める（sf-job）
