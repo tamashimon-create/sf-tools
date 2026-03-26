@@ -1,17 +1,17 @@
 #!/bin/bash
 # ==============================================================================
-# test_repo-settings.sh - repo-settings.sh とワークフローの整合性テスト
+# test_repo-settings.sh - Ruleset とワークフローの整合性テスト
 #
-# ワークフロー job name と repo-settings.sh の required_status_checks context が
+# ワークフロー job name と 08_repo_rules.sh の required_status_checks context が
 # 一致しているかを検証する。不一致があると PR の必須チェックが永遠に待機状態になる。
 # ==============================================================================
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
-echo -e "${CLR_HEAD}=== repo-settings.sh ===${CLR_RST}"
+echo -e "${CLR_HEAD}=== Ruleset / ワークフロー整合性 ===${CLR_RST}"
 
 REUSABLE_DIR="$SF_TOOLS_DIR/.github/workflows"
-REPO_SETTINGS="$SF_TOOLS_DIR/repo-settings.sh"
+REPO_SETTINGS="$SF_TOOLS_DIR/phases/init/08_repo_rules.sh"
 
-# repo-settings.sh から context 値を抽出する内部関数
+# 08_repo_rules.sh から context 値を抽出する内部関数
 _extract_contexts() {
     grep '"context":' "$REPO_SETTINGS" \
         | sed 's/.*"context": "\([^"]*\)".*/\1/' \
@@ -42,13 +42,13 @@ test_contexts_exist_in_workflow_job_names() {
             pass "context '${context}' がワークフロー job name に存在する"
         else
             fail "context '${context}' がワークフロー job name に存在しない" \
-                "repo-settings.sh と .github/workflows/wf-*-reusable.yml の不一致"
+                "08_repo_rules.sh と .github/workflows/wf-*-reusable.yml の不一致"
         fi
     done <<< "$contexts"
 }
 
 # ------------------------------------------------------------------------------
-# wf-validate-reusable.yml の job name が repo-settings.sh の context に登録されているか
+# wf-validate-reusable.yml の job name が 08_repo_rules.sh の context に登録されているか
 # ------------------------------------------------------------------------------
 test_wf_validate_job_registered_in_contexts() {
     local job_name full_context
@@ -57,15 +57,15 @@ test_wf_validate_job_registered_in_contexts() {
     full_context="validate / ${job_name}"
 
     if grep -qF "\"${full_context}\"" "$REPO_SETTINGS"; then
-        pass "wf-validate-reusable.yml の job name が repo-settings.sh の context に登録されている"
+        pass "wf-validate-reusable.yml の job name が 08_repo_rules.sh の context に登録されている"
     else
-        fail "wf-validate-reusable.yml の job name が repo-settings.sh の context に未登録" \
+        fail "wf-validate-reusable.yml の job name が 08_repo_rules.sh の context に未登録" \
             "context: '${full_context}'"
     fi
 }
 
 # ------------------------------------------------------------------------------
-# wf-sequence-reusable.yml の job name が repo-settings.sh の context に登録されているか
+# wf-sequence-reusable.yml の job name が 08_repo_rules.sh の context に登録されているか
 # ------------------------------------------------------------------------------
 test_wf_sequence_job_registered_in_contexts() {
     local job_name full_context
@@ -74,9 +74,9 @@ test_wf_sequence_job_registered_in_contexts() {
     full_context="sequence / ${job_name}"
 
     if grep -qF "\"${full_context}\"" "$REPO_SETTINGS"; then
-        pass "wf-sequence-reusable.yml の job name が repo-settings.sh の context に登録されている"
+        pass "wf-sequence-reusable.yml の job name が 08_repo_rules.sh の context に登録されている"
     else
-        fail "wf-sequence-reusable.yml の job name が repo-settings.sh の context に未登録" \
+        fail "wf-sequence-reusable.yml の job name が 08_repo_rules.sh の context に未登録" \
             "context: '${full_context}'"
     fi
 }

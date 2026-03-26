@@ -41,6 +41,7 @@ source "$COMMON_LIB"
 # ------------------------------------------------------------------------------
 log "HEADER" "開発タスクのスタートアップを開始します (${SCRIPT_NAME}.sh)"
 
+trap '' INT  # Ctrl+C を無効化（q で中断すること）
 trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
@@ -67,8 +68,9 @@ fi
 
 # パターンB: 未接続 または 強制再ログイン
 if [ "$SKIP_LOGIN" -eq 0 ]; then
-    echo -en "${CLR_PROMPT}接続する組織のエイリアスを入力してください [デフォルト: tama]: ${CLR_RESET}"
+    echo -en "${CLR_PROMPT}接続する組織のエイリアスを入力してください [デフォルト: tama / q で中断]: ${CLR_RESET}"
     read -r ORG_ALIAS
+    [[ "$ORG_ALIAS" == "q" || "$ORG_ALIAS" == "Q" ]] && die "中断しました。"
     ORG_ALIAS=${ORG_ALIAS:-tama}
 
     # VS Code が参照する古いエイリアス設定をクリア

@@ -92,9 +92,6 @@ exit 0
 STUB
     chmod +x "$mock_home/sf-tools/sf-branch.sh"
 
-    # repo-settings.sh スタブ（何もしない）
-    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/repo-settings.sh"
-    chmod +x "$mock_home/sf-tools/repo-settings.sh"
 }
 
 # ==============================================================================
@@ -393,6 +390,135 @@ test_repo_visibility_private_for_other_owner() {
 }
 
 # ==============================================================================
+# テスト 9: --only 1 → Phase 1 のみ実行（gh repo create は呼ばれない）
+# ==============================================================================
+test_only_option_runs_single_phase() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --only 1 → Phase 1 のみ実行${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/tamashimon/testproject/init"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+
+    local exit_code
+    printf '' \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/sf-init.sh" --only 1 ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_ok            "$exit_code"                    "--only 1 で正常終了する"
+    assert_file_contains      "$MOCK_CALL_LOG" "gh auth status" "Phase 1: gh auth status が呼ばれる"
+    assert_file_not_contains  "$MOCK_CALL_LOG" "gh repo create" "--only 1: gh repo create は呼ばれない"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
+# テスト 10: --only 2 → .sf-init.env が生成される
+# ==============================================================================
+test_only_phase2_creates_env_file() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --only 2 → .sf-init.env が生成される${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/tamashimon/testproject/init"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+
+    local exit_code
+    printf 'Y\n' \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/sf-init.sh" --only 2 ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_ok       "$exit_code"                                                "--only 2 で正常終了する"
+    assert_file_exists   "$init_dir/.sf-init.env"                                    ".sf-init.env が生成される"
+    assert_file_contains "$init_dir/.sf-init.env" "REPO_FULL_NAME"                  ".sf-init.env に REPO_FULL_NAME が含まれる"
+    assert_file_contains "$init_dir/.sf-init.env" "tamashimon/force-testproject"    "正しい REPO_FULL_NAME が書き出される"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
+# テスト 11: --resume 8 → Phase 8 のみ実行（git commit は呼ばれない）
+# ==============================================================================
+test_resume_runs_from_specified_phase() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --resume 8 → Phase 8 のみ実行${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/tamashimon/testproject/init"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+    _stub_subscripts "$mock_home"
+
+    # .sf-init.env を事前設定（Phase 2〜7 で書き出されるはずの内容）
+    cat > "$init_dir/.sf-init.env" << 'ENVEOF'
+GITHUB_OWNER="tamashimon"
+PROJECT_NAME="testproject"
+REPO_NAME="force-testproject"
+REPO_FULL_NAME="tamashimon/force-testproject"
+REPO_DIR="/tmp/fake-repo"
+BRANCH_COUNT="3"
+PAT_TOKEN_VALUE="ghp_faketoken"
+ENVEOF
+
+    local exit_code
+    printf '' \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/sf-init.sh" --resume 8 ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_ok            "$exit_code"                         "--resume 8 で正常終了する"
+    assert_file_not_contains  "$MOCK_CALL_LOG" "git commit"        "--resume 8: git commit は呼ばれない"
+    assert_file_contains      "$MOCK_CALL_LOG" "gh repo edit"      "Phase 8: gh repo edit が呼ばれる"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
+# テスト 12: 不明なオプション → エラー終了
+# ==============================================================================
+test_unknown_option_fails() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 不明なオプション → エラー終了${CLR_RST}"
+
+    local mb mock_home init_base init_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/tamashimon/testproject/init"
+
+    create_all_mocks "$mb"
+
+    local exit_code
+    ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+          bash "$mock_home/sf-tools/sf-init.sh" --unknown ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_fail "$exit_code" "不明なオプションで失敗終了する"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
 # テスト実行
 # ==============================================================================
 echo ""
@@ -408,5 +534,9 @@ test_unauthorized_user
 test_invalid_owner_folder
 test_repo_visibility_public_for_tama_create
 test_repo_visibility_private_for_other_owner
+test_only_option_runs_single_phase
+test_only_phase2_creates_env_file
+test_resume_runs_from_specified_phase
+test_unknown_option_fails
 
 print_summary

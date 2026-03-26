@@ -403,18 +403,20 @@ check_authorized_user() {
     die "実行権限がありません（${current_user}）。~/sf-tools/config/allowed-users.txt にユーザーを追加してください。"
 }
 
-# Y または N を明示的に入力させる（Enter のみは無効）
+# Y / N / q を明示的に入力させる（Enter のみは無効、q で即中断）
 # 使い方: ask_yn "質問文" && echo "Yes" || echo "No"
 ask_yn() {
     local prompt="$1"
     local answer
     while true; do
-        echo -ne "  ${prompt} [Y/N]: " >&2
-        read -r answer
+        echo -ne "  ${prompt} [Y/N/q]: " >&2
+        read -r answer || die "入力が中断されました。"  # EOF → 中断
         case "$answer" in
             [Yy]|[Yy][Ee][Ss]) return 0 ;;
             [Nn]|[Nn][Oo])     return 1 ;;
-            *) echo -e "  Y または N を入力してください。" >&2 ;;
+            [Qq])               die "中断しました。" ;;
+            "")                 ;;  # 空 Enter → 無視
+            *) echo -e "  Y / N / q を入力してください。" >&2 ;;
         esac
     done
 }
