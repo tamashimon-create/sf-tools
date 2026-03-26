@@ -6,7 +6,7 @@
 # 確認後、.sf-init.env に変数を書き出して後続フェーズと共有する。
 #
 # 【導出ルール】
-#   カレント: ~/home/{github-owner}/{company}/init/
+#   カレント: ~/home/{github-owner}/{company}/init/（sf-init.sh が自動作成・移動）
 #   PROJECT_NAME  = {company}（init の 1 つ上）
 #   GITHUB_OWNER  = {github-owner}（init の 2 つ上）
 #   REPO_NAME     = force-{company}
@@ -51,7 +51,7 @@ if [[ -z "$GITHUB_OWNER" ]] || \
     die "GitHub オーナー名が無効です: \"${GITHUB_OWNER}\"
   2つ上のフォルダ名を GitHub ユーザー名として使用します。
   正しいフォルダ構成で実行してください:
-    ~/home/{github-owner}/{company}/init/"
+    ~/home/{github-owner}/{company}/"
 fi
 
 log "INFO" "  GitHub オーナー（フォルダ自動取得）: ${GITHUB_OWNER}"

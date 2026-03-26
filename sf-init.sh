@@ -9,7 +9,8 @@
 #   ~/home/
 #   └── {github-owner}/   ← GitHub ユーザー名（フォルダ名から自動取得）
 #       └── {company}/    ← プロジェクト名として使用（例: yamada → force-yamada）
-#           └── init/     ← このフォルダをカレントにして実行すること
+#           ↑ここをカレントにして実行すること（init/ フォルダは自動作成）
+#           ※ {company}/system/ 等のサブフォルダから実行するとエラー
 #
 # 【処理フロー】
 #   Phase 1: 環境チェック（ツール確認・GitHub CLI 認証確認）
@@ -30,8 +31,7 @@
 #   - 通知先 Slack チャンネルで Bot を招待（/invite @sf-notify-<プロジェクト名>）
 #
 # 【使い方】
-#   mkdir -p ~/home/{github-owner}/{company}/init
-#   cd ~/home/{github-owner}/{company}/init
+#   cd ~/home/{github-owner}/{company}
 #   ~/sf-tools/sf-init.sh [--resume N] [--only N]
 #
 # 【オプション】
@@ -101,22 +101,36 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 4. 環境変数の export（各フェーズスクリプトから参照）
+# 4. タイトル表示・実行ディレクトリの検証（~/home/{owner}/{company}/ であること）
+# ------------------------------------------------------------------------------
+log "HEADER" "新規 Salesforce プロジェクトの初期セットアップを開始します (${SCRIPT_NAME}.sh)"
+
+check_home_dir  # GITHUB_OWNER / COMPANY_NAME をセット（失敗時は die）
+
+log "INFO" "セットアップ中は Ctrl+C が無効です。中断するにはターミナルを閉じてください。"
+
+# ------------------------------------------------------------------------------
+# 5. init フォルダの作成・移動
+# ------------------------------------------------------------------------------
+INIT_DIR="${PWD}/init"
+mkdir -p "$INIT_DIR" || die "init フォルダの作成に失敗しました: ${INIT_DIR}"
+cd "$INIT_DIR" || die "init フォルダに移動できません: ${INIT_DIR}"
+
+# ------------------------------------------------------------------------------
+# 6. 環境変数の export（各フェーズスクリプトから参照）
 # ------------------------------------------------------------------------------
 export SF_TOOLS_DIR="$SCRIPT_DIR"
-# .sf-init.env はカレントディレクトリ（init フォルダ）に配置する
+# .sf-init.env は init フォルダに配置する（cd 後の PWD が init/ になる）
 export SF_INIT_ENV_FILE="${PWD}/.sf-init.env"
 
-# --resume / --only 時以外は .sf-init.env を初期化する
+# --resume / --only 時以外は前回の残骸を削除する（空ファイルは作らない）
 if [[ "$RESUME_PHASE" -eq 1 && -z "$ONLY_PHASE" ]]; then
-    : > "$SF_INIT_ENV_FILE"  # 新規実行時は空ファイルにリセット（: > はシェル組み込み）
+    rm -f "$SF_INIT_ENV_FILE"  # 新規実行時は残骸削除のみ（Phase 2 が初回書き出し）
 fi
 
 # ------------------------------------------------------------------------------
-# 5. メイン実行フロー（フェーズループ）
+# 7. メイン実行フロー（フェーズループ）
 # ------------------------------------------------------------------------------
-log "HEADER" "新規 Salesforce プロジェクトの初期セットアップを開始します (${SCRIPT_NAME}.sh)"
-log "INFO" "セットアップ中は Ctrl+C が無効です。中断するにはターミナルを閉じてください。"
 log "INFO" "実行フェーズ: Phase ${START_PHASE} 〜 Phase ${END_PHASE}"
 
 for phase_num in $(seq "$START_PHASE" "$END_PHASE"); do
@@ -130,7 +144,7 @@ for phase_num in $(seq "$START_PHASE" "$END_PHASE"); do
 done
 
 # ------------------------------------------------------------------------------
-# 6. 後処理（全フェーズ完了後）
+# 8. 後処理（全フェーズ完了後）
 # ------------------------------------------------------------------------------
 # .sf-init.env から REPO_DIR を取得（init フォルダ削除の基準に使用）
 [[ -f "$SF_INIT_ENV_FILE" ]] && source "$SF_INIT_ENV_FILE"

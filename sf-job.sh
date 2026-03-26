@@ -119,19 +119,9 @@ phase_check_environment() {
 phase_load_project_info() {
     log "INFO" "プロジェクト情報を確認中..."
 
-    COMPANY_NAME=$(basename "$PWD")
-    GITHUB_OWNER=$(basename "$(dirname "$PWD")")
+    # GITHUB_OWNER / COMPANY_NAME はメイン処理の check_home_dir でセット済み
     REPO_NAME="force-${COMPANY_NAME}"
     REPO_FULL_NAME="${GITHUB_OWNER}/${REPO_NAME}"
-
-    # GitHub オーナー名バリデーション（英数字・ハイフンのみ・先頭末尾はハイフン不可）
-    if [[ -z "$GITHUB_OWNER" ]] || \
-       [[ ! "$GITHUB_OWNER" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$ ]]; then
-        die "GitHub オーナー名が無効です: \"${GITHUB_OWNER}\"
-  1つ上のフォルダ名を GitHub ユーザー名として使用します。
-  正しいフォルダ構成で実行してください:
-    ~/home/{github-owner}/{company-name}/"
-    fi
 
     log "INFO" "  GitHub オーナー（フォルダ自動取得）: ${GITHUB_OWNER}"
     log "INFO" "  リポジトリ名（自動導出）: ${REPO_NAME}"
@@ -271,6 +261,9 @@ phase_sf_start() {
 # 6. メイン実行フロー
 # ------------------------------------------------------------------------------
 log "HEADER" "作業環境セットアップを開始します (${SCRIPT_NAME}.sh)"
+
+check_home_dir            # GITHUB_OWNER / COMPANY_NAME をセット（失敗時は die）
+
 log "INFO" "中断するには q を入力してください。"
 
 phase_check_environment   || die "環境チェックに失敗しました。"

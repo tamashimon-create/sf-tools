@@ -16,6 +16,7 @@
 #   die MESSAGE [EXIT_CODE]   ... エラーログを出力して終了
 #   get_target_org [ALIAS]    ... 接続先組織エイリアスを解決
 #   check_force_dir           ... force-* ディレクトリ内か確認
+#   check_home_dir            ... ~/home/{owner}/{company}/ の正しい階層か確認し GITHUB_OWNER/COMPANY_NAME をセット
 #   check_authorized_user     ... sf-tools 実行許可ユーザーか確認（マスター固定 + 外部ファイル）
 #
 # 【戻り値定数】
@@ -311,6 +312,38 @@ get_target_org() {
 check_force_dir() {
     [[ "$(basename "$PWD")" =~ ^force- ]] && return $RET_OK
     return $RET_NG
+}
+
+# check_home_dir - ~/home/{owner}/{company}/ の正しい階層か確認し変数をセットする
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   check_home_dir   # 失敗時は die で終了
+#   # 成功時: GITHUB_OWNER / COMPANY_NAME がセットされる
+#
+# 【検証内容】
+#   - PWD が */home/ 配下にある
+#   - home/ からの深さがちょうど 2（{owner}/{company}）
+#
+# 【セット先変数】
+#   GITHUB_OWNER  : 1つ上のフォルダ名（例: tamashimon-org）
+#   COMPANY_NAME  : カレントフォルダ名（例: yamada）
+# ------------------------------------------------------------------------------
+check_home_dir() {
+    local rest depth
+    rest="${PWD#*/home/}"
+    if [[ "$rest" == "$PWD" ]]; then
+        die "~/home/ 配下で実行してください。
+  正しい場所: ~/home/{github-owner}/{company}/
+  現在の場所: ${PWD}"
+    fi
+    depth=$(printf '%s' "$rest" | tr -cd '/' | wc -c)
+    if [[ $depth -ne 1 ]]; then
+        die "実行フォルダの階層が正しくありません。
+  正しい場所: ~/home/{github-owner}/{company}/
+  現在の場所: ${PWD}"
+    fi
+    GITHUB_OWNER=$(basename "$(dirname "$PWD")")
+    COMPANY_NAME=$(basename "$PWD")
 }
 
 # get_branch_list - branches.txt からブランチ一覧を取得して echo する

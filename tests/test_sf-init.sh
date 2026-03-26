@@ -17,7 +17,8 @@
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
 
 # ==============================================================================
-# ヘルパー：{github-owner}/{company}/init/ 構造を作成
+# ヘルパー：{github-owner}/{company}/ 構造を作成
+# （init/ は sf-init.sh が自動作成するため、ここでは作らない）
 # 戻り値: ベースディレクトリのパス（teardown に渡す）
 # ==============================================================================
 _setup_init_dir() {
@@ -25,7 +26,7 @@ _setup_init_dir() {
     local company="${2:-testproject}"
     local base
     base=$(mktemp -d "${TMPDIR:-/tmp}/test-init-XXXX")
-    mkdir -p "$base/$github_owner/$company/init"
+    mkdir -p "$base/home/$github_owner/$company"
     echo "$base"
 }
 
@@ -127,7 +128,7 @@ test_happy_path_3branches() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"   # repo view カウンター付きモックで上書き
@@ -173,7 +174,7 @@ test_missing_tool_gh() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     # gh モックを作成しない → PATH="$mb" 限定なら command -v gh が失敗する
     create_mock_git  "$mb"
@@ -207,7 +208,7 @@ test_repo_create_failure() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -241,7 +242,7 @@ test_sf_login_failure() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -278,7 +279,7 @@ test_unauthorized_user() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -310,8 +311,8 @@ test_invalid_owner_folder() {
 
     # GitHub ユーザー名に使用できない文字（スペース）を含むフォルダ名
     init_base=$(mktemp -d "${TMPDIR:-/tmp}/test-init-XXXX")
-    mkdir -p "$init_base/invalid owner/testproject/init"
-    init_dir="$init_base/invalid owner/testproject/init"
+    mkdir -p "$init_base/invalid owner/testproject"
+    init_dir="$init_base/invalid owner/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -339,7 +340,7 @@ test_repo_visibility_public_for_tama_create() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tama-create" "testproject")
-    init_dir="$init_base/tama-create/testproject/init"
+    init_dir="$init_base/home/tama-create/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -370,7 +371,7 @@ test_repo_visibility_private_for_other_owner() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -401,7 +402,7 @@ test_only_option_runs_single_phase() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -431,7 +432,7 @@ test_only_phase2_creates_env_file() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
@@ -443,9 +444,9 @@ test_only_phase2_creates_env_file() {
     exit_code=$?
 
     assert_exit_ok       "$exit_code"                                                "--only 2 で正常終了する"
-    assert_file_exists   "$init_dir/.sf-init.env"                                    ".sf-init.env が生成される"
-    assert_file_contains "$init_dir/.sf-init.env" "REPO_FULL_NAME"                  ".sf-init.env に REPO_FULL_NAME が含まれる"
-    assert_file_contains "$init_dir/.sf-init.env" "tamashimon/force-testproject"    "正しい REPO_FULL_NAME が書き出される"
+    assert_file_exists   "$init_dir/init/.sf-init.env"                                    ".sf-init.env が生成される"
+    assert_file_contains "$init_dir/init/.sf-init.env" "REPO_FULL_NAME"                  ".sf-init.env に REPO_FULL_NAME が含まれる"
+    assert_file_contains "$init_dir/init/.sf-init.env" "tamashimon/force-testproject"    "正しい REPO_FULL_NAME が書き出される"
 
     teardown "$mb" "$mock_home" "$init_base"
 }
@@ -462,14 +463,16 @@ test_resume_runs_from_specified_phase() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
     # .sf-init.env を事前設定（Phase 2〜9 で書き出されるはずの内容）
-    cat > "$init_dir/.sf-init.env" << 'ENVEOF'
+    # --resume 時は sf-init.sh が init/ に cd してから .sf-init.env を参照するため事前作成
+    mkdir -p "$init_dir/init"
+    cat > "$init_dir/init/.sf-init.env" << 'ENVEOF'
 GITHUB_OWNER="tamashimon"
 PROJECT_NAME="testproject"
 REPO_NAME="force-testproject"
@@ -504,7 +507,7 @@ test_unknown_option_fails() {
     export MOCK_CALL_LOG="$mb/calls.log"
     mock_home=$(setup_mock_home)
     init_base=$(_setup_init_dir "tamashimon" "testproject")
-    init_dir="$init_base/tamashimon/testproject/init"
+    init_dir="$init_base/home/tamashimon/testproject"
 
     create_all_mocks "$mb"
 

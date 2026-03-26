@@ -67,15 +67,15 @@ _stub_job_subscripts() {
 
 # ==============================================================================
 # ヘルパー：{github-owner}/{company}/ ディレクトリを作成して company パスを返す
-# teardown には $(dirname "$(dirname "$cdir")") を渡すこと
+# teardown には $(dirname "$(dirname "$(dirname "$cdir")") を渡すこと（home/ 階層を含む3段）
 # ==============================================================================
 setup_company_dir() {
     local github_owner="${1:-tamashimon-org}"
     local company="${2:-yamada}"
     local base
     base=$(mktemp -d "${TMPDIR:-/tmp}/test-cmp-XXXX")
-    mkdir -p "$base/$github_owner/$company"
-    echo "$base/$github_owner/$company"
+    mkdir -p "$base/home/$github_owner/$company"
+    echo "$base/home/$github_owner/$company"
 }
 
 # ==============================================================================
@@ -105,7 +105,7 @@ test_happy_path() {
     assert_file_contains "$MOCK_CALL_LOG" "git/refs"        "ブランチ作成 API が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "git clone"       "git clone が呼ばれる"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -135,7 +135,7 @@ test_owner_auto_derive() {
     # REPO_FULL_NAME = my-org-name/force-yamada が使われていること
     assert_file_contains "$MOCK_CALL_LOG" "my-org-name/force-yamada"     "フォルダ名からオーナーが正しく導出される"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -219,7 +219,7 @@ test_repo_not_found() {
     assert_exit_fail $ec "リポジトリ未発見 → エラー終了"
 
     unset MOCK_GH_REPO_VIEW_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -250,7 +250,7 @@ test_local_job_dir_duplicate() {
         || fail "ローカル重複 WARNING が表示される" "WARNING が見つからない"
     assert_file_contains "$MOCK_CALL_LOG" "git clone" "git clone が呼ばれる"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -291,7 +291,7 @@ EOF
         && pass "GitHub ブランチ重複 WARNING が表示される" \
         || fail "GitHub ブランチ重複 WARNING が表示される" "WARNING が見つからない"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -319,7 +319,7 @@ test_invalid_job_name() {
         && pass "無効なジョブ名 WARNING が表示される" \
         || fail "無効なジョブ名 WARNING が表示される" "WARNING が見つからない"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -348,7 +348,7 @@ test_branch_create_failure() {
     assert_exit_fail $ec "ブランチ作成失敗 → エラー終了"
 
     unset MOCK_GH_CREATE_BRANCH_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -377,7 +377,7 @@ test_clone_failure() {
     assert_exit_fail $ec "クローン失敗 → エラー終了"
 
     unset MOCK_GIT_CLONE_EXIT
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
@@ -402,7 +402,7 @@ test_quit_with_q() {
 
     assert_exit_fail $ec "q 入力 → 中断終了"
 
-    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$cdir")")"
+    teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
 
 # ==============================================================================
