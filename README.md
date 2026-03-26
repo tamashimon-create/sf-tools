@@ -50,12 +50,35 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 git clone <sf-tools のリポジトリ URL> ~/sf-tools
 ```
 
-### 3.2 基本の使い方
+### 3.2 PATH の設定（推奨）
+
+`~/.bashrc` に以下を追加すると、どこからでもスクリプト名だけで呼び出せます。
+
+```bash
+# sf-tools
+export PATH="$HOME/sf-tools/bin:$PATH"
+
+# .sh なしで呼べるエイリアス（任意）
+alias sf-start='sf-start.sh'
+alias sf-push='sf-push.sh'
+alias sf-next='sf-next.sh'
+alias sf-job='sf-job.sh'
+alias sf-init='sf-init.sh'
+alias sf-restart='sf-restart.sh'
+alias sfl='sf-launcher.sh'
+alias sflf='sf-launcher.sh --fzf'
+```
+
+追加後に `source ~/.bashrc` で反映します。
+
+### 3.3 基本の使い方
 
 Salesforce プロジェクト側で `sf-start.sh` を実行します。
 
 ```bash
 cd force-xxxxx
+sf-start.sh        # PATH 設定済みの場合
+# または
 bash ~/sf-tools/bin/sf-start.sh
 ```
 
