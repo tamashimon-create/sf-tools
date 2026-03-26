@@ -28,11 +28,11 @@ RESET='\033[0m'
 # VSCode 内では start / restart を除外（code . の二重起動・表示乱れ防止）
 # ------------------------------------------------------------------------------
 MENU_ITEMS_ALL=(
-    "sf-release  | 現在接続中のSandboxへリリース検証"
-    "sf-deploy   | 現在接続中のSandboxへリリース"
     "sf-check    | deploy-target.txt の構文チェック"
-    "sf-next     | 次の PR 先ブランチを確認"
     "sf-push     | 変更をコミット＆プッシュ"
+    "sf-next     | 次の PR 先ブランチを確認"
+    "sf-dryrun   | 現在接続中のSandboxへリリース検証"
+    "sf-deploy   | 現在接続中のSandboxへリリース"
     "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
     "sf-restart  | 接続組織を切り替えて再起動"
 )
@@ -52,7 +52,8 @@ unset _item
 # ------------------------------------------------------------------------------
 print_menu() {
     echo ""
-    echo -e "${BOLD}  sf-tools ランチャー${RESET}"
+    echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
+    echo -e "${BOLD}  >> sf-tools ランチャー${RESET}"
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
 
     local num=1
@@ -61,6 +62,7 @@ print_menu() {
         local desc="${item##*|}"
         local label="${cmd// /}"
         label="${label#sf-}"
+        label="${label^}"  # 先頭を大文字に
         printf "  ${CYAN}[%d]${RESET} ${BOLD}%-10s${RESET}${DIM}%s${RESET}\n" "$num" "$label" "$desc"
         (( num++ ))
     done

@@ -50,6 +50,7 @@ TEST_FILES=(
     test_sf-metasync.sh
     test_sf-release.sh
     test_sf-deploy.sh
+    test_sf-dryrun.sh
     test_sf-job.sh
     test_sf-next.sh
     test_sf-branch.sh

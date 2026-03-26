@@ -124,6 +124,7 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh  # 統合テスト
 | `test_sf-metasync.sh` | sf-metasync.sh |
 | `test_sf-release.sh` | sf-release.sh |
 | `test_sf-deploy.sh` | sf-deploy.sh |
+| `test_sf-dryrun.sh` | sf-dryrun.sh |
 | `test_sf-init.sh` | sf-init.sh |
 
 ### 3.4 `test_helper.sh` の前提
@@ -288,18 +289,23 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 - `none` かつ NEXT_TARGET → `▶ 次のPR先`
 - `none` → `✗`
 
-### 6.6 sf-deploy.sh
+### 6.6 sf-dryrun.sh
+
+- `sf-release.sh` のラッパー（オプションなし = dry-run がデフォルト）
+- ランチャーから呼ばれる dry-run 専用コマンド
+
+### 6.8 sf-deploy.sh
 
 - `sf-release.sh --release --force` のラッパー
 - `force-*` 以外では実行禁止
 - `main` / `staging` / `develop` ブランチでは実行禁止
 
-### 6.7 sf-upgrade.sh
+### 6.9 sf-upgrade.sh
 
 - npm / Salesforce CLI / Git を更新
 - `sf-install.sh` から 24 時間間隔でバックグラウンド起動される
 
-### 6.8 sf-push.sh
+### 6.10 sf-push.sh
 
 カレントディレクトリ配下だけをコミット＆プッシュする。実行フロー（順序は変更禁止）:
 
@@ -312,7 +318,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 6. メッセージ未入力なら何もせず正常終了
 7. `git commit` → `git push`
 
-### 6.9 sf-update-secret.sh
+### 6.11 sf-update-secret.sh
 
 GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序は変更禁止）:
 
@@ -324,12 +330,12 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 5. `gh secret set` で3つの Secret を更新（`SFDX_AUTH_URL_PROD` / `STG` / `DEV`）
 6. SUCCESS
 
-### 6.10 sf-hook.sh / sf-unhook.sh
+### 6.12 sf-hook.sh / sf-unhook.sh
 
 - `sf-hook.sh`: `.git/hooks/pre-push` と `.git/hooks/pre-commit` を上書き生成し、`~/sf-tools/hooks/` からコピーする
 - `sf-unhook.sh`: `.git/hooks/pre-push` を削除する
 
-### 6.11 sf-init.sh
+### 6.13 sf-init.sh
 
 新規 Salesforce プロジェクトの初期セットアップ。`phases/init/` 配下のフェーズスクリプトを順次実行する。
 

@@ -116,6 +116,71 @@ test_outside_force_dir() {
     teardown "$rd" "$mb"
 }
 
+# 保護組織（branches.txt 記載）へのローカル実行 → エラー
+test_protected_org_local_blocked() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+    setup_release_dir "$td"
+    unset GITHUB_ACTIONS
+
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target main 2>&1)
+    local ec=$?
+
+    assert_exit_fail $ec "保護組織(main) + ローカル → エラー終了"
+    echo "$out" | grep -q "PR 経由で GitHub Actions" \
+        && pass "保護組織(main) + ローカル → 適切なエラーメッセージ" \
+        || fail "保護組織(main) + ローカル → 適切なエラーメッセージ"
+    teardown "$td" "$mb"
+}
+
+# GitHub Actions 上からの保護組織実行 → 通過
+test_protected_org_github_actions_allowed() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+    setup_release_dir "$td"
+    export GITHUB_ACTIONS="true"
+
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target main --no-open 2>&1 >/dev/null
+    local ec=$?
+
+    assert_exit_ok $ec "保護組織(main) + GITHUB_ACTIONS=true → 通過"
+    unset GITHUB_ACTIONS
+    teardown "$td" "$mb"
+}
+
+# 保護組織外（個人 Sandbox）へのローカル実行 → 通過
+test_unprotected_org_local_allowed() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+    setup_release_dir "$td"
+    unset GITHUB_ACTIONS
+
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target mysandbox --no-open 2>&1 >/dev/null
+    local ec=$?
+
+    assert_exit_ok $ec "個人 Sandbox(mysandbox) + ローカル → 通過"
+    teardown "$td" "$mb"
+}
+
+# branches.txt が存在しない → ガードをスキップして通過
+test_no_branches_txt_allowed() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_all_mocks "$mb"
+    setup_release_dir "$td"
+    rm -f "$td/sf-tools/config/branches.txt"  # branches.txt を削除
+    unset GITHUB_ACTIONS
+
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target main --no-open 2>&1 >/dev/null
+    local ec=$?
+
+    assert_exit_ok $ec "branches.txt なし → ガードスキップして通過"
+    teardown "$td" "$mb"
+}
+
 test_dry_run_default
 test_release_mode
 test_force_flag
@@ -123,5 +188,9 @@ test_target_option
 test_empty_deploy_target
 test_unknown_option
 test_outside_force_dir
+test_protected_org_local_blocked
+test_protected_org_github_actions_allowed
+test_unprotected_org_local_allowed
+test_no_branches_txt_allowed
 
 print_summary
