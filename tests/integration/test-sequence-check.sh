@@ -38,7 +38,7 @@ echo "====== テスト開始: $(date '+%Y-%m-%d %H:%M:%S') ======"
 # ==============================================================================
 BRANCH_LIST_FILE="$ROOT_DIR/sf-tools/config/branches.txt"
 if [[ ! -f "$BRANCH_LIST_FILE" ]]; then
-    BRANCH_LIST_FILE="$HOME/sf-tools/templates/config/branches.txt"
+    BRANCH_LIST_FILE="$HOME/sf-tools/templates/defaults/branches.txt"
 fi
 if [[ ! -f "$BRANCH_LIST_FILE" ]]; then
     echo "[ERROR] branches.txt が見つかりません" >&2

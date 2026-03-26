@@ -57,7 +57,7 @@ test_push_no_changes() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_push "$mb" "$td" "no_changes"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
     local ec=$?
     assert_exit_ok $ec "変更なし → 終了コード 0（WARNING で正常終了）"
     teardown "$td" "$mb"
@@ -69,7 +69,7 @@ test_push_cancel() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_push "$mb" "$td" "cancel"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
     local ec=$?
     assert_exit_ok $ec "未入力キャンセル → 終了コード 0"
     teardown "$td" "$mb"
@@ -81,7 +81,7 @@ test_push_success() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_push "$mb" "$td" "success"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
     local ec=$?
     assert_exit_ok $ec "正常系 → 終了コード 0"
     assert_file_contains "$mb/calls.log" "add"    "git add が呼ばれた"
@@ -102,7 +102,7 @@ test_push_check_fail() {
     printf '[files]\nnonexistent/path/that/does/not/exist.cls\n' \
         > "$td/sf-tools/release/feature/test/deploy-target.txt"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "sf-check エラー → コミット中止（終了コード 非0）"
     teardown "$td" "$mb"
@@ -114,7 +114,7 @@ test_push_merge_conflict() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_push "$mb" "$td" "conflict"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-push.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "マージコンフリクト → エラー中止（終了コード 非0）"
     echo "$out" > "$mb/push_out.log"

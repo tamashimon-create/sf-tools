@@ -22,7 +22,7 @@ readonly LOG_MODE="NEW"
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
+COMMON_LIB="${SCRIPT_DIR}/../lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
@@ -46,7 +46,7 @@ run rm -f .sf/config.json .sfdx/sfdx-config.json
 # ------------------------------------------------------------------------------
 # 5. 強制再ログインフラグを立てて sf-start.sh を呼び出す
 # ------------------------------------------------------------------------------
-[ -f "./sf-start.sh" ] || die "sf-start.sh が見つかりません。同じディレクトリに配置してください。"
+[ -f "$SCRIPT_DIR/sf-start.sh" ] || die "sf-start.sh が見つかりません: $SCRIPT_DIR/sf-start.sh"
 
-FORCE_RELOGIN=1 bash "./sf-start.sh" "$@"
+FORCE_RELOGIN=1 bash "$SCRIPT_DIR/sf-start.sh" "$@"
 exit $?

@@ -10,7 +10,7 @@ echo -e "${CLR_HEAD}=== sf-prepush.sh ===${CLR_RST}"
 # ------------------------------------------------------------------------------
 run_prepush() {
     local td="$1" mb="$2"
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-prepush.sh" 2>&1
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-prepush.sh" 2>&1
 }
 
 # ------------------------------------------------------------------------------

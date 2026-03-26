@@ -21,7 +21,7 @@ readonly LOG_MODE="APPEND"  # 司令塔が NEW で初期化済みのため追記
 export SF_INIT_MODE=1
 
 source "${SF_TOOLS_DIR}/lib/common.sh"
-source "${SF_TOOLS_DIR}/lib/init-common.sh"
+source "${SF_TOOLS_DIR}/phases/init/init-common.sh"
 
 # 変数の復元（前フェーズで書き出した .sf-init.env を読み込む）
 SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
@@ -69,7 +69,7 @@ log "SUCCESS" "初回コミット＆プッシュ完了。"
 # 初回コミット後に pre-push フックをインストール
 # （main への直接 push をブロックするため先に入れない）
 log "INFO" "pre-push フックをインストール中..."
-run bash "${SF_TOOLS_DIR}/sf-hook.sh" \
+run bash "${SF_TOOLS_DIR}/bin/sf-hook.sh" \
     || die "sf-hook.sh の実行に失敗しました。"
 
 log "SUCCESS" "Phase 9 完了: 初回コミット＆プッシュ OK。"

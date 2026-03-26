@@ -39,7 +39,7 @@ readonly LOG_MODE="NEW"
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
+COMMON_LIB="${SCRIPT_DIR}/../lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
@@ -107,7 +107,7 @@ phase_init_config() {
     local file
     for file in metadata.txt branches.txt; do
         if [[ ! -f "sf-tools/config/$file" ]]; then
-            run cp "$HOME/sf-tools/templates/config/$file" "sf-tools/config/$file" \
+            run cp "$HOME/sf-tools/templates/defaults/$file" "sf-tools/config/$file" \
                 || return $RET_NG
             log "INFO" "sf-tools/config/$file を生成しました。"
         else

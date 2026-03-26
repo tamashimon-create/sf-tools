@@ -158,8 +158,9 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 | パス | 役割 |
 |---|---|
+| `bin/sf-*.sh` | 各種自動化スクリプト本体 |
 | `lib/common.sh` | 全スクリプト共通ライブラリ。`log` / `run` / `die` を提供 |
-| `lib/init-common.sh` | sf-init.sh 専用ヘルパー（`open_browser` / `press_enter` / `register_sf_secret` 等）|
+| `phases/init/init-common.sh` | sf-init.sh 専用ヘルパー（`open_browser` / `press_enter` / `register_sf_secret` 等）|
 | `phases/init/` | sf-init.sh のサブスクリプト（Phase 01〜08）|
 | `hooks/pre-push` | git push フックの実体。`sf-hook.sh` がプロジェクト側へコピーする |
 | `templates/` | 各プロジェクトへ配布する雛形（ワークフロー・設定ファイル・release テンプレート）|

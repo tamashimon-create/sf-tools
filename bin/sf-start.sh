@@ -28,7 +28,7 @@ readonly LOG_MODE="NEW"
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
+COMMON_LIB="${SCRIPT_DIR}/../lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
@@ -114,8 +114,8 @@ fi
 log "INFO" "バックグラウンドで sf-install.sh を実行中..."
 log "INFO" "  完了後に sf-tools/release/<branch>/ が準備されます（npm install を含む場合は数分かかります）"
 (
-    if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
-        bash "$HOME/sf-tools/sf-install.sh" "$@" 2>&1 \
+    if [ -f "$HOME/sf-tools/bin/sf-install.sh" ]; then
+        bash "$HOME/sf-tools/bin/sf-install.sh" "$@" 2>&1 \
             || true
     fi
 ) >> "$LOG_FILE" 2>&1 &
@@ -124,8 +124,8 @@ disown   # ジョブ完了通知をターミナルに表示しない
 # ------------------------------------------------------------------------------
 # 7. ランチャ起動
 # ------------------------------------------------------------------------------
-if [[ -f "$HOME/sf-tools/sf-launcher.sh" ]]; then
-    bash "$HOME/sf-tools/sf-launcher.sh"
+if [[ -f "$HOME/sf-tools/bin/sf-launcher.sh" ]]; then
+    bash "$HOME/sf-tools/bin/sf-launcher.sh"
 fi
 
 exit $RET_OK

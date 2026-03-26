@@ -14,7 +14,7 @@ test_install_hook() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "正常インストール → 終了コード 0"
@@ -31,7 +31,7 @@ test_hook_content_matches_source() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1 >/dev/null
 
     local src_content; src_content=$(cat "$mh/sf-tools/hooks/pre-push")
     local dst_content; dst_content=$(cat "$td/.git/hooks/pre-push")
@@ -46,7 +46,7 @@ test_hook_calls_sf_prepush() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1 >/dev/null
 
     assert_file_contains "$td/.git/hooks/pre-push" "sf-prepush.sh" "sf-prepush.sh への参照が含まれる"
     teardown "$td" "$mb" "$mh"
@@ -62,7 +62,7 @@ test_overwrite_existing_hook() {
     echo "#!/bin/bash" > "$td/.git/hooks/pre-push"
     echo "echo old_hook" >> "$td/.git/hooks/pre-push"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "上書きインストール → 終了コード 0"
@@ -78,7 +78,7 @@ test_no_hook_source() {
     create_all_mocks "$mb"
     rm -f "$mh/sf-tools/hooks/pre-push"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "コピー元なし → エラー終了"
@@ -92,7 +92,7 @@ test_outside_force_dir() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"
@@ -107,7 +107,7 @@ test_no_git_dir() {
     create_all_mocks "$mb"
     rm -rf "$td/.git"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec ".git なし → エラー終了"
@@ -124,7 +124,7 @@ test_fix_husky_hooks_path() {
     # .git/config に hooksPath = .husky/_ を仕込む
     git -C "$td" config core.hooksPath ".husky/_"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "hooksPath=.husky/_ でも正常終了"

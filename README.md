@@ -56,7 +56,7 @@ Salesforce プロジェクト側で `sf-start.sh` を実行します。
 
 ```bash
 cd force-xxxxx
-bash ~/sf-tools/sf-start.sh
+bash ~/sf-tools/bin/sf-start.sh
 ```
 
 これで次の処理が自動実行されます。
@@ -123,7 +123,7 @@ git checkout -b feature/my-feature
 ### 5.2 開発環境を立ち上げる
 
 ```bash
-bash ~/sf-tools/sf-start.sh
+bash ~/sf-tools/bin/sf-start.sh
 ```
 
 ### 5.3 デプロイ対象を記述する
@@ -133,13 +133,13 @@ bash ~/sf-tools/sf-start.sh
 ### 5.4 dry-run で検証する
 
 ```bash
-bash ~/sf-tools/sf-release.sh
+bash ~/sf-tools/bin/sf-release.sh
 ```
 
 ### 5.5 必要なら本番デプロイする
 
 ```bash
-bash ~/sf-tools/sf-release.sh --release
+bash ~/sf-tools/bin/sf-release.sh --release
 ```
 
 ### 5.6 push 前の自動チェックを通す
@@ -175,7 +175,7 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 ### 7.1 `sf-start.sh`
 
 ```bash
-bash ~/sf-tools/sf-start.sh
+bash ~/sf-tools/bin/sf-start.sh
 ```
 
 役割:
@@ -188,7 +188,7 @@ bash ~/sf-tools/sf-start.sh
 ### 7.2 `sf-init.sh`
 
 ```bash
-bash ~/sf-tools/sf-init.sh
+bash ~/sf-tools/bin/sf-init.sh
 ```
 
 新規 `force-*` プロジェクトの作成をまとめて行うセットアップスクリプトです。
@@ -207,7 +207,7 @@ bash ~/sf-tools/sf-init.sh
 ### 7.3 `sf-branch.sh`
 
 ```bash
-bash ~/sf-tools/sf-branch.sh
+bash ~/sf-tools/bin/sf-branch.sh
 ```
 
 `main / staging / develop` などのブランチ構成を選ぶと、`sf-tools/config/branches.txt` を更新し、必要なブランチを GitHub に作成します。
@@ -220,7 +220,7 @@ bash ~/sf-tools/sf-branch.sh
 ### 7.4 `sf-next.sh`
 
 ```bash
-bash ~/sf-tools/sf-next.sh
+bash ~/sf-tools/bin/sf-next.sh
 ```
 
 現在の feature ブランチが `develop` / `staging` / `main` のどこまでマージ済みかを確認し、次に出すべき PR 先ブランチを案内します。
@@ -261,7 +261,7 @@ bash ~/sf-tools/sf-next.sh
 ### 7.5 `sf-release.sh`
 
 ```bash
-bash ~/sf-tools/sf-release.sh [オプション]
+bash ~/sf-tools/bin/sf-release.sh [オプション]
 ```
 
 主なオプション:
@@ -282,7 +282,7 @@ bash ~/sf-tools/sf-release.sh [オプション]
 ### 7.6 `sf-deploy.sh`
 
 ```bash
-bash ~/sf-tools/sf-deploy.sh [オプション]
+bash ~/sf-tools/bin/sf-deploy.sh [オプション]
 ```
 
 `sf-release.sh --release --force` を簡単に呼ぶラッパーです。
@@ -295,7 +295,7 @@ bash ~/sf-tools/sf-deploy.sh [オプション]
 ### 7.7 `sf-install.sh`
 
 ```bash
-bash ~/sf-tools/sf-install.sh
+bash ~/sf-tools/bin/sf-install.sh
 ```
 
 `sf-tools` 自体の更新と、プロジェクト側の初期ファイル整備を行います。通常は `sf-start.sh` から自動実行されます。
@@ -311,7 +311,7 @@ bash ~/sf-tools/sf-install.sh
 ### 7.8 `sf-check.sh`
 
 ```bash
-bash ~/sf-tools/sf-check.sh [deploy-target.txt] [remove-target.txt]
+bash ~/sf-tools/bin/sf-check.sh [deploy-target.txt] [remove-target.txt]
 ```
 
 `deploy-target.txt` / `remove-target.txt` の構文をチェックします。通常は `sf-release.sh` や `sf-prepush.sh` から自動実行されます。
@@ -323,7 +323,7 @@ bash ~/sf-tools/sf-check.sh [deploy-target.txt] [remove-target.txt]
 ### 7.9 `sf-metasync.sh`
 
 ```bash
-bash ~/sf-tools/sf-metasync.sh
+bash ~/sf-tools/bin/sf-metasync.sh
 ```
 
 役割:
@@ -336,7 +336,7 @@ bash ~/sf-tools/sf-metasync.sh
 ### 7.10 `sf-restart.sh`
 
 ```bash
-bash ~/sf-tools/sf-restart.sh
+bash ~/sf-tools/bin/sf-restart.sh
 ```
 
 接続先組織を切り替えたいときに使います。
@@ -344,8 +344,8 @@ bash ~/sf-tools/sf-restart.sh
 ### 7.11 `sf-hook.sh` / `sf-unhook.sh`
 
 ```bash
-bash ~/sf-tools/sf-hook.sh
-bash ~/sf-tools/sf-unhook.sh
+bash ~/sf-tools/bin/sf-hook.sh
+bash ~/sf-tools/bin/sf-unhook.sh
 ```
 
 役割:
@@ -365,7 +365,7 @@ bash ~/sf-tools/sf-unhook.sh
 ### 7.13 `sf-upgrade.sh`
 
 ```bash
-bash ~/sf-tools/sf-upgrade.sh
+bash ~/sf-tools/bin/sf-upgrade.sh
 ```
 
 npm / Salesforce CLI / Git を更新します。

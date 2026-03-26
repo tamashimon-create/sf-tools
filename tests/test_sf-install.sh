@@ -11,7 +11,7 @@ test_normal_run() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "正常実行 → 終了コード 0"
@@ -29,7 +29,7 @@ test_upgrade_skipped_within_24h() {
     touch -t "$(date -d '1 hour ago' +'%Y%m%d%H%M' 2>/dev/null || date -v -1H +'%Y%m%d%H%M' 2>/dev/null || date +'%Y%m%d%H%M')" "$mh/.sf-tools-last-update" 2>/dev/null \
         || touch "$mh/.sf-tools-last-update"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
     echo "$out" | grep -q "スキップ" && pass "24h 以内のためスキップメッセージが表示された" \
         || fail "24h 以内のためスキップメッセージが表示された"
@@ -45,7 +45,7 @@ test_upgrade_triggered_on_first_run() {
     # スタンプファイルなし（初回実行を再現）
     rm -f "$mh/.sf-tools-last-update"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
     sleep 1  # バックグラウンド起動を少し待つ
 
     assert_file_exists "$mh/.sf-tools-last-update" "スタンプファイルが作成された"
@@ -59,7 +59,7 @@ test_npm_install_skipped_no_package_json() {
     create_all_mocks "$mb"
     rm -f "$mh/.sf-tools-last-update"  # アップグレードも動かすが npm install のみ確認
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
     echo "$out" | grep -q "package.json が見つかりません" \
         && pass "package.json なし → npm install スキップメッセージ" \
@@ -73,7 +73,7 @@ test_outside_force_dir() {
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$rd" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"
@@ -86,7 +86,7 @@ test_skip_pull_when_sf_init_running() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
     echo "$out" | grep -q "git pull をスキップ" \
         && pass "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された" \
@@ -105,7 +105,7 @@ test_hook_installed() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_file_exists "$td/.git/hooks/pre-push" "sf-hook.sh が呼び出され pre-push フックが生成された"
     teardown "$td" "$mb" "$mh"
@@ -118,7 +118,7 @@ test_release_dir_created() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_file_exists "$td/sf-tools/release/branch_name.txt" "branch_name.txt が作成された"
     assert_dir_exists "$td/sf-tools/release/feature/test" "リリースディレクトリが作成された"
@@ -133,7 +133,7 @@ test_release_dir_skipped_on_main() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="main"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_dir_exists     "$td/sf-tools/release"           "sf-tools/release/ ベースディレクトリが作成された"
     assert_file_exists    "$td/sf-tools/release/.gitkeep" ".gitkeep が作成された"
@@ -149,7 +149,7 @@ test_upgrade_called_on_first_run() {
     create_all_mocks "$mb"
     rm -f "$mh/.sf-tools-last-update"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
     sleep 2
 
     grep -q "sf update" "$MOCK_CALL_LOG" \
@@ -166,7 +166,7 @@ test_upgrade_not_called_within_24h() {
     touch -t "$(date -d '1 hour ago' +'%Y%m%d%H%M' 2>/dev/null || date -v -1H +'%Y%m%d%H%M' 2>/dev/null || date +'%Y%m%d%H%M')" "$mh/.sf-tools-last-update" 2>/dev/null \
         || touch "$mh/.sf-tools-last-update"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
     sleep 1
 
     grep -q "sf update" "$MOCK_CALL_LOG" \
@@ -182,7 +182,7 @@ test_deploy_remove_target_created() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_file_exists "$td/sf-tools/release/feature/test/deploy-target.txt" "deploy-target.txt が作成された"
     assert_file_exists "$td/sf-tools/release/feature/test/remove-target.txt" "remove-target.txt が作成された"
@@ -198,7 +198,7 @@ test_release_dir_init_fail() {
     export MOCK_GIT_BRANCH="feature/test"
     rm -f "$mh/sf-tools/templates/release/deploy-target.txt"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
     echo "$out" | grep -q "リリース管理ディレクトリの準備に失敗" \
         && pass "release 初期化失敗 → WARNING が出力された" \

@@ -17,7 +17,7 @@ readonly LOG_MODE="APPEND"  # 司令塔が NEW で初期化済みのため追記
 export SF_INIT_MODE=1
 
 source "${SF_TOOLS_DIR}/lib/common.sh"
-source "${SF_TOOLS_DIR}/lib/init-common.sh"
+source "${SF_TOOLS_DIR}/phases/init/init-common.sh"
 
 # 変数の復元（前フェーズで書き出した .sf-init.env を読み込む）
 SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
@@ -35,7 +35,7 @@ if [[ "$local_dir" != "init" ]]; then
 実行方法:
   mkdir -p ~/home/{github-owner}/{company}/init
   cd ~/home/{github-owner}/{company}/init
-  ~/sf-tools/sf-init.sh"
+  ~/sf-tools/bin/sf-init.sh"
 fi
 
 log "INFO" "必要なツールを確認中..."

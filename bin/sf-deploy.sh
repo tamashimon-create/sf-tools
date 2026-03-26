@@ -1,22 +1,22 @@
 #!/bin/bash
+
 # ==============================================================================
-# sf-precommit.sh - pre-commit フック処理
+# sf-deploy.sh - 本番リリース実行スクリプト（sf-release.sh のラッパー）
 # ==============================================================================
-# git commit 時に自動呼び出しされる pre-commit フックの本体。
-# deploy-target.txt / remove-target.txt の構文チェックを実行し、
-# エラーがあればコミットを中止する。
+# sf-release.sh を --release オプション付きで呼び出します。
+# 追加オプションはそのまま sf-release.sh へ引き渡されます。
 #
-# 動作:
-#   1. sf-check.sh でターゲットファイルを検証
-#   2. エラーがあれば exit 1（コミット中止）
-#   3. 問題なければ exit 0（コミット続行）
+# 【固定オプション】
+#   --release           : 本番リリースモードで実行（dry-run しない）
 #
-# 【オプション】
+# 【追加オプション（sf-release.sh に転送）】
+#   -n, --no-open       : ブラウザを開かずに実行します
+#   -t, --target ALIAS  : 接続先組織のエイリアスを明示的に指定します
 #   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. common.sh 用の事前設定
+# 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
 readonly SCRIPT_NAME=$(basename "$0" .sh)
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
@@ -26,7 +26,7 @@ readonly LOG_MODE="NEW"
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_LIB="${SCRIPT_DIR}/lib/common.sh"
+COMMON_LIB="${SCRIPT_DIR}/../lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
@@ -35,16 +35,19 @@ fi
 source "$COMMON_LIB"
 
 # ------------------------------------------------------------------------------
-# 3. 開始ログ
+# 3. 初期チェック
 # ------------------------------------------------------------------------------
-log "HEADER" "コミット前チェックを開始します (${SCRIPT_NAME}.sh)"
+log "HEADER" "強制デプロイを開始します (${SCRIPT_NAME}.sh)"
+
+RELEASE_SH="${SCRIPT_DIR}/sf-release.sh"
+[[ -f "$RELEASE_SH" ]] || die "スクリプトが見つかりません: ${RELEASE_SH}"
+
+CURRENT_BRANCH=$(run git symbolic-ref --short HEAD)
+if is_protected_branch "$CURRENT_BRANCH"; then
+    die "${CURRENT_BRANCH} ブランチでは実行できません。現在のブランチ: ${CURRENT_BRANCH}"
+fi
 
 # ------------------------------------------------------------------------------
-# 4. ターゲットファイルの検証（sf-check.sh）
+# 4. sf-release.sh を本番リリースモードで呼び出す
 # ------------------------------------------------------------------------------
-log "INFO" "sf-check.sh でターゲットファイルを検証します。"
-run bash "${SCRIPT_DIR}/sf-check.sh" \
-    || die "ターゲットファイルの検証に失敗しました。コミットを中止します。"
-
-log "SUCCESS" "チェック完了。コミットを続行します。"
-exit $RET_OK
+exec bash "$RELEASE_SH" --release --force "$@"

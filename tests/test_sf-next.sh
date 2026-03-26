@@ -70,7 +70,7 @@ test_next_is_staging() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->develop"
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "develop 済み → 終了コード 0"
@@ -95,7 +95,7 @@ test_next_is_main() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->staging"
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "develop+staging 済み → 終了コード 0"
@@ -120,7 +120,7 @@ test_all_merged() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->staging feature/my-feature->main"
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "全ブランチマージ済み → 終了コード 0"
@@ -141,7 +141,7 @@ test_none_merged() {
     export MOCK_GH_MERGED_PRS=""
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "未マージ → 終了コード 0"
@@ -168,7 +168,7 @@ test_two_branches_none_merged() {
     export MOCK_GH_MERGED_PRS=""
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "2ブランチ未マージ → 終了コード 0"
@@ -189,7 +189,7 @@ test_protected_branch_blocked() {
 
     export MOCK_GIT_BRANCH="main"
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "保護ブランチ → エラー終了"
@@ -212,7 +212,7 @@ test_single_branch_none_merged() {
     export MOCK_GH_MERGED_PRS=""
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "1ブランチ未マージ → 終了コード 0"
@@ -234,7 +234,7 @@ test_single_branch_merged() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->main"
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "1ブランチマージ済み → 終了コード 0"
@@ -257,7 +257,7 @@ test_pr_open_shown() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->develop"
     export MOCK_GH_OPEN_PRS="feature/my-feature->staging"
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "PR発行中あり → 終了コード 0"
@@ -283,7 +283,7 @@ test_out_of_order_merge() {
     export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->main"
     export MOCK_GH_OPEN_PRS=""
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "順序外マージ → 終了コード 0"
@@ -311,7 +311,7 @@ test_staging_synced() {
     # git merge-base では develop/staging/main すべてが到達可能（staging は伝播）
     export MOCK_GIT_MERGED_TARGETS="develop staging main"
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-next.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "ブランチ同期あり → 終了コード 0"

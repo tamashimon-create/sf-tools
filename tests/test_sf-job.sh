@@ -59,10 +59,11 @@ EOF
 # ==============================================================================
 _stub_job_subscripts() {
     local mock_home="$1"
-    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/sf-start.sh"
-    chmod +x "$mock_home/sf-tools/sf-start.sh"
-    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/sf-launcher.sh"
-    chmod +x "$mock_home/sf-tools/sf-launcher.sh"
+    mkdir -p "$mock_home/sf-tools/bin"
+    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/bin/sf-start.sh"
+    chmod +x "$mock_home/sf-tools/bin/sf-start.sh"
+    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/bin/sf-launcher.sh"
+    chmod +x "$mock_home/sf-tools/bin/sf-launcher.sh"
 }
 
 # ==============================================================================
@@ -95,7 +96,7 @@ test_happy_path() {
 
     local ec
     printf 'JOB-test\nY\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -127,7 +128,7 @@ test_owner_auto_derive() {
 
     local ec
     printf 'JOB-test\nY\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -157,7 +158,7 @@ test_from_init_dir() {
 
     local ec
     printf 'q\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$init_dir" && bash "$mock_home/sf-tools/sf-job.sh") \
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$init_dir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -185,7 +186,7 @@ test_from_force_dir() {
 
     local ec
     printf 'q\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$force_dir" && bash "$mock_home/sf-tools/sf-job.sh") \
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$force_dir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -212,7 +213,7 @@ test_repo_not_found() {
     local ec
     printf 'q\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GH_REPO_VIEW_EXIT="$MOCK_GH_REPO_VIEW_EXIT"; \
-           cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+           cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -241,7 +242,7 @@ test_local_job_dir_duplicate() {
 
     local ec out
     out=$(printf 'JOB-existing\nJOB-newname\nY\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") 2>&1)
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") 2>&1)
     ec=$?
 
     assert_exit_ok $ec "重複後に新しい名前で正常終了"
@@ -283,7 +284,7 @@ EOF
 
     local ec out
     out=$(printf 'JOB-existing\nJOB-newname\nY\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") 2>&1)
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") 2>&1)
     ec=$?
 
     assert_exit_ok $ec "ブランチ重複後に新しい名前で正常終了"
@@ -311,7 +312,7 @@ test_invalid_job_name() {
 
     local ec out
     out=$(printf 'JOB INVALID\nJOB-valid\nY\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") 2>&1)
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") 2>&1)
     ec=$?
 
     assert_exit_ok $ec "無効な名前の後に有効な名前で正常終了"
@@ -341,7 +342,7 @@ test_branch_create_failure() {
     local ec
     printf 'JOB-test\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GH_CREATE_BRANCH_EXIT="$MOCK_GH_CREATE_BRANCH_EXIT"; \
-           cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+           cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -370,7 +371,7 @@ test_clone_failure() {
     local ec
     printf 'JOB-test\nY\n' \
         | (export HOME="$mock_home" PATH="$mb:$PATH" MOCK_GIT_CLONE_EXIT="$MOCK_GIT_CLONE_EXIT"; \
-           cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+           cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 
@@ -396,7 +397,7 @@ test_quit_with_q() {
 
     local ec
     printf 'q\n' \
-        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/sf-job.sh") \
+        | (export HOME="$mock_home" PATH="$mb:$PATH"; cd "$cdir" && bash "$mock_home/sf-tools/bin/sf-job.sh") \
           > /dev/null 2>&1
     ec=$?
 

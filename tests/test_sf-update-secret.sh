@@ -58,7 +58,7 @@ test_update_secret_success() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_update_secret "$mb" "$td" "success"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-update-secret.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
     local ec=$?
     assert_exit_ok $ec "正常系 → 終了コード 0"
     assert_file_contains "$mb/calls.log" "gh secret set SFDX_AUTH_URL_PROD" "PROD が更新される"
@@ -73,7 +73,7 @@ test_update_secret_sf_fail() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_update_secret "$mb" "$td" "sf_fail"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-update-secret.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "sf 未接続 → エラー中止"
     echo "$out" > "$mb/out.log"
@@ -87,7 +87,7 @@ test_update_secret_gh_fail() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_update_secret "$mb" "$td" "gh_fail"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-update-secret.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "gh 失敗 → エラー中止"
     teardown "$td" "$mb"
@@ -99,7 +99,7 @@ test_update_secret_cancel() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_update_secret "$mb" "$td" "success"
 
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-update-secret.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "確認 n → 中断（終了コード 非0）"
     teardown "$td" "$mb"
@@ -111,7 +111,7 @@ test_update_secret_not_force_dir() {
     td=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     _create_mocks_update_secret "$mb" "$td" "success"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-update-secret.sh" 2>&1)
+    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
     local ec=$?
     assert_exit_fail $ec "force-* 以外 → エラー中止"
     teardown "$td" "$mb"

@@ -19,7 +19,7 @@ test_files_valid_path() {
     local remove="$td/remove.txt"
     printf '[files]\n' > "$remove"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
     local ret=$?
 
     assert_exit_ok "$ret" "[files] 存在するパス → 正常終了"
@@ -38,7 +38,7 @@ test_files_missing_path() {
     local remove="$td/remove.txt"
     printf '[files]\n' > "$remove"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
     local ret=$?
 
     assert_exit_fail "$ret" "[files] 存在しないパス → エラー終了"
@@ -63,7 +63,7 @@ test_members_valid_format() {
     local remove="$td/remove.txt"
     printf '[files]\n' > "$remove"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
     local ret=$?
 
     assert_exit_ok "$ret" "[members] 正しい書式 → 正常終了"
@@ -82,7 +82,7 @@ test_members_invalid_format() {
     local remove="$td/remove.txt"
     printf '[files]\n' > "$remove"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
     local ret=$?
 
     assert_exit_fail "$ret" "[members] コロンなし → エラー終了"
@@ -107,7 +107,7 @@ test_markers_only_no_error() {
     local remove="$td/remove.txt"
     printf '[files]\n' > "$remove"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
     local ret=$?
 
     assert_exit_ok "$ret" "[files]/[members] マーカーのみ → エラーなし"
@@ -121,7 +121,7 @@ test_file_not_exists() {
     local td
     td=$(setup_force_dir)
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" "$td/no-deploy.txt" "$td/no-remove.txt" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$td/no-deploy.txt" "$td/no-remove.txt" 2>&1)
     local ret=$?
 
     assert_exit_ok "$ret" "ファイルが存在しない → スキップして正常終了"
@@ -139,7 +139,7 @@ test_auto_resolve_branch() {
     # 空ファイルに差し替え
     printf '[files]\n' > "$td/sf-tools/release/feature/test/deploy-target.txt"
 
-    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/sf-check.sh" 2>&1)
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" 2>&1)
     local ret=$?
 
     assert_exit_ok "$ret" "引数省略 → branch_name.txt から自動解決して正常終了"

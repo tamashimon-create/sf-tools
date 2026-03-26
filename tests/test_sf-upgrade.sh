@@ -12,7 +12,7 @@ test_normal_run() {
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "正常実行 → 終了コード 0"
@@ -37,7 +37,7 @@ test_no_npm() {
     create_mock_sf "$mb"
     create_mock_code "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "npm なし → 正常終了（続行）"
@@ -56,7 +56,7 @@ test_no_sf() {
     create_mock_npm "$mb"
     create_mock_code "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:/usr/bin:/bin" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "sf なし → 正常終了（続行）"
@@ -71,7 +71,7 @@ test_git_update_is_last() {
     mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-upgrade.sh" 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1 >/dev/null
 
     local npm_line sf_line git_line
     npm_line=$(grep -n "npm install" "$MOCK_CALL_LOG" | head -1 | cut -d: -f1)

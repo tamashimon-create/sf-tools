@@ -76,22 +76,23 @@ _stub_subscripts() {
     local mock_home="$1"
 
     # sf-install.sh スタブ（何もしない）
-    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/sf-install.sh"
-    chmod +x "$mock_home/sf-tools/sf-install.sh"
+    mkdir -p "$mock_home/sf-tools/bin"
+    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/bin/sf-install.sh"
+    chmod +x "$mock_home/sf-tools/bin/sf-install.sh"
 
     # sf-hook.sh スタブ（何もしない）
-    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/sf-hook.sh"
-    chmod +x "$mock_home/sf-tools/sf-hook.sh"
+    printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/bin/sf-hook.sh"
+    chmod +x "$mock_home/sf-tools/bin/sf-hook.sh"
 
     # sf-branch.sh スタブ（pwd 配下に 3ブランチ構成の branches.txt を生成）
     # sf-init.sh は実行前に cd "$REPO_DIR" しているため pwd = $REPO_DIR になる
-    cat > "$mock_home/sf-tools/sf-branch.sh" << 'STUB'
+    cat > "$mock_home/sf-tools/bin/sf-branch.sh" << 'STUB'
 #!/bin/bash
 mkdir -p "sf-tools/config"
 printf 'main\nstaging\ndevelop\n' > "sf-tools/config/branches.txt"
 exit 0
 STUB
-    chmod +x "$mock_home/sf-tools/sf-branch.sh"
+    chmod +x "$mock_home/sf-tools/bin/sf-branch.sh"
 
 }
 
@@ -140,7 +141,7 @@ test_happy_path_3branches() {
     local exit_code
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) \
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) \
           > /tmp/sf-init-test-happy.log 2>&1
     exit_code=$?
 
@@ -188,7 +189,7 @@ test_missing_tool_gh() {
     # PATH を $mb のみに限定して gh が見つからない状態を再現する
     printf 'x\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code" "gh なしで失敗終了する"
@@ -220,7 +221,7 @@ test_repo_create_failure() {
     # confirm のみ入力（リポジトリ作成で失敗するため以降は不要）
     printf 'Y\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code"                                              "リポジトリ作成失敗で非ゼロ終了する"
@@ -256,7 +257,7 @@ test_sf_login_failure() {
     local exit_code
     printf 'Y\n\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code"                                              "SF ログイン失敗で非ゼロ終了する"
@@ -288,7 +289,7 @@ test_unauthorized_user() {
     local exit_code
     printf 'x\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code" "許可されていないユーザーは失敗終了する"
@@ -320,7 +321,7 @@ test_invalid_owner_folder() {
     local exit_code
     printf 'x\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code" "無効なオーナー名で失敗終了する"
@@ -350,7 +351,7 @@ test_repo_visibility_public_for_tama_create() {
 
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
 
     assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "--public"        "tama-create は --public で作成される"
@@ -381,7 +382,7 @@ test_repo_visibility_private_for_other_owner() {
 
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
 
     assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "--private"       "他オーナーは --private で作成される"
@@ -410,7 +411,7 @@ test_only_option_runs_single_phase() {
     local exit_code
     printf '' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" --only 1 ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --only 1 ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_ok            "$exit_code"                    "--only 1 で正常終了する"
@@ -440,7 +441,7 @@ test_only_phase2_creates_env_file() {
     local exit_code
     printf 'Y\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" --only 2 ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --only 2 ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_ok       "$exit_code"                                                "--only 2 で正常終了する"
@@ -485,7 +486,7 @@ ENVEOF
     local exit_code
     printf '' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" --resume 10 ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --resume 10 ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_ok            "$exit_code"                         "--resume 10 で正常終了する"
@@ -513,7 +514,7 @@ test_unknown_option_fails() {
 
     local exit_code
     ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-          bash "$mock_home/sf-tools/sf-init.sh" --unknown ) > /dev/null 2>&1
+          bash "$mock_home/sf-tools/bin/sf-init.sh" --unknown ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code" "不明なオプションで失敗終了する"

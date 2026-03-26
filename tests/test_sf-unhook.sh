@@ -13,7 +13,7 @@ test_no_hook() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-unhook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "フックなし → 正常終了"
@@ -28,8 +28,8 @@ test_hook_installed_by_sf_hook() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-hook.sh" >/dev/null 2>&1
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-hook.sh" >/dev/null 2>&1
+    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-unhook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "sf-hook.sh で入れたフック → 正常終了"
@@ -46,7 +46,7 @@ test_sf_tools_hook() {
     printf '#!/bin/bash\n%s\n' "$SF_HOOK_MARKER" > "$td/.git/hooks/pre-push"
     chmod +x "$td/.git/hooks/pre-push"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-unhook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "sf-tools フック → 正常終了"
@@ -64,7 +64,7 @@ test_external_hook() {
     echo 'echo "external hook"' >> "$td/.git/hooks/pre-push"
     chmod +x "$td/.git/hooks/pre-push"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-unhook.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "外部フック → 正常終了（スキップ）"
@@ -78,7 +78,7 @@ test_outside_force_dir() {
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-unhook.sh" 2>&1)
+    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-unhook.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"

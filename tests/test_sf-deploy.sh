@@ -15,7 +15,7 @@ test_feature_branch() {
     export MOCK_GIT_BRANCH="feature/deploy-test"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" --no-open 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" --no-open 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "機能ブランチ → 終了コード 0"
@@ -36,7 +36,7 @@ test_main_branch_blocked() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="main"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "main ブランチ → エラー終了"
@@ -54,7 +54,7 @@ test_staging_branch_blocked() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="staging"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "staging ブランチ → エラー終了"
@@ -69,7 +69,7 @@ test_development_branch_blocked() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="develop"
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "develop ブランチ → エラー終了"
@@ -83,7 +83,7 @@ test_outside_force_dir() {
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-deploy.sh" 2>&1)
+    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"

@@ -13,7 +13,7 @@ test_dry_run_default() {
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" 2>&1 >/dev/null
 
     assert_file_contains "$MOCK_CALL_LOG" "project deploy" "デプロイコマンドが呼び出された"
     grep "project deploy" "$MOCK_CALL_LOG" | grep -q "\-\-dry-run" \
@@ -30,7 +30,7 @@ test_release_mode() {
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --release --no-open 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --release --no-open 2>&1 >/dev/null
 
     grep "project deploy" "$MOCK_CALL_LOG" | grep -qv "\-\-dry-run" \
         && pass "--release → --dry-run なし" || fail "--release → --dry-run なし"
@@ -46,7 +46,7 @@ test_force_flag() {
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --force --no-open 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --force --no-open 2>&1 >/dev/null
 
     grep "project deploy" "$MOCK_CALL_LOG" | grep -q "\-\-ignore-conflicts" \
         && pass "--force → --ignore-conflicts が渡された" || fail "--force → --ignore-conflicts が渡された"
@@ -61,7 +61,7 @@ test_target_option() {
     create_all_mocks "$mb"
     setup_release_dir "$td"
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --target myorg --no-open 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target myorg --no-open 2>&1 >/dev/null
 
     grep "project deploy" "$MOCK_CALL_LOG" | grep -q "myorg" \
         && pass "--target → 指定エイリアスが使われた" || fail "--target → 指定エイリアスが使われた"
@@ -79,7 +79,7 @@ test_empty_deploy_target() {
     printf '# コメントのみ\n' > "$td/sf-tools/release/feature/test/remove-target.txt"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --no-open 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --no-open 2>&1)
 
     echo "$out" | grep -q "デプロイ対象がありません" \
         && pass "対象なし → 警告メッセージが表示された" || fail "対象なし → 警告メッセージが表示された"
@@ -95,7 +95,7 @@ test_unknown_option() {
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" --unknown-option 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --unknown-option 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "不明オプション → エラー終了"
@@ -109,7 +109,7 @@ test_outside_force_dir() {
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-release.sh" 2>&1)
+    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"

@@ -17,7 +17,7 @@ readonly LOG_MODE="APPEND"  # 司令塔が NEW で初期化済みのため追記
 export SF_INIT_MODE=1
 
 source "${SF_TOOLS_DIR}/lib/common.sh"
-source "${SF_TOOLS_DIR}/lib/init-common.sh"
+source "${SF_TOOLS_DIR}/phases/init/init-common.sh"
 
 # 変数の復元（前フェーズで書き出した .sf-init.env を読み込む）
 SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
@@ -36,8 +36,8 @@ cd "$REPO_DIR" || die "ディレクトリに移動できません: $REPO_DIR"
 
 # sf-branch.sh はインタラクティブなメニューを持つため run ではなく直接実行する
 # （run ラッパー経由では stdin/stdout の制御が崩れる）
-log "CMD" "[${SCRIPT_NAME}] bash ${SF_TOOLS_DIR}/sf-branch.sh"
-bash "${SF_TOOLS_DIR}/sf-branch.sh" \
+log "CMD" "[${SCRIPT_NAME}] bash ${SF_TOOLS_DIR}/bin/sf-branch.sh"
+bash "${SF_TOOLS_DIR}/bin/sf-branch.sh" \
     || die "sf-branch.sh の実行に失敗しました。"
 
 # branches.txt からブランチ階層数を取得

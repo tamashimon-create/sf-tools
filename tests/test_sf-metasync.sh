@@ -18,7 +18,7 @@ test_changes_are_committed() {
     export MOCK_GIT_DIFF_EXIT_2ND=1
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
     local ec=$?
 
     assert_file_contains "$MOCK_CALL_LOG" "git commit" "変更あり → commit が実行された"
@@ -37,7 +37,7 @@ test_no_changes() {
     export MOCK_GIT_DIFF_EXIT=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "変更なし → 正常終了"
@@ -58,7 +58,7 @@ test_non_main_branch_switches() {
     export MOCK_GIT_DIFF_EXIT=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1)
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
     local ec=$?
 
     assert_exit_ok $ec "main 以外のブランチ → 正常終了（main へ自動切替）"
@@ -82,7 +82,7 @@ test_staging_fail_dev_merges_main() {
     export MOCK_GIT_DIFF_EXIT_2ND=1  # phase_git_sync で変更あり → commit → propagate 実行
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1 >/dev/null
 
     # develop のマージ元が "main" であることを確認（staging ではない）
     assert_file_contains "$MOCK_CALL_LOG" "git-merge-arg: main" "staging 失敗後、develop は main からマージした"
@@ -99,7 +99,7 @@ test_outside_force_dir() {
     rd=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1)
+    local out; out=$(cd "$rd" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
     local ec=$?
 
     assert_exit_fail $ec "force-* 外 → エラー終了"
@@ -119,7 +119,7 @@ test_stash_pop_on_exit() {
     export MOCK_GIT_DIFF_EXIT_2ND=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-metasync.sh" 2>&1 >/dev/null
+    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1 >/dev/null
 
     assert_file_contains "$MOCK_CALL_LOG" "git stash" "ローカル変更あり → stash が実行された"
     assert_file_contains "$MOCK_CALL_LOG" "git stash pop" "終了時に stash pop が実行された"
