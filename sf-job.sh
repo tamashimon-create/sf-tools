@@ -251,7 +251,8 @@ phase_sf_start() {
     log "INFO" "sf-start.sh を起動します..."
     cd "$REPO_DIR" || die "ディレクトリに移動できません: ${REPO_DIR}"
 
-    run bash "$SCRIPT_DIR/sf-start.sh" \
+    # インタラクティブなため run を使わない（run 内の pipe が read プロンプトを破壊する）
+    bash "$SCRIPT_DIR/sf-start.sh" \
         || die "sf-start.sh の実行に失敗しました。"
 
     return $RET_OK

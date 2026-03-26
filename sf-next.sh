@@ -9,19 +9,22 @@
 # 【使い方】
 #   bash ~/sf-tools/sf-next.sh
 #
-# 【表示例（main/staging/develop 構成で develop のみマージ済み）】
-#   ┌─────────────────────────────────────┐
-#   │  test のマージ状況                  │
-#   ├─────────────────────────────────────┤
-#   │  ✔ develop   マージ済み             │
-#   │  ▶ staging   次のPR先               │
-#   │  ✘ main                             │
-#   └─────────────────────────────────────┘
-#   staging にPRを出しますか？ [Y/N]:
+# 【状態遷移】
+#   ✗ なし  →  ▶ 次のPR先  →  → PR発行中  →  ✓ マージ済み
+#                                               ✓ マージ済み（ブランチ同期）  ← 間接伝播
+#                                               ⚠ 順序外マージ済み（前のブランチ未完）
+#
+# 【表示例（develop マージ済み / staging PR発行中 / main 未着手）】
+#   ✓ develop   マージ済み
+#   → staging   PR発行中
+#   ▶ main      次のPR先
 #
 # 【判定方法】
-#   git merge-base --is-ancestor で、現在のブランチの HEAD が
-#   各ターゲットブランチに含まれているかを判定します。
+#   1. gh pr list --state merged で現在ブランチ→対象ブランチへの直接 PR を確認
+#   2. git merge-base --is-ancestor で間接伝播（上位ブランチ経由）を確認 → synced
+#      ※ synced は PR/デプロイ WF が未実行のため、後続の merged は ⚠ 扱い
+#   3. gh pr list --state open で PR 発行中を確認
+#   4. 前のブランチが直接マージ/PR未完/同期のみ なのに後のブランチが直接マージ済みなら ⚠
 #
 # 【前提条件】
 #   - force-* ディレクトリ内で実行すること
@@ -75,26 +78,66 @@ for ((i=${#MERGE_ORDER[@]}-1; i>=0; i--)); do
 done
 
 # ------------------------------------------------------------------------------
-# 4. リモートの最新状態を取得
+# 4. リモートの最新状態を取得 & PR 一覧を事前取得
 # ------------------------------------------------------------------------------
+# git merge-base（synced 判定）のためリモートの最新状態を取得する
 log "INFO" "リモートの最新状態を取得中..."
 run git fetch origin "${REVERSED[@]}" 2>/dev/null \
-    || die "リモートブランチの取得に失敗しました。"
+    || log "WARNING" "リモートブランチの取得に失敗しました（ローカルキャッシュで判定します）。"
+
+# gh pr list はブランチごとに呼ぶと遅いため、マージ済み・オープン を各1回で取得
+# --head フィルタが merged/open で正常動作しないバージョンがあるため全件取得して絞る
+_merged_prs=$(gh pr list --state merged \
+    --json headRefName,baseRefName --limit 50 2>/dev/null || echo "[]")
+_open_prs=$(gh pr list --state open \
+    --json headRefName,baseRefName --limit 50 2>/dev/null || echo "[]")
 
 # ------------------------------------------------------------------------------
-# 5. 各ブランチへのマージ状況を確認（Git 到達可能性で判定）
+# 5. 各ブランチへのマージ状況を確認
 # ------------------------------------------------------------------------------
 NEXT_TARGET=""
 STATUSES=()
 
+# _pr_exists PRSJON HEAD BASE
+# JSON 配列内に headRefName=HEAD かつ baseRefName=BASE のオブジェクトが存在するか確認。
+# gh pr list の --json 出力はフィールド順が保証されないため、
+# awk で } を区切りとして各オブジェクトを分割し両フィールドを個別に検索する。
+_pr_exists() {
+    local prs="$1" head="$2" base="$3"
+    echo "$prs" | awk \
+        -v hf="\"headRefName\":\"${head}\"" \
+        -v bf="\"baseRefName\":\"${base}\"" \
+        'BEGIN{RS="}"} index($0,hf) && index($0,bf) {found=1} END{exit !found}'
+}
+
 for target in "${REVERSED[@]}"; do
-    # merge-base で HEAD がターゲットブランチに含まれているか確認（マージ済み判定）
-    if git merge-base --is-ancestor HEAD "origin/$target" 2>/dev/null; then
+    if _pr_exists "$_merged_prs" "$CURRENT_BRANCH" "$target"; then
+        # 現在ブランチ → 対象ブランチへの直接 PR がマージ済み
         STATUSES+=("merged")
+    elif git merge-base --is-ancestor HEAD "origin/$target" 2>/dev/null; then
+        # 直接 PR はないが上位ブランチ経由で間接的にコミットが伝播済み（デプロイ WF は未実行）
+        STATUSES+=("synced")
+    elif _pr_exists "$_open_prs" "$CURRENT_BRANCH" "$target"; then
+        # PR が発行済み（マージ前）
+        STATUSES+=("pr_open")
     else
         STATUSES+=("none")
         [[ -z "$NEXT_TARGET" ]] && NEXT_TARGET="$target"
     fi
+done
+
+# ------------------------------------------------------------------------------
+# 5b. 順序外マージの検出（merged でも前に synced/pr_open/none があれば out_of_order に昇格）
+# ------------------------------------------------------------------------------
+# synced = デプロイ WF が未実行のためデプロイ観点では「未完」扱い
+for idx in "${!STATUSES[@]}"; do
+    [[ "${STATUSES[$idx]}" != "merged" ]] && continue
+    for ((j=0; j<idx; j++)); do
+        if [[ "${STATUSES[$j]}" == "none" || "${STATUSES[$j]}" == "pr_open" || "${STATUSES[$j]}" == "synced" ]]; then
+            STATUSES[$idx]="out_of_order"
+            break
+        fi
+    done
 done
 
 # ------------------------------------------------------------------------------
@@ -128,6 +171,15 @@ for idx in "${!REVERSED[@]}"; do
         merged)
             echo -e "    ${CLR_SUCCESS}✓ ${target}${name_pad}   マージ済み${CLR_RESET}" >&2
             ;;
+        synced)
+            echo -e "    ${CLR_INFO}✓ ${target}${name_pad}   マージ済み（ブランチ同期）${CLR_RESET}" >&2
+            ;;
+        out_of_order)
+            echo -e "    ${CLR_WARNING}⚠ ${target}${name_pad}   マージ済み（順序外）${CLR_RESET}" >&2
+            ;;
+        pr_open)
+            echo -e "    ${CLR_INFO}→ ${target}${name_pad}   PR発行中${CLR_RESET}" >&2
+            ;;
         none)
             if [[ "$target" == "$NEXT_TARGET" ]]; then
                 echo -e "    ${CLR_WARNING}▶ ${target}${name_pad}   次のPR先${CLR_RESET}" >&2
@@ -144,6 +196,13 @@ echo "" >&2
 # 8. PR 作成の確認
 # ------------------------------------------------------------------------------
 if [[ -z "$NEXT_TARGET" ]]; then
+    # pr_open が残っている場合はマージ待ち
+    for s in "${STATUSES[@]}"; do
+        if [[ "$s" == "pr_open" ]]; then
+            log "INFO" "全 PR が発行済みです。マージ完了を待ってください。"
+            exit $RET_OK
+        fi
+    done
     log "SUCCESS" "全ブランチへのマージが完了しています！"
     exit $RET_OK
 fi

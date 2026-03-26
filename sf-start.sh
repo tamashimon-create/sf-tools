@@ -111,6 +111,8 @@ fi
 #   - Git フック (pre-push) インストール
 #   - リリース管理ディレクトリ準備 & branch_name.txt 更新
 #   - npm install / sf-upgrade.sh (24h スロットル)
+log "INFO" "バックグラウンドで sf-install.sh を実行中..."
+log "INFO" "  完了後に sf-tools/release/<branch>/ が準備されます（npm install を含む場合は数分かかります）"
 (
     if [ -f "$HOME/sf-tools/sf-install.sh" ]; then
         bash "$HOME/sf-tools/sf-install.sh" "$@" 2>&1 \

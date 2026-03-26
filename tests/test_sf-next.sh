@@ -33,6 +33,31 @@ case "$1" in
 esac
 EOF
     chmod +x "$bin_dir/git"
+
+    # gh モック（--json headRefName,baseRefName → 環境変数で制御）
+    # MOCK_GH_MERGED_PRS / MOCK_GH_OPEN_PRS: スペース区切りの "head->base" ペア
+    cat > "$bin_dir/gh" << 'EOF'
+#!/bin/bash
+echo "gh $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+_build_json() {
+    local result="[" sep=""
+    for pr in $1; do
+        head="${pr%%->*}"; base="${pr##*->}"
+        result="${result}${sep}{\"headRefName\":\"${head}\",\"baseRefName\":\"${base}\"}"
+        sep=","
+    done
+    echo "${result}]"
+}
+_args="$*"
+if echo "$_args" | grep -q -- "--state merged" && echo "$_args" | grep -q -- "--json"; then
+    _build_json "${MOCK_GH_MERGED_PRS:-}"
+elif echo "$_args" | grep -q -- "--state open" && echo "$_args" | grep -q -- "--json"; then
+    _build_json "${MOCK_GH_OPEN_PRS:-}"
+else
+    exit 0
+fi
+EOF
+    chmod +x "$bin_dir/gh"
 }
 
 # --- 3ブランチ構成: develop マージ済み → 次は staging ---
@@ -42,7 +67,8 @@ test_next_is_staging() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS="develop"
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop"
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -55,7 +81,7 @@ test_next_is_staging() {
     echo "$out" | grep -q "✗.*main" \
         && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -66,7 +92,8 @@ test_next_is_main() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS="develop staging"
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->staging"
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -79,7 +106,7 @@ test_next_is_main() {
     echo "$out" | grep -q "▶.*main" \
         && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -90,7 +117,8 @@ test_all_merged() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS="develop staging main"
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->staging feature/my-feature->main"
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -99,7 +127,7 @@ test_all_merged() {
     echo "$out" | grep -q "全ブランチへのマージが完了" \
         && pass "完了メッセージが表示される" || fail "完了メッセージが表示される"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -110,7 +138,8 @@ test_none_merged() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS=""
+    export MOCK_GH_MERGED_PRS=""
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -123,7 +152,7 @@ test_none_merged() {
     echo "$out" | grep -q "✗.*main" \
         && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -136,7 +165,8 @@ test_two_branches_none_merged() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS=""
+    export MOCK_GH_MERGED_PRS=""
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -147,7 +177,7 @@ test_two_branches_none_merged() {
     echo "$out" | grep -q "✗.*main" \
         && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -179,7 +209,8 @@ test_single_branch_none_merged() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS=""
+    export MOCK_GH_MERGED_PRS=""
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -188,7 +219,7 @@ test_single_branch_none_merged() {
     echo "$out" | grep -q "▶.*main" \
         && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
 }
 
@@ -200,7 +231,8 @@ test_single_branch_merged() {
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
-    export MOCK_GIT_MERGED_TARGETS="main"
+    export MOCK_GH_MERGED_PRS="feature/my-feature->main"
+    export MOCK_GH_OPEN_PRS=""
 
     local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
     local ec=$?
@@ -211,7 +243,86 @@ test_single_branch_merged() {
     echo "$out" | grep -q "全ブランチへのマージが完了" \
         && pass "完了メッセージが表示される" || fail "完了メッセージが表示される"
 
-    unset MOCK_GIT_BRANCH MOCK_GIT_MERGED_TARGETS
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
+    teardown "$td" "$mb"
+}
+
+# --- PR発行中: develop ✓ / staging → PR発行中 / main ▶ 次のPR先 ---
+test_pr_open_shown() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_mock_git_with_remote "$mb"
+
+    export MOCK_GIT_BRANCH="feature/my-feature"
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop"
+    export MOCK_GH_OPEN_PRS="feature/my-feature->staging"
+
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local ec=$?
+
+    assert_exit_ok $ec "PR発行中あり → 終了コード 0"
+    echo "$out" | grep -q "✓.*develop" \
+        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
+    echo "$out" | grep -q "→.*staging" \
+        && pass "staging が → (PR発行中)" || fail "staging が → (PR発行中)"
+    echo "$out" | grep -q "▶.*main" \
+        && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
+
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
+    teardown "$td" "$mb"
+}
+
+# --- 順序外マージ: develop ✓ / staging ▶ / main ⚠（main が先にマージ済み）---
+test_out_of_order_merge() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_mock_git_with_remote "$mb"
+
+    export MOCK_GIT_BRANCH="feature/my-feature"
+    # staging を飛ばして main もマージ済み（順序外）
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->main"
+    export MOCK_GH_OPEN_PRS=""
+
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local ec=$?
+
+    assert_exit_ok $ec "順序外マージ → 終了コード 0"
+    echo "$out" | grep -q "✓.*develop" \
+        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
+    echo "$out" | grep -q "▶.*staging" \
+        && pass "staging が ▶ (次のPR先)" || fail "staging が ▶ (次のPR先)"
+    echo "$out" | grep -q "⚠.*main" \
+        && pass "main が ⚠ (順序外マージ済み)" || fail "main が ⚠ (順序外マージ済み)"
+
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
+    teardown "$td" "$mb"
+}
+
+# --- ブランチ同期: develop ✓ / staging ✓(同期) / main ⚠（PR なしで伝播、staging デプロイ未実行）---
+test_staging_synced() {
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    create_mock_git_with_remote "$mb"
+
+    export MOCK_GIT_BRANCH="feature/my-feature"
+    # develop と main に直接 PR あり、staging は gh PR なし（git merge-base で伝播のみ）
+    export MOCK_GH_MERGED_PRS="feature/my-feature->develop feature/my-feature->main"
+    export MOCK_GH_OPEN_PRS=""
+    # git merge-base では develop/staging/main すべてが到達可能（staging は伝播）
+    export MOCK_GIT_MERGED_TARGETS="develop staging main"
+
+    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/sf-next.sh" 2>&1)
+    local ec=$?
+
+    assert_exit_ok $ec "ブランチ同期あり → 終了コード 0"
+    echo "$out" | grep -q "✓.*develop" \
+        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
+    echo "$out" | grep -q "✓.*staging.*ブランチ同期" \
+        && pass "staging が ✓ (ブランチ同期)" || fail "staging が ✓ (ブランチ同期)"
+    echo "$out" | grep -q "⚠.*main" \
+        && pass "main が ⚠ (順序外マージ済み)" || fail "main が ⚠ (順序外マージ済み)"
+
+    unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS MOCK_GIT_MERGED_TARGETS
     teardown "$td" "$mb"
 }
 
@@ -220,6 +331,9 @@ test_next_is_main
 test_all_merged
 test_none_merged
 test_two_branches_none_merged
+test_pr_open_shown
+test_out_of_order_merge
+test_staging_synced
 test_protected_branch_blocked
 test_single_branch_none_merged
 test_single_branch_merged

@@ -9,9 +9,9 @@
 # 【処理の流れ】
 #   1. ~/sf-tools を git pull で最新化
 #   2. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
-#   3. package.json があれば npm install を実行
-#   4. Git フック (pre-push) をインストール
-#   5. リリース管理ディレクトリの準備 & branch_name.txt を更新
+#   3. Git フック (pre-push) をインストール
+#   4. リリース管理ディレクトリの準備 & branch_name.txt を更新
+#   5. package.json があれば npm install を実行（時間がかかる場合あり）
 #   6. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【WF について】
@@ -124,6 +124,15 @@ phase_npm_install() {
         log "INFO" "package.json が見つかりません。npm install をスキップします。"
         return $RET_OK
     fi
+    # node_modules/.package-lock.json が package-lock.json より新しければスキップ
+    # （_get_mtime は macOS / Linux / Git Bash 共通）
+    local lock_mtime node_mtime
+    lock_mtime=$(_get_mtime "./package-lock.json")
+    node_mtime=$(_get_mtime "./node_modules/.package-lock.json")
+    if [[ $lock_mtime -gt 0 && $node_mtime -ge $lock_mtime ]]; then
+        log "INFO" "node_modules は最新のため npm install をスキップします。"
+        return $RET_OK
+    fi
     log "INFO" "npm install を実行します..."
     run npm install || log "WARNING" "npm install に失敗しました（続行します）"
     return $RET_OK
@@ -200,9 +209,6 @@ fi
 phase_init_config || die "設定ファイルの初期化に失敗しました。"
 log "SUCCESS" "設定ファイルの確認が完了しました。"
 
-phase_npm_install
-log "SUCCESS" "npm install の確認が完了しました。"
-
 if phase_setup_hook "$@"; then
     log "SUCCESS" "Git フックのインストールが完了しました。"
 else
@@ -214,6 +220,9 @@ if phase_setup_release_dir; then
 else
     log "WARNING" "リリース管理ディレクトリの準備に失敗しました（続行します）"
 fi
+
+phase_npm_install
+log "SUCCESS" "npm install の確認が完了しました。"
 
 phase_upgrade_tools_bg
 
