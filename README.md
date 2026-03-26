@@ -14,7 +14,7 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 - `sf-init.sh` で新規 Salesforce プロジェクトを初期セットアップ
 - `sf-branch.sh` でブランチ構成を対話式に設定
 - `sf-next.sh` で次に出すべき PR 先ブランチを確認
-- `sf-release.sh` で dry-run / 本番デプロイを実行
+- `sf-release.sh` で dry-run またはデプロイを実行
 - `sf-deploy.sh` で強制デプロイを簡易実行
 - `sf-hook.sh` / `sf-unhook.sh` で pre-push フックを管理
 - `sf-prepush.sh` で push 前に main 同期チェックを実行
@@ -177,7 +177,7 @@ sf-start.sh
 bash ~/sf-tools/bin/sf-release.sh
 ```
 
-### 5.5 必要なら本番デプロイする
+### 5.5 デプロイを実行する
 
 ```bash
 bash ~/sf-tools/bin/sf-release.sh --release
@@ -199,7 +199,7 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 | `sf-branch.sh` | ブランチ構成の設定と作成 | 初期構成時 |
 | `sf-next.sh` | 次に出す PR 先ブランチの案内 | PR 作成前 |
 | `sf-install.sh` | sf-tools 更新、フック、release 準備 | `sf-start.sh` から自動実行 |
-| `sf-release.sh` | dry-run / 本番デプロイ | 日常の検証・リリース |
+| `sf-release.sh` | dry-run / デプロイ実行 | 日常の検証・リリース |
 | `sf-deploy.sh` | 強制デプロイ | 特殊ケース |
 | `sf-check.sh` | deploy-target / remove-target の構文確認 | リリース前 |
 | `sf-metasync.sh` | 組織 → Git の自動同期 | GitHub Actions / 手動 |
@@ -331,7 +331,7 @@ bash ~/sf-tools/bin/sf-release.sh [オプション]
 
 | オプション | 内容 |
 |---|---|
-| `--release`, `-r` | 本番デプロイ |
+| `--release`, `-r` | デプロイ実行（dry-run 解除）|
 | `--no-open`, `-n` | ブラウザを開かない |
 | `--force`, `-f` | `--ignore-conflicts` を付与 |
 | `--target`, `-t` | 対象組織エイリアス指定 |
