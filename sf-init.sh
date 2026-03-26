@@ -422,6 +422,16 @@ phase_setup_slack() {
         || die "SLACK_CHANNEL_ID の登録に失敗しました。"
     log "SUCCESS" "SLACK_CHANNEL_ID を登録しました。"
 
+    echo ""
+    log "WARNING" "【重要】Slack チャンネルへの Bot 招待が必要です"
+    echo "  通知先チャンネルで以下のコマンドを実行してください:"
+    echo ""
+    echo "    /invite @sf-notify-${PROJECT_NAME}"
+    echo ""
+    echo "  Bot がチャンネルに参加していないと通知が届きません。"
+    echo ""
+    press_enter "Bot の招待が完了したら Enter を押してください..."
+
     return $RET_OK
 }
 
