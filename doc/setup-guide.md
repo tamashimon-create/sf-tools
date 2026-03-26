@@ -122,22 +122,21 @@ GitHub → Actions → 「[metasync] メタ同期」→ 「Run workflow」で手
 
 ### 4.2. 📝 PR ワークフローの確認
 
-`sf-job.sh` を使ってジョブブランチを作成し、PR を出す:
-
 ```bash
-# ジョブブランチの作成・クローン・sf-start 起動
+# 1. ジョブブランチを作成・クローン・sf-start 起動
+#    ~/home/{owner}/{company}/ で実行
 sf-job.sh
 
-# 作業後、コミット＆プッシュ
-git add .
-git commit -m "test: ワークフロー動作確認"
-git push
+# 2. （適当なファイルを変更して）コミット＆プッシュ
+#    force-* ディレクトリ内で実行
+sf-push.sh
 
-# 次の PR 先を確認・PR 作成
+# 3. 次の PR 先を確認・PR 作成
 sf-next.sh
 ```
 
-`sf-next.sh` がブランチ構成に応じた PR 先を自動判定し、🌐 ブラウザで PR 作成画面を開く。
+- `sf-push.sh` がコミットメッセージ入力（VS Code）→ commit → push を一括実行
+- `sf-next.sh` がブランチ構成に応じた PR 先を自動判定し、🌐 ブラウザで PR 作成画面を開く
 
 PR が作成されると以下が自動実行される:
 - ✅ [validate] デプロイ前検証 — すべての PR で実行
