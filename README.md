@@ -17,6 +17,7 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 | Salesforce CLI | `sf --version` | 組織接続、デプロイ、retrieve |
 | GitHub CLI | `gh --version` | PR 作成・Secrets 登録・リポジトリ操作 |
 | Visual Studio Code | `code --version` | エディタ起動 |
+| Slack | — | デプロイ通知の受信 |
 
 補足:
 - Windows では Git Bash での実行を前提とします
@@ -117,7 +118,7 @@ sf-job.sh
 
 ブランチ名の入力だけで、以下をすべて自動実行します。
 
-1. `feature/{番号}` ブランチを作成
+1. ジョブ名（例: `JOB-20260323`）でブランチを作成
 2. 作業ディレクトリを準備（worktree または clone）
 3. `sf-start.sh` を自動起動（ログイン・フック設定・VS Code 起動）
 
@@ -151,12 +152,36 @@ sf-release.sh
 #### デプロイを実行する
 
 ```bash
-sf-release.sh --release
+sf-deploy.sh
 ```
 
-#### push 前の自動チェックを通す
+#### 変更をコミット＆プッシュする（sf-push）
 
-pre-push フックが有効なら、`git push` 時に main 同期チェックが自動実行されます。
+```bash
+sf-push.sh
+```
+
+カレントディレクトリ配下の変更をまとめてコミット＆プッシュします。コミットメッセージは VS Code で入力します。main との差分も自動で取り込みます。
+
+#### PR の状況を確認する（sf-next）
+
+```bash
+sf-next.sh
+```
+
+現在のブランチが `develop` / `staging` / `main` にどこまでマージ済みかを一覧表示し、次に出すべき PR 先を案内します。
+
+#### pre-push フックによる自動チェック
+
+pre-push フックはデフォルトで有効です。`git push` 時に main 同期チェックが自動実行されます。
+
+#### ランチャーから実行する
+
+上記のコマンドはすべて `sfl`（sf-launcher.sh）からメニュー形式で実行できます。
+
+```bash
+sfl
+```
 
 ---
 
@@ -191,10 +216,10 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 sf-job.sh
 ```
 
-新しい作業（ブランチ）を始めるときのオールインワンランチャーです。`~/home/{owner}/{company}/` 階層で実行します。
+新しい作業（ブランチ）を始めるときのオールインワンスクリプトです。`~/home/{owner}/{company}/` 階層で実行します。
 
 主な処理:
-- ジョブ番号・ブランチ名を入力して `feature/{名前}` ブランチを生成
+- ジョブ名（例: `JOB-20260323`）を入力してブランチを生成
 - `git worktree` または `git clone` で作業ディレクトリを作成
 - `sf-start.sh` を自動起動（ログイン・フック設定・VS Code 起動）
 
