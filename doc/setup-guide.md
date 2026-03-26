@@ -126,21 +126,36 @@ GitHub → Actions → 「[metasync] メタ同期」→ 「Run workflow」で手
 # 1. ジョブブランチを作成・クローン・sf-start 起動
 #    ~/home/{owner}/{company}/ で実行
 sf-job.sh
+```
 
-# 2. （適当なファイルを変更して）コミット＆プッシュ
+`sf-job.sh` 実行後、`sf-start.sh` が自動実行され、`sf-install.sh` が `sf-tools/release/{branch}/` 配下に以下のファイルを自動生成する:
+
+```
+sf-tools/release/{branch}/
+├── deploy-target.txt   ← 自動生成（空テンプレート）
+└── remove-target.txt   ← 自動生成（空テンプレート）
+```
+
+これらの自動生成ファイルがそのままコミットの差分になるため、**追加のファイル変更は不要**。
+
+```bash
+# 2. 自動生成ファイルをコミット＆プッシュ
 #    force-* ディレクトリ内で実行
 sf-push.sh
 
-# 3. 次の PR 先を確認・PR 作成
+# 3. 次の PR 先を確認・PR 作成 → ブラウザで PR 作成 → マージ
+#    ブランチ構成が 3 階層なら develop → staging → main の順で繰り返す
 sf-next.sh
 ```
 
 - `sf-push.sh` がコミットメッセージ入力（VS Code）→ commit → push を一括実行
-- `sf-next.sh` がブランチ構成に応じた PR 先を自動判定し、🌐 ブラウザで PR 作成画面を開く
+- `sf-next.sh` が次の PR 先を自動判定し、🌐 ブラウザで PR 作成画面を開く
+- PR をマージしたら再度 `sf-next.sh` を実行して次のブランチへ PR を出す
 
 PR が作成されると以下が自動実行される:
 - ✅ [validate] デプロイ前検証 — すべての PR で実行
 - ✅ [sequence] マージ順序チェック — main / staging への PR で実行
+- ✅ [release] デプロイ → Slack 通知 — PR マージ後に実行
 
 ---
 
