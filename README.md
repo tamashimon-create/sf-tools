@@ -95,42 +95,42 @@ bash ~/sf-tools/bin/sf-start.sh
 
 ## 4. Salesforce プロジェクトの作成
 
-### 4.1 プロジェクト生成コマンド
+### 4.1 sf-init.sh で自動セットアップ
 
-リポジトリ名は必ず `force-` で始めてください。
+`~/home/{owner}/{company}/` ディレクトリで実行します。
 
 ```bash
-sf project generate --name force-xxxxx
+sf-init.sh
 ```
 
-### 4.2 最低限の想定構成
+以下を自動実行します。
+
+1. 環境チェック（ツール・GitHub CLI 認証）
+2. プロジェクト情報の確認（フォルダ構成から自動導出）
+3. GitHub リポジトリ作成・clone
+4. ワークフロー・設定ファイル生成
+5. ブランチ構成（develop / staging / main）
+6. Salesforce 認証 URL の設定
+7. PAT_TOKEN の設定
+8. Slack 連携の設定
+9. 初回コミット＆プッシュ
+10. GitHub リポジトリ設定・Ruleset 適用
+
+> リポジトリ名は必ず `force-` で始めてください。
+
+### 4.2 sf-tools 導入後に追加される主なもの
 
 ```text
 force-xxxxx/
-├── force-app/
-│   └── main/
-│       └── default/
-├── scripts/
-├── .forceignore
-├── .gitattributes
-├── .gitignore
-├── package.json
-└── sfdx-project.json
-```
-
-### 4.3 sf-tools 導入後に追加される主なもの
-
-```text
-force-xxxxx/
-├── .github/workflows/
+├── .github/workflows/    ← CI/CD ワークフロー一式
 ├── .vscode/
-├── release/
-│   ├── branch_name.txt
-│   └── <branch>/
-│       ├── deploy-target.txt
-│       └── remove-target.txt
-├── sf-start.sh
-└── sf-restart.sh
+└── sf-tools/
+    ├── config/           ← metadata.txt / branches.txt
+    └── release/
+        ├── branch_name.txt
+        └── <branch>/
+            ├── deploy-target.txt
+            └── remove-target.txt
 ```
 
 ---
