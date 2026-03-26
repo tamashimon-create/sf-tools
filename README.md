@@ -73,23 +73,31 @@ alias sflf='sf-launcher.sh --fzf'
 
 ### 3.3 基本の使い方
 
-Salesforce プロジェクト側で `sf-start.sh` を実行します。
+#### 新規作業を始める → `sf-job.sh`
+
+新しい作業（ブランチ）を始めるときは `~/home/{owner}/{company}/` で実行します。
+
+```bash
+sf-job.sh
+```
+
+ブランチ作成 → 作業ディレクトリ準備 → VS Code 起動まで **すべて自動**です。
+
+#### 作業を再開する → `sf-start.sh`
+
+前日の続きなど、既存ブランチで作業を再開するときは `force-*` ディレクトリ内で実行します。
 
 ```bash
 cd force-xxxxx
-sf-start.sh        # PATH 設定済みの場合
-# または
-bash ~/sf-tools/bin/sf-start.sh
+sf-start.sh
 ```
 
-これで次の処理が自動実行されます。
-
-- 接続先組織の確認
-- 必要時のみログイン
-- VS Code 起動
-- `sf-tools` の更新
-- pre-push フックのインストール
-- `release/<branch>/` の準備
+| | sf-job | sf-start |
+|---|---|---|
+| 実行場所 | `~/home/{owner}/{company}/` | `force-*` ディレクトリ内 |
+| ブランチ作成 | ✅ 自動 | ❌（既存ブランチを使用）|
+| VS Code 起動 | ✅ | ✅ |
+| 使うタイミング | 新規作業開始時 | 2回目以降の作業再開時 |
 
 ---
 
@@ -137,16 +145,26 @@ force-xxxxx/
 
 ## 5. 日常の開発フロー
 
-### 5.1 開発ブランチを作る
+### 5.1 新規作業を始める（sf-job）
+
+`~/home/{owner}/{company}/` で実行します。
 
 ```bash
-git checkout -b feature/my-feature
+sf-job.sh
 ```
 
-### 5.2 開発環境を立ち上げる
+ブランチ名の入力だけで、以下をすべて自動実行します。
+
+1. `feature/{番号}` ブランチを作成
+2. 作業ディレクトリを準備（worktree または clone）
+3. `sf-start.sh` を自動起動（ログイン・フック設定・VS Code 起動）
+
+### 5.2 作業を再開する（sf-start）
+
+前日の続きなど既存ブランチで再開するときは `force-*` ディレクトリ内で実行します。
 
 ```bash
-bash ~/sf-tools/bin/sf-start.sh
+sf-start.sh
 ```
 
 ### 5.3 デプロイ対象を記述する
@@ -175,8 +193,8 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 
 | スクリプト | 用途 | 主な利用タイミング |
 |---|---|---|
-| `sf-start.sh` | 開発環境の一括セットアップ | 開発開始時 |
-| `sf-job.sh` | ジョブブランチの作成・環境立ち上げ | 作業開始時 |
+| `sf-job.sh` | ブランチ作成〜VS Code 起動まで一括 | 新規作業開始時（毎回）|
+| `sf-start.sh` | 既存ブランチで開発環境を再起動 | 2回目以降の作業再開時 |
 | `sf-init.sh` | 新規プロジェクトの初期セットアップ | 新規案件開始時 |
 | `sf-branch.sh` | ブランチ構成の設定と作成 | 初期構成時 |
 | `sf-next.sh` | 次に出す PR 先ブランチの案内 | PR 作成前 |
@@ -195,20 +213,42 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 
 ## 7. スクリプト詳細
 
-### 7.1 `sf-start.sh`
+### 7.1 `sf-job.sh`
 
 ```bash
-bash ~/sf-tools/bin/sf-start.sh
+sf-job.sh
 ```
 
+新しい作業（ブランチ）を始めるときのオールインワンランチャーです。`~/home/{owner}/{company}/` 階層で実行します。
+
+主な処理:
+- ジョブ番号・ブランチ名を入力して `feature/{名前}` ブランチを生成
+- `git worktree` または `git clone` で作業ディレクトリを作成
+- `sf-start.sh` を自動起動（ログイン・フック設定・VS Code 起動）
+
+補足:
+- ブランチ作成から VS Code 起動まですべて自動のため、**新規作業は必ずここから始める**
+- `force-*` ディレクトリの内側では実行できません
+
+### 7.2 `sf-start.sh`
+
+```bash
+sf-start.sh
+```
+
+既存ブランチで開発環境を再起動します。`force-*` ディレクトリ内で実行します。
+
 役割:
-- 組織接続確認
-- 必要時のみログイン
+- 組織接続確認・必要時のみログイン
 - `.sf/config.json` / `.sfdx/sfdx-config.json` 更新
 - `code .` 実行
 - `sf-install.sh` のバックグラウンド実行
 
-### 7.2 `sf-init.sh`
+補足:
+- `sf-job.sh` が内部で自動呼び出すため、**新規作業時は直接実行不要**
+- 前日の続きなど、既存ブランチに戻るときに使用
+
+### 7.3 `sf-init.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-init.sh
@@ -227,7 +267,7 @@ bash ~/sf-tools/bin/sf-init.sh
 - `force-*` ディレクトリの外で実行します
 - Salesforce ログイン、PAT 作成、Slack 設定など一部は対話操作が必要です
 
-### 7.3 `sf-branch.sh`
+### 7.4 `sf-branch.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-branch.sh
@@ -240,7 +280,7 @@ bash ~/sf-tools/bin/sf-branch.sh
 - 既存ブランチはスキップされます
 - `force-*` ディレクトリ内で実行します
 
-### 7.4 `sf-next.sh`
+### 7.5 `sf-next.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-next.sh
@@ -248,7 +288,7 @@ bash ~/sf-tools/bin/sf-next.sh
 
 現在の feature ブランチが `develop` / `staging` / `main` のどこまでマージ済みかを確認し、次に出すべき PR 先ブランチを案内します。
 
-#### 7.4.1 表示ステータス一覧
+#### 7.5.1 表示ステータス一覧
 
 | 記号 | ステータス | 説明 |
 |---|---|---|
@@ -259,14 +299,14 @@ bash ~/sf-tools/bin/sf-next.sh
 | `▶` | 次のPR先 | 次に PR を出すべきブランチ |
 | `✗` | 未着手 | まだ PR を出していない |
 
-#### 7.4.2 判定方法
+#### 7.5.2 判定方法
 
 1. `gh pr list --state merged` で現在ブランチ → 対象ブランチへの**直接 PR** を確認 → `マージ済み`
 2. `git merge-base --is-ancestor` で間接伝播（上位ブランチ経由）を確認 → `マージ済み（ブランチ同期）`
 3. `gh pr list --state open` で PR 発行中を確認 → `PR発行中`
 4. いずれも該当なし → `次のPR先` / `未着手`
 
-#### 7.4.3 順序外マージの制約
+#### 7.5.3 順序外マージの制約
 
 `develop → staging → main` の順番を守らずにマージした場合、スキップしたブランチへのデプロイは**永久にできません**。
 
@@ -276,12 +316,12 @@ bash ~/sf-tools/bin/sf-next.sh
 
 **スキップしたブランチにデプロイしたい場合は、新しいブランチを切って改めて順序通りに PR を出し直す必要があります。**
 
-#### 7.4.4 補足
+#### 7.5.4 補足
 
 - 保護ブランチ（`main` / `staging` / `develop`）上では実行できません
 - 案内先ブランチの PR 作成画面をブラウザで開くことができます
 
-### 7.5 `sf-release.sh`
+### 7.6 `sf-release.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-release.sh [オプション]
@@ -302,7 +342,7 @@ bash ~/sf-tools/bin/sf-release.sh [オプション]
 - `--json`, `-j` で `sf` コマンド出力を JSON 形式で表示できます
 - `--verbose`, `-v` でコマンド出力をコンソールにも表示できます
 
-### 7.6 `sf-deploy.sh`
+### 7.7 `sf-deploy.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-deploy.sh [オプション]
@@ -315,7 +355,7 @@ bash ~/sf-tools/bin/sf-deploy.sh [オプション]
 - `--target`, `-t`
 - `--verbose`, `-v`
 
-### 7.7 `sf-install.sh`
+### 7.8 `sf-install.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-install.sh
@@ -331,7 +371,7 @@ bash ~/sf-tools/bin/sf-install.sh
 5. `npm install`（package.json がある場合）
 6. 必要に応じた `sf-upgrade.sh` のバックグラウンド実行（24 時間間隔）
 
-### 7.8 `sf-check.sh`
+### 7.9 `sf-check.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-check.sh [deploy-target.txt] [remove-target.txt]
@@ -343,7 +383,7 @@ bash ~/sf-tools/bin/sf-check.sh [deploy-target.txt] [remove-target.txt]
 - 引数省略時は現在ブランチの `release/<branch>/` 配下を自動解決します
 - 終了コードは `0` が正常、`1` が構文エラーです
 
-### 7.9 `sf-metasync.sh`
+### 7.10 `sf-metasync.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-metasync.sh
@@ -356,7 +396,7 @@ bash ~/sf-tools/bin/sf-metasync.sh
 
 主に GitHub Actions からの定期実行を想定しています。
 
-### 7.10 `sf-restart.sh`
+### 7.11 `sf-restart.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-restart.sh
@@ -364,7 +404,7 @@ bash ~/sf-tools/bin/sf-restart.sh
 
 接続先組織を切り替えたいときに使います。
 
-### 7.11 `sf-hook.sh` / `sf-unhook.sh`
+### 7.12 `sf-hook.sh` / `sf-unhook.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-hook.sh
@@ -375,7 +415,7 @@ bash ~/sf-tools/bin/sf-unhook.sh
 - `sf-hook.sh`: `.git/hooks/pre-push` にフックをインストール
 - `sf-unhook.sh`: `.git/hooks/pre-push` を削除
 
-### 7.12 `sf-prepush.sh`
+### 7.13 `sf-prepush.sh`
 
 `git push` 前に自動で実行されるチェックスクリプトです。
 
@@ -385,30 +425,13 @@ bash ~/sf-tools/bin/sf-unhook.sh
 - `main` の未取り込み更新を確認し、必要なら自動 rebase
 - `sf-check.sh` でターゲットファイル構文を検証
 
-### 7.13 `sf-upgrade.sh`
+### 7.14 `sf-upgrade.sh`
 
 ```bash
 bash ~/sf-tools/bin/sf-upgrade.sh
 ```
 
 npm / Salesforce CLI / Git を更新します。
-
-### 7.14 `sf-job.sh`
-
-```bash
-sf-job.sh
-```
-
-ジョブブランチの作成・クローン・`sf-start.sh` 起動を一括で行うランチャーです。`~/home/{owner}/{company}/` 階層で実行します。
-
-主な処理:
-- ジョブ番号を入力してブランチ名（`feature/{番号}`）を生成
-- `git worktree` または `git clone` で作業ディレクトリを作成
-- `sf-start.sh` を自動起動
-
-補足:
-- `~/home/{owner}/{company}/` 配下で実行してください
-- `force-*` ディレクトリの内側では実行できません
 
 ---
 
