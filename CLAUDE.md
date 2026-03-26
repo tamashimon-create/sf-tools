@@ -248,7 +248,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 ### 6.2 sf-release.sh
 
-- `deploy-target.txt` / `remove-target.txt` をもとに `package.xml` を生成
+- ターゲットファイルをもとに `package.xml` を生成
 - `sf project deploy start` で検証または本番実行
 
 主なオプション: `--release` / `--no-open` / `--force` / `--target`

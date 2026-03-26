@@ -3,7 +3,7 @@
 # ==============================================================================
 # sf-release.sh - デプロイ/検証スクリプト
 # ==============================================================================
-# deploy-target.txt / remove-target.txt からマニフェスト(XML)を自動生成し、
+# ターゲットファイルからマニフェスト(XML)を自動生成し、
 # Salesforce 組織へのリリース（または検証）を実行します。
 #
 # 【オプション】
@@ -84,17 +84,11 @@ log "INFO" "接続先組織: ${TARGET_ORG}"
 # ------------------------------------------------------------------------------
 # 5.1 保護組織へのローカル直接実行を禁止
 # ------------------------------------------------------------------------------
-# branches.txt に定義された組織はGitHub Actions専用。ローカルからは実行不可。
-readonly BRANCHES_TXT="./sf-tools/config/branches.txt"
-if [[ "${GITHUB_ACTIONS:-false}" != "true" && -f "$BRANCHES_TXT" ]]; then
-    while IFS= read -r line; do
-        line=$(echo "$line" | tr -d '\r')           # CRLF 除去（変数代入のため run 不要）
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue # コメント行スキップ
-        [[ -z "${line// }" ]] && continue           # 空行スキップ
-        if [[ "$TARGET_ORG" == "${line// }" ]]; then
-            die "${TARGET_ORG} へのデプロイはローカルから実行できません。PR 経由で GitHub Actions を使用してください。"
-        fi
-    done < "$BRANCHES_TXT"
+# main / staging / develop はGitHub Actions専用。ローカルからは実行不可。
+if [[ "${GITHUB_ACTIONS:-false}" != "true" ]]; then
+    if [[ "$TARGET_ORG" == "main" || "$TARGET_ORG" == "staging" || "$TARGET_ORG" == "develop" ]]; then
+        die "${TARGET_ORG} へのデプロイはローカルから実行できません。PR 経由で GitHub Actions を使用してください。"
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -143,7 +137,7 @@ phase_check_target() {
 
     # 構文チェック
     run bash "${SCRIPT_DIR}/sf-check.sh" "$DEPLOY_LIST" "$REMOVE_LIST" \
-        || die "deploy-target.txt / remove-target.txt に構文エラーがあります。上記のエラーを修正してください。"
+        || die "ターゲットファイルに構文エラーがあります。上記のエラーを修正してください。"
     return $RET_OK
 }
 

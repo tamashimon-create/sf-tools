@@ -28,7 +28,7 @@ RESET='\033[0m'
 # VSCode 内では start / restart を除外（code . の二重起動・表示乱れ防止）
 # ------------------------------------------------------------------------------
 MENU_ITEMS_ALL=(
-    "sf-check    | deploy-target.txt の構文チェック"
+    "sf-check    | ターゲットファイルの構文チェック"
     "sf-push     | 変更をコミット＆プッシュ"
     "sf-next     | 次の PR 先ブランチを確認"
     "sf-dryrun   | 現在接続中のSandboxへリリース検証"
@@ -59,7 +59,7 @@ print_menu() {
     local num=1
     for item in "${MENU_ITEMS[@]}"; do
         local cmd="${item%%|*}"
-        local desc="${item##*|}"
+        local desc="${item#*|}"
         local label="${cmd// /}"
         label="${label#sf-}"
         label="${label^}"  # 先頭を大文字に
@@ -186,7 +186,7 @@ fzf_mode() {
         local lines=()
         for item in "${MENU_ITEMS[@]}"; do
             local cmd="${item%%|*}"
-            local desc="${item##*|}"
+            local desc="${item#*|}"
             local label="${cmd// /}"
             label="${label#sf-}"
             lines+=("$(printf "%-10s %s" "$label" "$desc")")

@@ -3,7 +3,7 @@
 # ==============================================================================
 # sf-check.sh - デプロイターゲットファイル構文チェッカー
 # ==============================================================================
-# deploy-target.txt / remove-target.txt の構文を検証します。
+# ターゲットファイル（deploy-target.txt / remove-target.txt）の構文を検証します。
 # sf-release.sh から自動呼び出しされますが、単体実行も可能です。
 #
 # 【使い方】
@@ -154,7 +154,7 @@ check_target_file "$REMOVE_LIST" "remove-target.txt"  || remove_errors=$?
 total_errors=$(( deploy_errors + remove_errors ))
 
 if [[ "$total_errors" -gt 0 ]]; then
-    printf "\n${CLR_ERR}error${CLR_RESET}: %s 件のエラーが検出されました。deploy-target.txt / remove-target.txt を修正してください。\n\n" "$total_errors"
+    printf "\n${CLR_ERR}error${CLR_RESET}: %s 件のエラーが検出されました。ターゲットファイルを修正してください。\n\n" "$total_errors"
     exit 1
 fi
 

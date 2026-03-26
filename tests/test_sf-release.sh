@@ -116,7 +116,7 @@ test_outside_force_dir() {
     teardown "$rd" "$mb"
 }
 
-# 保護組織（branches.txt 記載）へのローカル実行 → エラー
+# 保護組織（main/staging/develop）へのローカル実行 → エラー
 test_protected_org_local_blocked() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
@@ -165,19 +165,18 @@ test_unprotected_org_local_allowed() {
     teardown "$td" "$mb"
 }
 
-# branches.txt が存在しない → ガードをスキップして通過
-test_no_branches_txt_allowed() {
+# staging もローカル実行禁止
+test_protected_org_staging_blocked() {
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
     setup_release_dir "$td"
-    rm -f "$td/sf-tools/config/branches.txt"  # branches.txt を削除
     unset GITHUB_ACTIONS
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target main --no-open 2>&1 >/dev/null
+    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --target staging 2>&1)
     local ec=$?
 
-    assert_exit_ok $ec "branches.txt なし → ガードスキップして通過"
+    assert_exit_fail $ec "保護組織(staging) + ローカル → エラー終了"
     teardown "$td" "$mb"
 }
 
@@ -191,6 +190,6 @@ test_outside_force_dir
 test_protected_org_local_blocked
 test_protected_org_github_actions_allowed
 test_unprotected_org_local_allowed
-test_no_branches_txt_allowed
+test_protected_org_staging_blocked
 
 print_summary

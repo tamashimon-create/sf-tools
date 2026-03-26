@@ -8,7 +8,7 @@
 #   - main ブランチへの直接プッシュを禁止
 #   - リモート main に未取り込みコミットがある場合は自動的に rebase して取り込む
 #   - rebase でコンフリクトが発生した場合のみプッシュを中断
-#   - deploy-target.txt / remove-target.txt の構文チェック（sf-check.sh）
+#   - ターゲットファイルの構文チェック（sf-check.sh）
 #
 # 【オプション】
 #   -v, --verbose       : コマンドの応答（出力）をコンソールにも表示します
@@ -127,9 +127,9 @@ phase_check_main() {
     return $RET_OK
 }
 
-# 【SYNTAX】deploy-target.txt / remove-target.txt の構文チェック
+# 【SYNTAX】ターゲットファイルの構文チェック
 phase_check_syntax() {
-    run bash "${SCRIPT_DIR}/sf-check.sh" || die "deploy-target.txt / remove-target.txt に構文エラーがあります。プッシュを中断しました。"
+    run bash "${SCRIPT_DIR}/sf-check.sh" || die "ターゲットファイルに構文エラーがあります。プッシュを中断しました。"
     return $RET_OK
 }
 
