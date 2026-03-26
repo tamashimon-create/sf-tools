@@ -195,18 +195,22 @@ pre-push フックが有効なら、`git push` 時に main 同期チェックが
 |---|---|---|
 | `sf-job.sh` | ブランチ作成〜VS Code 起動まで一括 | 新規作業開始時（毎回）|
 | `sf-start.sh` | 既存ブランチで開発環境を再起動 | 2回目以降の作業再開時 |
+| `sf-launcher.sh` | sf-tools コマンドをメニューから選択実行 | 日常操作全般（`sfl`）|
+| `sf-push.sh` | カレント配下をコミット＆プッシュ | 変更を push するとき |
+| `sf-next.sh` | 次に出す PR 先ブランチの案内と PR 作成 | PR 作成前 |
 | `sf-init.sh` | 新規プロジェクトの初期セットアップ | 新規案件開始時 |
 | `sf-branch.sh` | ブランチ構成の設定と作成 | 初期構成時 |
-| `sf-next.sh` | 次に出す PR 先ブランチの案内 | PR 作成前 |
-| `sf-install.sh` | sf-tools 更新、フック、release 準備 | `sf-start.sh` から自動実行 |
 | `sf-release.sh` | dry-run / デプロイ実行 | 日常の検証・リリース |
-| `sf-deploy.sh` | 強制デプロイ | 特殊ケース |
+| `sf-deploy.sh` | デプロイ実行（強制）| 特殊ケース |
 | `sf-check.sh` | deploy-target / remove-target の構文確認 | リリース前 |
 | `sf-metasync.sh` | 組織 → Git の自動同期 | GitHub Actions / 手動 |
 | `sf-restart.sh` | 接続先組織の切り替え | Sandbox 切替時 |
-| `sf-hook.sh` | pre-push フック有効化 | フック導入時 |
+| `sf-update-secret.sh` | GitHub Secrets の SFDX_AUTH_URL を再登録 | 認証 URL 期限切れ時 |
+| `sf-install.sh` | sf-tools 更新、フック、release 準備 | `sf-start.sh` から自動実行 |
+| `sf-hook.sh` | pre-push / pre-commit フック有効化 | フック導入時 |
 | `sf-unhook.sh` | pre-push フック削除 | フック停止時 |
-| `sf-prepush.sh` | main 同期チェック | pre-push から自動実行 |
+| `sf-prepush.sh` | push 前の main 同期・構文チェック | pre-push から自動実行 |
+| `sf-precommit.sh` | commit 前の構文チェック | pre-commit から自動実行 |
 | `sf-upgrade.sh` | npm / sf / Git 更新 | ツール更新時 |
 
 ---
@@ -432,6 +436,63 @@ bash ~/sf-tools/bin/sf-upgrade.sh
 ```
 
 npm / Salesforce CLI / Git を更新します。
+
+### 7.15 `sf-launcher.sh`
+
+```bash
+sfl          # メニュー形式で選択
+sflf         # fzf でインクリメンタル検索
+sfl 4        # 番号を直接指定して即実行
+```
+
+sf-tools の全コマンドをメニューから選んで実行できるランチャーです。`force-*` ディレクトリ内で使います。
+
+補足:
+- `~/.bashrc` に `alias sfl='sf-launcher.sh'` を設定して使用
+- VS Code 内では `start` / `restart` が非表示になります（二重起動防止）
+
+### 7.16 `sf-push.sh`
+
+```bash
+sf-push.sh
+```
+
+カレントディレクトリ配下の変更をコミット＆プッシュします。
+
+主な処理:
+1. `origin/main` を fetch して現在ブランチにマージ（コンフリクト時はエラー中止）
+2. カレント配下を `git add --all`
+3. `sf-check.sh` で構文検証
+4. VS Code を別ウィンドウで開いてコミットメッセージを入力
+5. `git commit` → `git push`
+
+補足:
+- コミットメッセージ未入力の場合は何もせず終了
+
+### 7.17 `sf-precommit.sh`
+
+`git commit` 時に自動実行される pre-commit フックの本体です。直接実行することはありません。
+
+主な処理:
+- `sf-check.sh` で `deploy-target.txt` / `remove-target.txt` の構文チェック
+- エラーがあればコミットを中止
+
+### 7.18 `sf-update-secret.sh`
+
+```bash
+sf-update-secret.sh
+```
+
+GitHub Secrets の `SFDX_AUTH_URL_PROD` / `_STG` / `_DEV` を一括再登録します。認証 URL の期限切れ時などに使用します。
+
+主な処理:
+1. ローカルの `tama` エイリアスから `sfdxAuthUrl` を取得
+2. 更新対象の組織情報を表示して確認（y/n）
+3. `gh secret set` で3つの Secret を更新
+
+補足:
+- `force-*` ディレクトリ内で実行してください
+- 事前に `sf-start.sh` でログイン済みであること
 
 ---
 
