@@ -15,6 +15,7 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 |---|---|---|
 | Git | `git --version` | Git Bash / フック / バージョン管理 |
 | Salesforce CLI | `sf --version` | 組織接続、デプロイ、retrieve |
+| GitHub CLI | `gh --version` | PR 作成・Secrets 登録・リポジトリ操作 |
 | Visual Studio Code | `code --version` | エディタ起動 |
 
 補足:
