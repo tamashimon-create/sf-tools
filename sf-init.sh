@@ -17,9 +17,11 @@
 #   Phase 3: リポジトリ作成（gh repo create + git clone）
 #   Phase 4: ファイル生成（sf-install.sh / sf-hook.sh）
 #   Phase 5: ブランチ構成（sf-branch.sh）
-#   Phase 6: GitHub Secrets の設定（Salesforce 認証 URL / PAT_TOKEN / Slack）
-#   Phase 7: 初回コミット＆プッシュ
-#   Phase 8: GitHub リポジトリ設定・Ruleset の適用
+#   Phase 6: Salesforce 認証 URL の設定（JWT 移行時はここだけ差し替え）
+#   Phase 7: PAT_TOKEN の設定
+#   Phase 8: Slack 連携の設定
+#   Phase 9: 初回コミット＆プッシュ
+#   Phase 10: GitHub リポジトリ設定・Ruleset の適用
 #
 # 【手動操作が必要なステップ】
 #   - Salesforce 組織へのブラウザログイン
@@ -95,7 +97,7 @@ if [[ -n "$ONLY_PHASE" ]]; then
     END_PHASE=$ONLY_PHASE
 else
     START_PHASE=$RESUME_PHASE
-    END_PHASE=8
+    END_PHASE=10
 fi
 
 # ------------------------------------------------------------------------------

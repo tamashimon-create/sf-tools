@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
 echo -e "${CLR_HEAD}=== Ruleset / ワークフロー整合性 ===${CLR_RST}"
 
 REUSABLE_DIR="$SF_TOOLS_DIR/.github/workflows"
-REPO_SETTINGS="$SF_TOOLS_DIR/phases/init/08_repo_rules.sh"
+REPO_SETTINGS="$SF_TOOLS_DIR/phases/init/10_repo_rules.sh"
 
 # 08_repo_rules.sh から context 値を抽出する内部関数
 _extract_contexts() {

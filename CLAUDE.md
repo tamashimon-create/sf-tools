@@ -318,9 +318,11 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 3. リポジトリ作成（gh repo create + git clone）
 4. ファイル生成（sf-install.sh）
 5. ブランチ構成（sf-branch.sh）
-6. GitHub Secrets の設定（Salesforce 認証 URL / PAT_TOKEN / Slack）
-7. 初回コミット＆プッシュ
-8. GitHub リポジトリ設定・Ruleset の適用
+6. Salesforce 認証 URL の設定（JWT 移行時はここだけ差し替え）
+7. PAT_TOKEN の設定
+8. Slack 連携の設定
+9. 初回コミット＆プッシュ
+10. GitHub リポジトリ設定・Ruleset の適用
 
 オプション:
 - `--resume N`: Phase N から再開（エラー後の再試行）

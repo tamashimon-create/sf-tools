@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# 08_repo_rules.sh - Phase 8: GitHub リポジトリ設定・Ruleset の適用
+# 10_repo_rules.sh - Phase 10: GitHub リポジトリ設定・Ruleset の適用
 # ==============================================================================
 # 新規リポジトリの基本設定と Ruleset を GitHub API で設定する。
 #
@@ -33,7 +33,7 @@ SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
 # ------------------------------------------------------------------------------
 # メイン処理
 # ------------------------------------------------------------------------------
-log "HEADER" "Phase 8: GitHub リポジトリ設定・Ruleset の適用"
+log "HEADER" "Phase 10: GitHub リポジトリ設定・Ruleset の適用"
 
 # --- 1. リポジトリ基本設定 ---
 log "INFO" "[1/3] リポジトリ基本設定を適用中..."
@@ -165,6 +165,6 @@ else
     log "WARNING" "protect-staging の作成に失敗しました（無料プランでは利用不可の場合があります）。"
 fi
 
-log "SUCCESS" "Phase 8 完了: GitHub リポジトリ設定・Ruleset の適用 OK。"
+log "SUCCESS" "Phase 10 完了: GitHub リポジトリ設定・Ruleset の適用 OK。"
 
 exit $RET_OK

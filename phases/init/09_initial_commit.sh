@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# 07_initial_commit.sh - Phase 7: 初回コミット＆プッシュ
+# 09_initial_commit.sh - Phase 9: 初回コミット＆プッシュ
 # ==============================================================================
 # リポジトリに変更があれば初回コミットし、PAT_TOKEN_VALUE を使って push する。
 # push 後に sf-hook.sh で pre-push フックをインストールする。
@@ -29,12 +29,12 @@ SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
 
 [[ -z "$REPO_DIR" ]]          && die "REPO_DIR が未設定です。Phase 2 が完了しているか確認してください。"
 [[ -z "$REPO_FULL_NAME" ]]    && die "REPO_FULL_NAME が未設定です。Phase 2 が完了しているか確認してください。"
-[[ -z "$PAT_TOKEN_VALUE" ]]   && die "PAT_TOKEN_VALUE が未設定です。Phase 6 が完了しているか確認してください。"
+[[ -z "$PAT_TOKEN_VALUE" ]]   && die "PAT_TOKEN_VALUE が未設定です。Phase 7 が完了しているか確認してください。"
 
 # ------------------------------------------------------------------------------
 # メイン処理
 # ------------------------------------------------------------------------------
-log "HEADER" "Phase 7: 初回コミット＆プッシュ"
+log "HEADER" "Phase 9: 初回コミット＆プッシュ"
 
 log "INFO" "初回コミット＆プッシュを実行中..."
 
@@ -72,5 +72,5 @@ log "INFO" "pre-push フックをインストール中..."
 run bash "${SF_TOOLS_DIR}/sf-hook.sh" \
     || die "sf-hook.sh の実行に失敗しました。"
 
-log "SUCCESS" "Phase 7 完了: 初回コミット＆プッシュ OK。"
+log "SUCCESS" "Phase 9 完了: 初回コミット＆プッシュ OK。"
 exit $RET_OK

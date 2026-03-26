@@ -451,11 +451,11 @@ test_only_phase2_creates_env_file() {
 }
 
 # ==============================================================================
-# テスト 11: --resume 8 → Phase 8 のみ実行（git commit は呼ばれない）
+# テスト 11: --resume 10 → Phase 10 のみ実行（git commit は呼ばれない）
 # ==============================================================================
 test_resume_runs_from_specified_phase() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] --resume 8 → Phase 8 のみ実行${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] --resume 10 → Phase 10 のみ実行${CLR_RST}"
 
     local mb mock_home init_base init_dir
     mb=$(setup_mock_bin)
@@ -468,7 +468,7 @@ test_resume_runs_from_specified_phase() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
-    # .sf-init.env を事前設定（Phase 2〜7 で書き出されるはずの内容）
+    # .sf-init.env を事前設定（Phase 2〜9 で書き出されるはずの内容）
     cat > "$init_dir/.sf-init.env" << 'ENVEOF'
 GITHUB_OWNER="tamashimon"
 PROJECT_NAME="testproject"
@@ -482,12 +482,12 @@ ENVEOF
     local exit_code
     printf '' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/sf-init.sh" --resume 8 ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/sf-init.sh" --resume 10 ) > /dev/null 2>&1
     exit_code=$?
 
-    assert_exit_ok            "$exit_code"                         "--resume 8 で正常終了する"
-    assert_file_not_contains  "$MOCK_CALL_LOG" "git commit"        "--resume 8: git commit は呼ばれない"
-    assert_file_contains      "$MOCK_CALL_LOG" "gh repo edit"      "Phase 8: gh repo edit が呼ばれる"
+    assert_exit_ok            "$exit_code"                         "--resume 10 で正常終了する"
+    assert_file_not_contains  "$MOCK_CALL_LOG" "git commit"        "--resume 10: git commit は呼ばれない"
+    assert_file_contains      "$MOCK_CALL_LOG" "gh repo edit"      "Phase 10: gh repo edit が呼ばれる"
 
     teardown "$mb" "$mock_home" "$init_base"
 }
