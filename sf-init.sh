@@ -25,6 +25,7 @@
 #   - Salesforce 組織へのブラウザログイン
 #   - GitHub Classic PAT トークンの作成（repo + workflow スコープ）
 #   - Slack App の作成・Bot Token の取得
+#   - 通知先 Slack チャンネルで Bot を招待（/invite @sf-notify-<プロジェクト名>）
 #
 # 【使い方】
 #   mkdir -p ~/home/{github-owner}/{company}/init
