@@ -58,6 +58,17 @@ alias sflf='sf-launcher.sh --fzf'
 
 ## 3. 使い方
 
+ドキュメント内で使用する `~/home/{owner}/{company}/` の意味:
+
+| プレースホルダー | 内容 | 例 |
+|---|---|---|
+| `{owner}` | GitHub 組織名（固定）| `my-org` |
+| `{company}` | Salesforce 使用者の会社名または部署名（自由）| `acme` / `sales-dept` |
+
+例: `~/home/my-org/acme/`
+
+---
+
 ### 3.1 新規プロジェクトを作成する（管理者）
 
 `~/home/{owner}/{company}/` ディレクトリで実行します。
