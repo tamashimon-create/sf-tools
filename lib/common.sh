@@ -451,8 +451,15 @@ check_authorized_user() {
 # ------------------------------------------------------------------------------
 read_input() {
     local _varname="$1" _prompt="${2:-}"
-    [[ -n "$_prompt" ]] && echo -ne "$_prompt" >&2
-    read -re "$_varname"
+    if [[ -n "$_prompt" ]]; then
+        # readline にプロンプトを渡し、ANSI カラーコードを \001..\002 で囲む
+        # （カーソル位置計算を正しくし、行折り返し時のプロンプト上書きを防止）
+        local _rl_prompt
+        _rl_prompt=$(printf '%b' "$_prompt" | sed $'s/\033\\[[0-9;]*m/\001&\002/g')
+        read -rep "$_rl_prompt" "$_varname"
+    else
+        read -re "$_varname"
+    fi
 }
 
 # read_key - 1文字即時入力（Enter不要・空 Enter 無視）
