@@ -18,6 +18,7 @@
 #   check_force_dir           ... force-* ディレクトリ内か確認
 #   check_home_dir            ... ~/home/{owner}/{company}/ の正しい階層か確認し GITHUB_OWNER/COMPANY_NAME をセット
 #   check_authorized_user     ... sf-tools 実行許可ユーザーか確認（マスター固定 + 外部ファイル）
+#   open_browser URL          ... OS を判定してブラウザを開く（WSL/Git Bash/macOS/Linux 対応）
 #
 # 【戻り値定数】
 #   RET_OK=0        正常終了
@@ -488,6 +489,35 @@ read_key() {
         printf "%s\n" "${!_varname}" >&2  # 有効文字のみエコー
         break
     done
+}
+
+# open_browser - OS を判定してブラウザを開く
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   open_browser URL
+#
+# 【対応環境】
+#   WSL      : powershell.exe Start-Process
+#   Git Bash : start ""
+#   macOS    : open
+#   Linux    : xdg-open
+# ------------------------------------------------------------------------------
+open_browser() {
+    local url="$1"
+    # stdin を /dev/null にリダイレクトし、パイプ入力の消費を防止する
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        # WSL 環境
+        powershell.exe -c "Start-Process '$url'" < /dev/null 2>/dev/null || true
+    elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "mingw"* ]]; then
+        # Git Bash / MSYS2
+        start "" "$url" < /dev/null 2>/dev/null || true
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        open "$url" < /dev/null 2>/dev/null || true  # open は macOS 標準のため直接実行
+    elif command -v xdg-open &>/dev/null; then
+        # Linux
+        xdg-open "$url" < /dev/null 2>/dev/null || true  # xdg-open は存在確認のため直接実行
+    fi
 }
 
 # Y / N / q を明示的に入力させる（1文字即時入力・q で即中断）

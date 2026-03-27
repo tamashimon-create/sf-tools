@@ -6,27 +6,27 @@
 # このファイルは lib/common.sh の source 後に読み込むこと。
 #
 # 【提供する関数】
-#   open_browser URL          ... OS を判定してブラウザを開く
+#   open_browser URL          ... OS を判定してブラウザを開く（lib/common.sh に同名関数あり）
 #   press_enter [MSG]         ... Enter 待ち（q で中断）
 #   read_or_quit VAR PROMPT   ... 入力受付（q で中断）
 #   register_sf_secret        ... SF認証URL取得と GitHub Secret 登録
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# ブラウザを開く（OS 判定）
-# 引数: URL
-# 備考: start/open/xdg-open は環境依存のため、|| true で失敗を無視する
+# ブラウザを開く（OS 判定）- lib/common.sh で定義済みなら再定義しない
 # ------------------------------------------------------------------------------
-open_browser() {
-    local url="$1"
-    if command -v start &>/dev/null; then
-        start "" "$url" 2>/dev/null || true
-    elif command -v open &>/dev/null; then
-        open "$url" 2>/dev/null || true
-    elif command -v xdg-open &>/dev/null; then
-        xdg-open "$url" 2>/dev/null || true
-    fi
-}
+if ! declare -f open_browser &>/dev/null; then
+    open_browser() {
+        local url="$1"
+        if command -v start &>/dev/null; then
+            start "" "$url" 2>/dev/null || true
+        elif command -v open &>/dev/null; then
+            open "$url" 2>/dev/null || true
+        elif command -v xdg-open &>/dev/null; then
+            xdg-open "$url" 2>/dev/null || true
+        fi
+    }
+fi
 
 # ------------------------------------------------------------------------------
 # Enter キー待ち（q で中断）

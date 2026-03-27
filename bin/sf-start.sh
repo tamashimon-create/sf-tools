@@ -85,6 +85,8 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
 
     log "INFO" "ブラウザでログインして接続を許可してください..."
     run sf org logout --target-org "$ORG_ALIAS" --no-prompt 2>/dev/null || true
+    # open_browser で確実にブラウザを開いてから sf org login web を実行
+    open_browser "$LOGIN_URL"
     # ブラウザ起動に TTY が必要なため run ラッパーを使用しない
     sf org login web --set-default --alias "$ORG_ALIAS" --instance-url "$LOGIN_URL" || true
     log "SUCCESS" "接続完了！"
