@@ -236,6 +236,18 @@ run() {
     #   \xef\xb8\x8f       : 異体字セレクタ U+FE0F
     LC_ALL=C sed 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\xf0...//g; s/\xe2..//g; s/\xef\xb8\x8f//g' "$tmp_out" | \
         sed "/./s/^/[${log_ts}] [OUT] /" >> "$LOG_FILE"
+
+    # 失敗時は error.log にも記録（前回エラーとの区切りが明確になるよう都度追記）
+    if [[ $is_success -eq $RET_NG ]] && [[ -n "${LOG_FILE:-}" ]]; then
+        local err_log
+        err_log="$(dirname "$LOG_FILE")/error.log"
+        {
+            echo "====== [${log_ts}] ERROR: [${SCRIPT_NAME}] ${cmd[*]} ======"
+            LC_ALL=C sed 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\xf0...//g; s/\xe2..//g; s/\xef\xb8\x8f//g' "$tmp_out" | \
+                sed "/./s/^/  /"
+        } >> "$err_log"
+    fi
+
     rm -f "$tmp_out"
     return $is_success
 }
