@@ -85,8 +85,17 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
 
     log "INFO" "ブラウザでログインして接続を許可してください..."
     run sf org logout --target-org "$ORG_ALIAS" --no-prompt 2>/dev/null || true
-    # open_browser で確実にブラウザを開いてから sf org login web を実行
-    open_browser "$LOGIN_URL"
+
+    # WSL: sf org login web 内部の open パッケージが wslview を探すため、
+    #       未インストール時は powershell.exe でブラウザを開く wslview を一時補完する
+    if grep -qi microsoft /proc/version 2>/dev/null && ! command -v wslview &>/dev/null; then
+        mkdir -p /tmp/sf-wsl-bin
+        printf '#!/bin/bash\npowershell.exe Start-Process "$1" 2>/dev/null\n' \
+            > /tmp/sf-wsl-bin/wslview
+        chmod +x /tmp/sf-wsl-bin/wslview
+        export PATH="/tmp/sf-wsl-bin:$PATH"
+    fi
+
     # ブラウザ起動に TTY が必要なため run ラッパーを使用しない
     sf org login web --set-default --alias "$ORG_ALIAS" --instance-url "$LOGIN_URL" || true
     log "SUCCESS" "接続完了！"
