@@ -31,6 +31,7 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/run_tests.log"
 TOTAL_PASSED=0
 TOTAL_FAILED=0
+FAIL_LINES=""  # 失敗したテスト行を蓄積
 
 CLR_PASS='\033[32m'
 CLR_FAIL='\033[31m'
@@ -111,6 +112,7 @@ _run_single() {
     echo "$output" | tee_log
     TOTAL_PASSED=$(( TOTAL_PASSED + $(echo "$output" | grep -c '\[PASS\]' || true) ))
     TOTAL_FAILED=$(( TOTAL_FAILED + $(echo "$output" | grep -c '\[FAIL\]'  || true) ))
+    FAIL_LINES+="$(echo "$output" | grep '\[FAIL\]' || true)"$'\n'
 }
 
 if [[ ${#TEST_FILES[@]} -eq 1 ]]; then
@@ -156,6 +158,7 @@ else
         echo "$output" | tee_log
         TOTAL_PASSED=$(( TOTAL_PASSED + $(echo "$output" | grep -c '\[PASS\]' || true) ))
         TOTAL_FAILED=$(( TOTAL_FAILED + $(echo "$output" | grep -c '\[FAIL\]'  || true) ))
+        FAIL_LINES+="$(echo "$output" | grep '\[FAIL\]' || true)"$'\n'
         rm -f "$tmp"
     done
 fi
@@ -197,6 +200,10 @@ else
         _banner_blank  "$CLR_NG"
         _banner_border "$CLR_NG"
         _banner_blank  "$CLR_NG"
+        echo ""
+        # 失敗したテスト一覧を表示
+        echo -e "${CLR_NG}  失敗したテスト:${CLR_RST}"
+        echo "$FAIL_LINES" | grep '\[FAIL\]' | sed "s/^/  /" | tee_log
         echo ""
     } | tee_log
     exit 1
