@@ -472,7 +472,7 @@ read_key() {
     local _varname="$1" _prompt="${2:-}" _valid="${3:-}"
     while true; do
         [[ -n "$_prompt" ]] && printf "%s" "$_prompt" >&2
-        read -rsn1 "$_varname"
+        read -rsn1 "$_varname" || { printf "\n" >&2; die "入力が中断されました。"; }
         # 空 Enter または無効文字 → 行クリアして再プロンプト（同じ行に留まる）
         if [[ -z "${!_varname}" ]] || { [[ -n "$_valid" ]] && ! [[ "${!_varname}" =~ $_valid ]]; }; then
             printf "\r\033[K" >&2
