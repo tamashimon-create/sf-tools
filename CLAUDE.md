@@ -371,3 +371,52 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 | `templates/.github/workflows/` の内容 | `phases/init/08_repo_rules.sh` の `required_status_checks.context` との整合 |
 
 > ドキュメントの詳細（フロー・パス等）はコードを確認してから記載すること。推測で書かないこと。
+
+---
+
+## 8. スクリプト依存関係マップ
+
+変更の波及確認に使うこと。
+
+| 呼び出し元 | 呼び出し先 | 備考 |
+|---|---|---|
+| `sf-restart.sh` | `sf-start.sh` | 設定クリア後に start を実行 |
+| `sf-start.sh` | `sf-install.sh` | バックグラウンド起動 |
+| `sf-install.sh` | `sf-hook.sh` | フックインストール |
+| `sf-install.sh` | `sf-upgrade.sh` | 24h 経過時バックグラウンド起動 |
+| `sf-dryrun.sh` | `sf-release.sh` | オプションなし（dry-run）で呼ぶ |
+| `sf-deploy.sh` | `sf-release.sh` | `--release --force` 付きで呼ぶ |
+| `sf-push.sh` | `sf-check.sh` | コミット前にターゲットファイル検証 |
+| `sf-init.sh` | `phases/init/01〜08_*.sh` | フェーズ順に実行 |
+| `hooks/pre-push` | `sf-release.sh` | push 時に dry-run 実行 |
+
+---
+
+## 9. デバッグコマンド集
+
+### 9.1 テスト
+
+```bash
+bash tests/run_tests.sh                           # 全テスト実行
+bash tests/run_tests.sh test_sf-start.sh          # 単体実行
+cat logs/run_tests.log | grep '\[FAIL\]'          # 失敗行のみ抽出
+cat logs/error.log                                # run 失敗コマンドのログ
+```
+
+### 9.2 Salesforce CLI
+
+```bash
+sf org list                                       # 接続済み組織一覧
+sf org display --target-org tama                  # 組織情報・接続確認
+sf config list                                    # デフォルト組織などの設定確認
+cat .sf/config.json                               # ローカル設定ファイル確認
+```
+
+### 9.3 Git / GitHub
+
+```bash
+git log --oneline -10                             # 最近のコミット
+gh run list --limit 5                             # CI ワークフロー実行状況
+gh pr list                                        # オープン PR 一覧
+git diff HEAD~1                                   # 直前コミットとの差分
+```
