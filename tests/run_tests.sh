@@ -87,7 +87,46 @@ if [[ $# -eq 0 ]]; then
     fi
 fi
 
-# 引数指定があれば対象を絞る
+# --changed フラグ: git 変更ファイルから対応テストを自動選択
+if [[ "${1:-}" == "--changed" ]]; then
+    shift
+    _changed_tests=()
+    _run_all=0
+
+    while IFS= read -r _file; do
+        case "$_file" in
+            bin/sf-*.sh)
+                # bin/sf-foo.sh → test_sf-foo.sh
+                _t="test_$(basename "$_file")"
+                _changed_tests+=("$_t")
+                ;;
+            lib/common.sh)
+                _changed_tests+=("test_common.sh")
+                ;;
+            phases/init/*)
+                _changed_tests+=("test_sf-init.sh")
+                ;;
+            hooks/pre-push)
+                _changed_tests+=("test_sf-prepush.sh")
+                ;;
+            tests/test_helper.sh)
+                # 共通ヘルパー変更は全テストに影響するため全件実行
+                _run_all=1
+                break
+                ;;
+        esac
+    done < <(git -C "$TESTS_DIR/.." diff --name-only HEAD 2>/dev/null)
+
+    if [[ $_run_all -eq 0 && ${#_changed_tests[@]} -gt 0 ]]; then
+        # 重複排除
+        mapfile -t TEST_FILES < <(printf '%s\n' "${_changed_tests[@]}" | sort -u)
+        echo "  [--changed] 対象テスト: ${TEST_FILES[*]}"
+    elif [[ $_run_all -eq 0 && ${#_changed_tests[@]} -eq 0 ]]; then
+        echo "  [--changed] 変更ファイルに対応するテストなし → 全テスト実行"
+    fi
+fi
+
+# 引数指定があれば対象を絞る（--changed 以外の通常引数）
 if [[ $# -gt 0 ]]; then
     TEST_FILES=("$@")
 fi

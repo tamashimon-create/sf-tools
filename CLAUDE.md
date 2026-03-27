@@ -397,11 +397,14 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 ### 9.1 テスト
 
 ```bash
-bash tests/run_tests.sh                           # 全テスト実行
+bash tests/run_tests.sh                           # 全テスト実行（mm 前に必ず実行）
+bash tests/run_tests.sh --changed                 # 変更ファイルに対応するテストのみ（開発中）
 bash tests/run_tests.sh test_sf-start.sh          # 単体実行
 cat logs/run_tests.log | grep '\[FAIL\]'          # 失敗行のみ抽出
 cat logs/error.log                                # run 失敗コマンドのログ
 ```
+
+> **開発中は `--changed`、mm 前は全件** が基本ワークフロー。
 
 ### 9.2 Salesforce CLI
 
