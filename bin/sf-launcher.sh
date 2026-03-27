@@ -29,12 +29,12 @@ RESET='\033[0m'
 # ------------------------------------------------------------------------------
 MENU_ITEMS_ALL=(
     "sf-check    | ターゲットファイルの構文チェック"
-    "sf-push     | 変更をコミット＆プッシュ"
+    "sf-push     | 変更をコミット & プッシュ"
     "sf-next     | 次の PR 先ブランチを確認"
     "sf-dryrun   | 現在接続中の組織へリリース検証"
     "sf-deploy   | 現在接続中の組織へリリース"
-    "sf-start    | 開発環境を起動（Salesforceログイン・VSCode起動）"
-    "sf-restart  | 接続組織を切り替えてStart"
+    "sf-start    | 開発環境を起動（Salesforce ログイン・VSCode 起動）"
+    "sf-restart  | 接続組織を切り替えて Start 実行"
 )
 
 # VSCode 内では start / restart を除外
@@ -53,7 +53,7 @@ unset _item
 print_menu() {
     echo ""
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
-    echo -e "${BOLD}  >> SF-TOOLS らんちゃ <<${RESET}"
+    echo -e "${BOLD}  >> Launcher <<${RESET}"
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
 
     local num=1

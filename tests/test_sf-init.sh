@@ -108,13 +108,14 @@ STUB
 #   6. Y             (Sandbox? - develop)
 #   7. \n            (press_enter - phase_setup_pat_token)
 #   8. ghp_faketoken (PAT トークン)
-#   9. \n            (press_enter - phase_setup_slack)
+#   9. \n            (press_enter - phase_setup_slack: Bot Token 取得)
 #  10. xoxb-faketoken (Slack Bot Token)
 #  11. C01ABCDEFGH   (Slack チャンネル ID)
-#  12. N             (init フォルダ削除をスキップ)
+#  12. \n            (press_enter - phase_setup_slack: Bot 招待完了確認)
+#  13. N             (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\n\n\nY\n\nY\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\nN\n'
+    printf 'Y\n\n\nY\n\nY\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\nN\n'
 }
 
 # ==============================================================================
@@ -439,7 +440,7 @@ test_only_phase2_creates_env_file() {
     create_mock_gh_for_init "$mb"
 
     local exit_code
-    printf 'Y\n' \
+    printf 'Y\nN\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" --only 2 ) > /dev/null 2>&1
     exit_code=$?
@@ -484,7 +485,7 @@ PAT_TOKEN_VALUE="ghp_faketoken"
 ENVEOF
 
     local exit_code
-    printf '' \
+    printf 'N\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" --resume 10 ) > /dev/null 2>&1
     exit_code=$?
