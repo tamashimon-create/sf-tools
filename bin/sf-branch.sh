@@ -89,17 +89,13 @@ echo -e "  ${CLR_INFO}[3]${CLR_RESET} main" >&2
 echo "      小規模プロジェクト・単独開発向け" >&2
 echo -e "  ${CLR_INFO}─────────────────────────────────────────────${CLR_RESET}" >&2
 echo "" >&2
-while true; do
-    read -rp "  番号を入力 [1-3/q]: " choice || die "入力が中断されました。"  # EOF → 中断
-    case "$choice" in
-        1) BRANCHES=("main" "staging" "develop"); break ;;
-        2) BRANCHES=("main" "staging"); break ;;
-        3) BRANCHES=("main"); break ;;
-        [Qq]) die "中断しました。" ;;
-        "") ;;  # 空 Enter → 無視
-        *) echo "  1〜3 または q を入力してください。" >&2 ;;
-    esac
-done
+read_key choice "  番号を入力 [1-3/q]: " "[1-3Qq]"
+case "$choice" in
+    1) BRANCHES=("main" "staging" "develop") ;;
+    2) BRANCHES=("main" "staging") ;;
+    3) BRANCHES=("main") ;;
+    [Qq]) die "中断しました。" ;;
+esac
 
 # ------------------------------------------------------------------------------
 # 5. branches.txt を更新

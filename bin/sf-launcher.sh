@@ -31,10 +31,10 @@ MENU_ITEMS_ALL=(
     "sf-check    | ターゲットファイルの構文チェック"
     "sf-push     | 変更をコミット＆プッシュ"
     "sf-next     | 次の PR 先ブランチを確認"
-    "sf-dryrun   | 現在接続中のSandboxへリリース検証"
-    "sf-deploy   | 現在接続中のSandboxへリリース"
-    "sf-start    | 開発環境を起動（ログイン・VSCode・フック設定）"
-    "sf-restart  | 接続組織を切り替えて再起動"
+    "sf-dryrun   | 現在接続中の組織へリリース検証"
+    "sf-deploy   | 現在接続中の組織へリリース"
+    "sf-start    | 開発環境を起動（Salesforceログイン・VSCode起動）"
+    "sf-restart  | 接続組織を切り替えてStart"
 )
 
 # VSCode 内では start / restart を除外
@@ -53,7 +53,7 @@ unset _item
 print_menu() {
     echo ""
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
-    echo -e "${BOLD}  >> sf-tools ランチャー${RESET}"
+    echo -e "${BOLD}  >> SF-TOOLS らんちゃ <<${RESET}"
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
 
     local num=1
@@ -144,29 +144,34 @@ main() {
         print_menu
 
         local count="${#MENU_ITEMS[@]}"
-        echo -n "  番号を入力 (1-${count} / q で終了): "
-        read -r input
+        local input cmd
 
-        echo ""
+        # 入力ループ（1文字即時入力・無効入力は行クリアして待機）
+        while true; do
+            printf "  番号を入力 (1-%d / q で終了): " "$count"
+            read -rsn1 input  # 1文字即時入力・サイレント（エコーなし）
 
-        # 終了
-        if [[ "$input" == "q" || "$input" == "Q" ]]; then
-            echo -e "  ${DIM}終了しました${RESET}"
-            echo ""
-            exit 0
-        fi
+            # 空 Enter / 数字・q 以外 → 行クリアして待機（エコーしない）
+            if [[ -z "$input" ]] || ! [[ "$input" =~ ^[0-9qQ]$ ]]; then
+                printf "\r\033[K"
+                continue
+            fi
 
-        # 数値チェック
-        if ! [[ "$input" =~ ^[0-9]+$ ]]; then
-            echo -e "  ${YELLOW}⚠ 番号または q を入力してください${RESET}"
-            continue
-        fi
+            # 終了（エコー前に確認）
+            if [[ "$input" == "q" || "$input" == "Q" ]]; then
+                printf "%s\n" "$input"
+                echo -e "  ${DIM}終了しました${RESET}"
+                echo ""
+                exit 0
+            fi
 
-        local cmd
-        cmd=$(get_command_by_number "$input") || {
-            echo -e "  ${YELLOW}⚠ 番号 ${input} は範囲外です（1〜${count}）${RESET}"
-            continue
-        }
+            # 範囲外の数字 → 行クリアして待機（エコーしない）
+            cmd=$(get_command_by_number "$input") || { printf "\r\033[K"; continue; }
+
+            # 有効な入力のみエコー
+            printf "%s\n" "$input"
+            break
+        done
 
         run_command "$cmd"
     done

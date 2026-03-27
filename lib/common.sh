@@ -436,20 +436,61 @@ check_authorized_user() {
     die "実行権限がありません（${current_user}）。~/sf-tools/config/allowed-users.txt にユーザーを追加してください。"
 }
 
-# Y / N / q を明示的に入力させる（Enter のみは無効、q で即中断）
+# read_input - readline 対応インタラクティブ入力（矢印キー・BS 等が正常に動作する）
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   read_input VARNAME [PROMPT]
+#
+# 【引数】
+#   VARNAME : 入力値を格納する変数名
+#   PROMPT  : 省略可。プロンプト文字列（stderr に出力）
+#
+# 【使用例】
+#   read_input ORG_ALIAS "組織エイリアスを入力: "
+#   read_input answer
+# ------------------------------------------------------------------------------
+read_input() {
+    local _varname="$1" _prompt="${2:-}"
+    [[ -n "$_prompt" ]] && echo -ne "$_prompt" >&2
+    read -re "$_varname"
+}
+
+# read_key - 1文字即時入力（Enter不要・空 Enter 無視）
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   read_key VARNAME [PROMPT]
+#
+# 【引数】
+#   VARNAME : 入力値を格納する変数名
+#   PROMPT  : 省略可。プロンプト文字列（stderr に出力）
+#
+# 【使用例】
+#   read_key choice "  番号を入力 [1-3/q]: "
+#   read_key answer "  削除してよいですか？ [Y/N/q]: "
+# ------------------------------------------------------------------------------
+read_key() {
+    local _varname="$1" _prompt="${2:-}" _valid="${3:-}"
+    while true; do
+        [[ -n "$_prompt" ]] && printf "%s" "$_prompt" >&2
+        read -rsn1 "$_varname"
+        # 空 Enter または無効文字 → 行クリアして再プロンプト（同じ行に留まる）
+        if [[ -z "${!_varname}" ]] || { [[ -n "$_valid" ]] && ! [[ "${!_varname}" =~ $_valid ]]; }; then
+            printf "\r\033[K" >&2
+            continue
+        fi
+        printf "%s\n" "${!_varname}" >&2  # 有効文字のみエコー
+        break
+    done
+}
+
+# Y / N / q を明示的に入力させる（1文字即時入力・q で即中断）
 # 使い方: ask_yn "質問文" && echo "Yes" || echo "No"
 ask_yn() {
-    local prompt="$1"
-    local answer
-    while true; do
-        echo -ne "  ${prompt} [Y/N/q]: " >&2
-        read -r answer || die "入力が中断されました。"  # EOF → 中断
-        case "$answer" in
-            [Yy]|[Yy][Ee][Ss]) return 0 ;;
-            [Nn]|[Nn][Oo])     return 1 ;;
-            [Qq])               die "中断しました。" ;;
-            "")                 ;;  # 空 Enter → 無視
-            *) echo -e "  Y / N / q を入力してください。" >&2 ;;
-        esac
-    done
+    local prompt="$1" answer
+    read_key answer "  ${prompt} [Y/N/q]: " "[YyNnQq]"
+    case "$answer" in
+        [Yy]) return 0 ;;
+        [Nn]) return 1 ;;
+        [Qq]) die "中断しました。" ;;
+    esac
 }

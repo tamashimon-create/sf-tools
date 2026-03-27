@@ -68,8 +68,7 @@ fi
 
 # パターンB: 未接続 または 強制再ログイン
 if [ "$SKIP_LOGIN" -eq 0 ]; then
-    echo -en "${CLR_PROMPT}接続する組織のエイリアスを入力してください [デフォルト: tama / q で中断]: ${CLR_RESET}"
-    read -r ORG_ALIAS
+    read_input ORG_ALIAS "${CLR_PROMPT}接続する組織のエイリアスを入力してください [デフォルト: tama / q で中断]: ${CLR_RESET}"
     [[ "$ORG_ALIAS" == "q" || "$ORG_ALIAS" == "Q" ]] && die "中断しました。"
     ORG_ALIAS=${ORG_ALIAS:-tama}
 

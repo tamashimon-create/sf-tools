@@ -69,6 +69,7 @@ if [[ $# -eq 0 ]]; then
     _missing=()
     for _f in "$TESTS_DIR"/test_*.sh; do
         _name=$(basename "$_f")
+        [[ "$_name" == "test_helper.sh" ]] && continue  # ヘルパーファイルは除外
         _found=0
         for _registered in "${TEST_FILES[@]}"; do
             [[ "$_registered" == "$_name" ]] && { _found=1; break; }

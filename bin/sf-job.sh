@@ -70,16 +70,19 @@ press_enter() {
     local msg="${1:-続行するには Enter キーを押してください（q で中断）...}"
     echo ""
     local _input
-    read -rp "  ▶ $msg" _input
+    read_input _input "  ▶ $msg"
     [[ "$_input" == "q" || "$_input" == "Q" ]] && die "中断しました。"
 }
 
-# 入力を受け取る（q で中断）
+# 入力を受け取る（空 Enter 無視・q で中断）
 read_or_quit() {
     local -n _rq_var=$1
     local prompt="$2"
-    read -rp "$prompt" _rq_var
-    [[ "$_rq_var" == "q" || "$_rq_var" == "Q" ]] && die "中断しました。"
+    while true; do
+        read_input _rq_var "$prompt"
+        [[ "$_rq_var" == "q" || "$_rq_var" == "Q" ]] && die "中断しました。"
+        [[ -n "$_rq_var" ]] && break  # 空 Enter は無視して再入力
+    done
 }
 
 # ------------------------------------------------------------------------------

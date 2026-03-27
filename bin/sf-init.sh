@@ -156,9 +156,7 @@ if [[ -n "$REPO_DIR" ]]; then
     INIT_DIR="$(dirname "$REPO_DIR")"   # init フォルダのパス
     cd "$(dirname "$INIT_DIR")" || true
     if [[ -d "$INIT_DIR" ]]; then
-        printf "  ▶ init フォルダ（%s）を削除してよいですか？ [Y/N/q]: " "$INIT_DIR"
-        answer=""
-        read -r answer
+        read_key answer "  ▶ init フォルダ（${INIT_DIR}）を削除してよいですか？ [Y/N/q]: " "[YyNnQq]"
         if [[ "$answer" == "q" || "$answer" == "Q" ]]; then
             log "INFO" "削除をスキップしました。手動で削除してください: ${INIT_DIR}"
         elif [[ "$answer" =~ ^[Yy]$ ]]; then
