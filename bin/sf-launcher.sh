@@ -109,6 +109,8 @@ run_command() {
 # メイン処理
 # ------------------------------------------------------------------------------
 main() {
+    export SF_LAUNCHER_ACTIVE=1  # sf-start.sh からの二重起動を防止
+
     # force-* ディレクトリチェック
     if [[ ! "$(basename "$PWD")" =~ ^force- ]]; then
         echo -e "${YELLOW}  ⚠ force-* ディレクトリ内で実行してください。${RESET}"

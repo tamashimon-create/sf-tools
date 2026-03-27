@@ -68,16 +68,23 @@ fi
 
 # パターンB: 未接続 または 強制再ログイン
 if [ "$SKIP_LOGIN" -eq 0 ]; then
-    read_input ORG_ALIAS "${CLR_PROMPT}接続する組織のエイリアスを入力してください [デフォルト: tama / q で中断]: ${CLR_RESET}"
-    [[ "$ORG_ALIAS" == "q" || "$ORG_ALIAS" == "Q" ]] && die "中断しました。"
-    ORG_ALIAS=${ORG_ALIAS:-tama}
+    while true; do
+        read_input ORG_ALIAS "${CLR_PROMPT}接続する組織のエイリアスを入力してください [q で中断]: ${CLR_RESET}"
+        [[ "$ORG_ALIAS" == "q" || "$ORG_ALIAS" == "Q" ]] && die "中断しました。"
+        [[ -n "$ORG_ALIAS" ]] && break
+    done
 
     # VS Code が参照する古いエイリアス設定をクリア
     run sf alias unset vscodeOrg --json
 
+    # prod → 本番ログイン URL、それ以外 → Sandbox ログイン URL
+    LOGIN_URL="https://test.salesforce.com"
+    [[ "$ORG_ALIAS" == "prod" ]] && LOGIN_URL="https://login.salesforce.com"
+
     log "INFO" "ブラウザでログインして接続を許可してください..."
     run sf org logout --target-org "$ORG_ALIAS" --no-prompt 2>/dev/null || true
-    run sf org login web --set-default --alias "$ORG_ALIAS" || true
+    # ブラウザ起動に TTY が必要なため run ラッパーを使用しない
+    sf org login web --set-default --alias "$ORG_ALIAS" --instance-url "$LOGIN_URL" || true
     log "SUCCESS" "接続完了！"
 fi
 
@@ -123,7 +130,8 @@ disown   # ジョブ完了通知をターミナルに表示しない
 # ------------------------------------------------------------------------------
 # 7. ランチャ起動
 # ------------------------------------------------------------------------------
-if [[ -f "$HOME/sf-tools/bin/sf-launcher.sh" ]]; then
+# ランチャーから Restart 経由で呼ばれた場合は二重起動しない
+if [[ -f "$HOME/sf-tools/bin/sf-launcher.sh" ]] && [[ "${SF_LAUNCHER_ACTIVE:-}" != "1" ]]; then
     bash "$HOME/sf-tools/bin/sf-launcher.sh"
 fi
 
