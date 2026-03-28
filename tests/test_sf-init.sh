@@ -97,33 +97,33 @@ STUB
 }
 
 # ==============================================================================
-# ヘルパー：3ブランチ構成用の stdin 入力シーケンス（JWT 認証フロー）
+# ヘルパー：3ブランチ構成用の stdin 入力シーケンス
 #
-# 入力順（Phase 6: JWT 認証）:
-#   1. Y                  (確認プロンプト - phase_load_project_info / ask_yn)
-#   ★ \n を press_enter が消費（Y\n の \n が Connected App 案内待ちに使われる）
-#   2. fake_prod_key      (prod コンシューマーキー - read_or_quit)
-#   3. prod@example.com   (prod ユーザー名 - read_or_quit)
-#   4. Y                  (staging Sandbox? - ask_yn / read_key)
-#   ★ \n は read_or_quit が空行として無視
-#   5. fake_stg_key       (staging コンシューマーキー - read_or_quit)
-#   6. stg@example.com    (staging ユーザー名 - read_or_quit)
-#   7. Y                  (develop Sandbox? - ask_yn / read_key)
-#   ★ \n は read_or_quit が空行として無視
-#   8. fake_dev_key       (develop コンシューマーキー - read_or_quit)
-#   9. dev@example.com    (develop ユーザー名 - read_or_quit)
-# 入力順（Phase 7: PAT）:
-#  10. \n                 (press_enter)
-#  11. ghp_faketoken      (PAT トークン - read_or_quit)
-# 入力順（Phase 8: Slack）:
-#  12. \n                 (press_enter - Bot Token 取得案内)
-#  13. xoxb-faketoken     (Slack Bot Token - read_or_quit)
-#  14. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
-#  15. \n                 (press_enter - Bot 招待完了確認)
-#  16. N                  (init フォルダ削除をスキップ)
+# 入力順（Phase 2: プロジェクト情報確認）:
+#   1. Y                  (ask_yn "よろしいですか？" - read_key 1文字読み。\n は buffer 残留)
+# 入力順（Phase 6: PAT）:
+#   2. \n                 (press_enter - Y\n の \n を消費)
+#   3. ghp_faketoken      (PAT トークン - read_or_quit)
+# 入力順（Phase 7: Slack）:
+#   4. \n                 (press_enter - Bot Token 取得案内)
+#   5. xoxb-faketoken     (Slack Bot Token - read_or_quit)
+#   6. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
+#   7. \n                 (press_enter - Bot 招待完了確認)
+# 入力順（Phase 10: JWT 認証）:
+#   8. \n                 (press_enter - Connected App 設定案内)
+#   9. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#  10. prod@example.com   (prod ユーザー名 - read_or_quit)
+#  11. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  ★ \n は read_or_quit が空行として無視
+#  12. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#  13. stg@example.com    (staging ユーザー名 - read_or_quit)
+#  14. Y                  (develop Sandbox? - ask_yn read_key)
+#  15. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#  16. dev@example.com    (develop ユーザー名 - read_or_quit)
+#  17. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\nN\n'
+    printf 'Y\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
 }
 
 # ==============================================================================
@@ -260,10 +260,10 @@ test_sf_login_failure() {
     # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
 
-    # confirm → Connected App press_enter → prod consumer_key/username まで入力
+    # Phase2 confirm → PAT → Slack → Phase10 Connected App press_enter → prod consumer_key/username まで入力
     # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\nfake_prod_key\nprod@example.com\n' \
+    printf 'Y\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
@@ -454,11 +454,11 @@ test_only_phase2_creates_env_file() {
 }
 
 # ==============================================================================
-# テスト 11: --resume 10 → Phase 10 のみ実行（git commit は呼ばれない）
+# テスト 11: --only 9 → Phase 9 のみ実行（git commit は呼ばれない）
 # ==============================================================================
 test_resume_runs_from_specified_phase() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] --resume 10 → Phase 10 のみ実行${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] --only 9 → Phase 9 のみ実行${CLR_RST}"
 
     local mb mock_home init_base init_dir
     mb=$(setup_mock_bin)
@@ -471,8 +471,8 @@ test_resume_runs_from_specified_phase() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
-    # .sf-init.env を事前設定（Phase 2〜9 で書き出されるはずの内容）
-    # --resume 時は sf-init.sh が init/ に cd してから .sf-init.env を参照するため事前作成
+    # .sf-init.env を事前設定（Phase 2〜8 で書き出されるはずの内容）
+    # --only 時は sf-init.sh が init/ に cd してから .sf-init.env を参照するため事前作成
     mkdir -p "$init_dir/init"
     cat > "$init_dir/init/.sf-init.env" << 'ENVEOF'
 GITHUB_OWNER="tamashimon"
@@ -487,12 +487,12 @@ ENVEOF
     local exit_code
     printf 'N\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
-              bash "$mock_home/sf-tools/bin/sf-init.sh" --resume 10 ) > /dev/null 2>&1
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --only 9 ) > /dev/null 2>&1
     exit_code=$?
 
-    assert_exit_ok            "$exit_code"                         "--resume 10 で正常終了する"
-    assert_file_not_contains  "$MOCK_CALL_LOG" "git commit"        "--resume 10: git commit は呼ばれない"
-    assert_file_contains      "$MOCK_CALL_LOG" "gh repo edit"      "Phase 10: gh repo edit が呼ばれる"
+    assert_exit_ok            "$exit_code"                         "--only 9 で正常終了する"
+    assert_file_not_contains  "$MOCK_CALL_LOG" "git commit"        "--only 9: git commit は呼ばれない"
+    assert_file_contains      "$MOCK_CALL_LOG" "gh repo edit"      "Phase 9: gh repo edit が呼ばれる"
 
     teardown "$mb" "$mock_home" "$init_base"
 }

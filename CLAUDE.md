@@ -224,7 +224,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 | `bin/sf-*.sh` | 各種自動化スクリプト本体 |
 | `lib/common.sh` | 全スクリプト共通ライブラリ。`log` / `run` / `die` / 入力関数群を提供 |
 | `phases/init/init-common.sh` | sf-init.sh 専用ヘルパー（`open_browser` / `register_sf_secret` 等）。`press_enter` / `read_or_quit` は `lib/common.sh` に統合済み |
-| `phases/init/` | sf-init.sh のサブスクリプト（Phase 02〜08） |
+| `phases/init/` | sf-init.sh のサブスクリプト（Phase 02〜10） |
 | `hooks/pre-push` | git push フックの実体。`sf-hook.sh` がプロジェクト側へコピーする |
 | `templates/` | 各プロジェクトへ配布する雛形（ワークフロー・設定ファイル・release テンプレート）|
 | `tests/` | モックベースの単体テスト一式 |
@@ -424,11 +424,11 @@ GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序
 3. リポジトリ作成（gh repo create + git clone）
 4. ファイル生成（sf-install.sh）
 5. ブランチ構成（sf-branch.sh）
-6. Salesforce 認証 URL の設定（JWT 移行時はここだけ差し替え）
-7. PAT_TOKEN の設定
-8. Slack 連携の設定
-9. 初回コミット＆プッシュ
-10. GitHub リポジトリ設定・Ruleset の適用
+6. PAT_TOKEN の設定
+7. Slack 連携の設定
+8. 初回コミット＆プッシュ
+9. GitHub リポジトリ設定・Ruleset の適用
+10. JWT 認証情報の設定（Salesforce GitHub Secrets 登録）
 
 オプション:
 - `--resume N`: Phase N から再開（エラー後の再試行）
@@ -467,7 +467,7 @@ GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序
 | `sf-dryrun.sh` | `sf-release.sh` | オプションなし（dry-run）で呼ぶ |
 | `sf-deploy.sh` | `sf-release.sh` | `--release --force` 付きで呼ぶ |
 | `sf-push.sh` | `sf-check.sh` | コミット前にターゲットファイル検証 |
-| `sf-init.sh` | `phases/init/02〜08_*.sh` | フェーズ順に実行 |
+| `sf-init.sh` | `phases/init/02〜10_*.sh` | フェーズ順に実行 |
 | `hooks/pre-push` | `sf-release.sh` | push 時に dry-run 実行 |
 
 ---
