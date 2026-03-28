@@ -47,7 +47,7 @@ git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
 PATH に追加して、どこからでも実行できるようにする:
 
 ```bash
-echo 'export PATH="$HOME/sf-tools:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/sf-tools/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
