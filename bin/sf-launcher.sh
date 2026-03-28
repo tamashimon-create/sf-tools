@@ -41,7 +41,7 @@ MENU_ITEMS_ALL=(
 MENU_ITEMS=()
 for _item in "${MENU_ITEMS_ALL[@]}"; do
     if [[ "$TERM_PROGRAM" == "vscode" ]]; then
-        [[ "$_item" =~ ^sf-start|^sf-restart ]] && continue
+        [[ "$_item" =~ ^(sf-start|sf-restart) ]] && continue
     fi
     MENU_ITEMS+=("$_item")
 done
@@ -151,7 +151,7 @@ main() {
         # 入力ループ（1文字即時入力・無効入力は行クリアして待機）
         while true; do
             printf "  番号を入力 (1-%d / q で終了): " "$count"
-            read -rsn1 input  # 1文字即時入力・サイレント（エコーなし）
+            read -rsn1 input || { printf "\n"; exit 0; }  # EOF → 正常終了
 
             # 空 Enter / 数字・q 以外 → 行クリアして待機（エコーしない）
             if [[ -z "$input" ]] || ! [[ "$input" =~ ^[0-9qQ]$ ]]; then

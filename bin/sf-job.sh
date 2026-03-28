@@ -65,25 +65,7 @@ BASE_BRANCH=""        # ジョブブランチの分岐元ブランチ
 # 4. ヘルパー関数
 # ------------------------------------------------------------------------------
 
-# Enter キー待ち（q で中断）
-press_enter() {
-    local msg="${1:-続行するには Enter キーを押してください（q で中断）...}"
-    echo ""
-    local _input
-    read_input _input "  ▶ $msg"
-    [[ "$_input" == "q" || "$_input" == "Q" ]] && die "中断しました。"
-}
-
-# 入力を受け取る（空 Enter 無視・q で中断）
-read_or_quit() {
-    local -n _rq_var=$1
-    local prompt="$2"
-    while true; do
-        read_input _rq_var "$prompt"
-        [[ "$_rq_var" == "q" || "$_rq_var" == "Q" ]] && die "中断しました。"
-        [[ -n "$_rq_var" ]] && break  # 空 Enter は無視して再入力
-    done
-}
+# press_enter / read_or_quit は lib/common.sh で定義済み
 
 # ------------------------------------------------------------------------------
 # 5. フェーズ定義

@@ -59,6 +59,8 @@ TEST_FILES=(
     test_sf-prepush.sh
     test_sf-push.sh
     test_sf-update-secret.sh
+    test_sf-launcher.sh
+    test_sf-precommit.sh
 )
 
 # ------------------------------------------------------------------------------
@@ -242,7 +244,7 @@ else
         echo ""
         # 失敗したテスト一覧を表示
         echo -e "${CLR_NG}  失敗したテスト:${CLR_RST}"
-        echo "$FAIL_LINES" | grep '\[FAIL\]' | sed "s/^/  /" | tee_log
+        echo "$FAIL_LINES" | grep -v '^$' | sed "s/^/  /" | tee_log
         echo ""
     } | tee_log
     exit 1

@@ -271,6 +271,21 @@ EOF
     chmod +x "$bin_dir/node"
 }
 
+# ブラウザ起動コマンドモック
+# WSL では powershell.exe が実在するため、mock bin を PATH 先頭に置くことで無効化する
+create_mock_browser() {
+    local bin_dir="$1"
+    local _cmd
+    for _cmd in powershell.exe xdg-open open wslview start; do
+        cat > "$bin_dir/$_cmd" << 'EOF'
+#!/bin/bash
+echo "$0 $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+exit 0
+EOF
+        chmod +x "$bin_dir/$_cmd"
+    done
+}
+
 # 全モックを一括生成
 create_all_mocks() {
     local bin_dir="$1"
@@ -280,6 +295,7 @@ create_all_mocks() {
     create_mock_code "$bin_dir"
     create_mock_gh "$bin_dir"
     create_mock_node "$bin_dir"
+    create_mock_browser "$bin_dir"  # ブラウザ起動コマンドを無効化
 }
 
 # ------------------------------------------------------------------------------

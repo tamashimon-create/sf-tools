@@ -66,14 +66,55 @@ gh auth switch --user tamashimon    # 完了後は必ず元に戻す
 
 - すべてのテキストファイルは UTF-8 / LF で統一すること
   - **新規ファイル作成後は必ず LF 変換すること**（Write ツールは CRLF を生成するため）
-  - 変換コマンド: `wsl sed -i 's/\r//' <file>`
-- Bash / Windows / Mac / Linux 共通で動作すること
+  - 変換コマンド: `wsl bash -c "sed -i 's/\r//' <file>"`
 - `jq` など追加依存は原則追加しないこと（`awk` / `sed` / `grep` など標準コマンドを使う）
 - エラー時は `die` で即終了すること
 - 一時ファイルは `trap ... EXIT` で確実にクリーンアップすること
 - ログレベルは `INFO` / `SUCCESS` / `WARNING` / `ERROR` を使い分けること
 
-### 2.3 冒頭コメント（最重要：仕様の正本）
+### 2.3 クロスプラットフォーム規約
+
+**対応必須環境:** GitBash（Windows）/ WSL / macOS / Linux
+
+#### 2.3.1 Bash バージョン要件
+
+- **Bash 4.3 以上を必須とする**（`local -n` nameref 等を使用するため）
+- `lib/common.sh` 冒頭で `BASH_VERSINFO` をチェックし、4.3 未満は起動不可としてアップグレードを促す
+- 互換ハックで古い環境に対応するよりも、**環境アップグレードを促すことを優先する**（コードの質・メンテナンス性を守るため）
+- macOS デフォルト Bash は 3.2 のため、`brew install bash` を案内すること
+
+#### 2.3.2 OS 検出の統一ルール
+
+| 目的 | 使う方法 | 理由 |
+|---|---|---|
+| GitBash 検出 | `[[ "$OSTYPE" == "msys"* \|\| "$OSTYPE" == "mingw"* ]]` | Bash 組み込み・サブプロセス不要 |
+| macOS 検出 | `[[ "$OSTYPE" == "darwin"* ]]` | 同上 |
+| WSL 検出 | `grep -qi microsoft /proc/version 2>/dev/null` | `/proc` 非存在環境は `2>/dev/null` で抑制 |
+| macOS/Linux 分岐が必要な場合のみ | `uname -s` | `stat` 書式差異など限定的に使用 |
+
+> `uname -s` はサブプロセスを起動するため遅い。OS 検出は原則 `$OSTYPE` に統一すること。
+
+#### 2.3.3 新規スクリプト追加・大きな変更後のチェック
+
+上記4環境で動作することを意識してレビューすること。特に以下に注意:
+- プラットフォーム固有コマンド（`powershell.exe` / `open` / `xdg-open` 等）は `command -v` で存在確認してから使うこと
+- `/proc/version` / `/proc/` 配下のファイルは macOS / GitBash に存在しないため `2>/dev/null` を付けること
+
+### 2.4 インタラクティブ入力規約
+
+全インタラクティブ入力は `lib/common.sh` 定義の関数を使うこと。スクリプト内での独自実装・重複定義は禁止。
+
+| 関数 | 用途 | 特徴 |
+|---|---|---|
+| `read_key VAR [PROMPT] [VALID]` | 1文字即時選択（Y/N/q・番号など） | Enter 不要・空 Enter 無視・EOF 対応 |
+| `read_input VAR [PROMPT]` | テキスト自由入力 | readline 対応（矢印キー・BS 有効） |
+| `press_enter [MSG]` | Enter 待ち（q で中断） | 空 Enter で続行・q で die |
+| `read_or_quit VAR PROMPT` | テキスト入力（空 Enter 無視・q で中断） | EOF 対応・nameref 使用（Bash 4.3+） |
+| `ask_yn "質問"` | Y/N/q 確認 | `read_key` ベース・q は `die` |
+
+> `sf-launcher.sh` は `common.sh` を source しない standalone 設計のため例外。`read -rsn1` 直書き時は `|| { printf "\n"; exit 0; }` で EOF 対応を必ず付けること。
+
+### 2.5 冒頭コメント（最重要：仕様の正本）
 
 **各シェルスクリプト冒頭のコメントは仕様の正本。スクリプトを変更した場合は冒頭コメントも必ず連動して更新すること。**
 
@@ -107,16 +148,19 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh  # 統合テスト
 ### 3.2 デグレ防止チェックリスト
 
 - **新規 `sf-*.sh` を追加した場合**：対応する `test_sf-*.sh` を作成し、`tests/run_tests.sh` の `TEST_FILES` に追加すること
-- **`ask_yn` を含むスクリプトのテスト**：`echo "n" |` または `run_script_with_no()` で stdin を供給すること（ブロック防止）
+- **インタラクティブ入力を含むスクリプトのテスト**：`echo "n" |` または `run_script_with_no()` で stdin を供給すること（ブロック防止）
 - **既存ロジックを変更する場合**：変更前後の動作差分をコメントまたはコミットメッセージに明記すること
 - **git 操作を含む新規スクリプトを作成する場合**：`CLAUDE.md` の「スクリプト別の処理概要」に実行フローを先に記載してから実装すること
+- **ブラウザ・GUI系コマンドを呼ぶスクリプトを追加した場合**：`test_helper.sh` の `create_mock_browser` にモックを追加すること（実際のブラウザ起動を防ぐため）
 
 ### 3.3 主要テスト対象
 
 | ファイル | 対象スクリプト |
 |---|---|
+| `test_common.sh` | lib/common.sh |
 | `test_sf-unhook.sh` | sf-unhook.sh |
 | `test_sf-hook.sh` | sf-hook.sh |
+| `test_sf-init.sh` | sf-init.sh |
 | `test_sf-upgrade.sh` | sf-upgrade.sh |
 | `test_sf-install.sh` | sf-install.sh |
 | `test_sf-start.sh` | sf-start.sh |
@@ -125,7 +169,13 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh  # 統合テスト
 | `test_sf-release.sh` | sf-release.sh |
 | `test_sf-deploy.sh` | sf-deploy.sh |
 | `test_sf-dryrun.sh` | sf-dryrun.sh |
-| `test_sf-init.sh` | sf-init.sh |
+| `test_sf-job.sh` | sf-job.sh |
+| `test_sf-next.sh` | sf-next.sh |
+| `test_sf-branch.sh` | sf-branch.sh |
+| `test_sf-check.sh` | sf-check.sh |
+| `test_sf-prepush.sh` | hooks/pre-push |
+| `test_sf-push.sh` | sf-push.sh |
+| `test_sf-update-secret.sh` | sf-update-secret.sh |
 
 ### 3.4 `test_helper.sh` の前提
 
@@ -137,7 +187,19 @@ bash ~/sf-tools/tests/integration/test-sequence-check.sh  # 統合テスト
 - `setup_mock_home`: `~/sf-tools` をコピーした一時 HOME を作成
 - `teardown ARG...`: 指定ディレクトリを削除
 
-モック生成関数: `create_mock_git` / `create_mock_sf` / `create_mock_npm` / `create_mock_code` / `create_all_mocks`
+モック生成関数（`create_all_mocks` で一括生成）:
+
+| 関数 | モック対象 |
+|---|---|
+| `create_mock_git` | git |
+| `create_mock_sf` | sf（Salesforce CLI） |
+| `create_mock_npm` | npm |
+| `create_mock_code` | code（VS Code） |
+| `create_mock_gh` | gh（GitHub CLI） |
+| `create_mock_node` | node |
+| `create_mock_browser` | powershell.exe / xdg-open / open / wslview / start |
+
+> `create_mock_browser` は WSL 環境でブラウザが実際に起動することを防ぐために必須。新規スクリプトがブラウザ・GUI 系コマンドを追加した場合はこのモックに追記すること。
 
 ---
 
@@ -160,9 +222,9 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 | パス | 役割 |
 |---|---|
 | `bin/sf-*.sh` | 各種自動化スクリプト本体 |
-| `lib/common.sh` | 全スクリプト共通ライブラリ。`log` / `run` / `die` を提供 |
-| `phases/init/init-common.sh` | sf-init.sh 専用ヘルパー（`open_browser` / `press_enter` / `register_sf_secret` 等）|
-| `phases/init/` | sf-init.sh のサブスクリプト（Phase 01〜08）|
+| `lib/common.sh` | 全スクリプト共通ライブラリ。`log` / `run` / `die` / 入力関数群を提供 |
+| `phases/init/init-common.sh` | sf-init.sh 専用ヘルパー（`open_browser` / `register_sf_secret` 等）。`press_enter` / `read_or_quit` は `lib/common.sh` に統合済み |
+| `phases/init/` | sf-init.sh のサブスクリプト（Phase 02〜08） |
 | `hooks/pre-push` | git push フックの実体。`sf-hook.sh` がプロジェクト側へコピーする |
 | `templates/` | 各プロジェクトへ配布する雛形（ワークフロー・設定ファイル・release テンプレート）|
 | `tests/` | モックベースの単体テスト一式 |
@@ -175,15 +237,15 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 - `phases/` はフェーズスクリプト専用（1回限りの処理ステップ）
 - フォルダ名はメインスクリプトの `sf-` を除いた名前（`init`, `deploy`, `metasync` 等）
 
-### 4.3 ブランチ運用
+### 4.3 ブランチ運用（sf-tools リポジトリ）
 
-| ブランチ | SF エイリアス | 用途 |
-|---|---|---|
-| `main` | `prod` | 本番組織 |
-| `staging` | `staging` | ステージング組織 |
-| `develop` | `develop` | 検証組織 |
+| ブランチ | 用途 |
+|---|---|
+| `development` | 開発ブランチ（通常の作業はここで行う） |
+| `main` | リリースブランチ（`development` → PR → merge でリリース） |
 
-- PR フローは `feature/*` → `develop` / `staging` / `main`
+- 作業は `development` ブランチで行い、`main` へは PR 経由でマージする
+- mm/mmok = commit → push → PR 作成 → main へマージ
 
 ### 4.4 force-* ローカル環境ディレクトリ
 
@@ -209,7 +271,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 | `SCRIPT_NAME` | スクリプト名（拡張子なし） |
 | `LOG_FILE` | ログファイルのパス |
 | `LOG_MODE` | `NEW` = 上書き / `APPEND` = 追記 |
-| `SILENT_EXEC` | `--verbose` / `-v` 指定時のみ 0、それ以外は 1 |
+| `SILENT_EXEC` | `--verbose` / `-v` 指定時のみ 0、それ以外は 1（source 後に自動設定） |
 
 ### 5.1 主な関数
 
@@ -217,9 +279,17 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 |---|---|---|
 | `log` | `log LEVEL MESSAGE [DEST]` | 画面・ログファイルに出力 |
 | `run` | `run CMD [ARGS...]` | コマンド実行、ログ出力、戻り値判定 |
-| `die` | `die MESSAGE [EXIT_CODE]` | エラー終了 |
+| `die` | `die MESSAGE [EXIT_CODE]` | エラーログを出力して終了 |
 | `get_target_org` | `get_target_org [ALIAS]` | 対象組織エイリアスを解決して出力 |
 | `check_force_dir` | `check_force_dir` | `force-*` ディレクトリか検証 |
+| `check_home_dir` | `check_home_dir` | `~/home/{owner}/{company}/` の階層を検証し `GITHUB_OWNER` / `COMPANY_NAME` をセット |
+| `check_authorized_user` | `check_authorized_user` | 実行許可ユーザーか確認（マスター固定 + 外部ファイル） |
+| `open_browser` | `open_browser URL` | OS 判定してブラウザを開く（WSL/GitBash/macOS/Linux 対応） |
+| `read_input` | `read_input VAR [PROMPT]` | readline 対応テキスト入力（矢印キー・BS 有効） |
+| `read_key` | `read_key VAR [PROMPT] [VALID]` | 1文字即時入力（Enter 不要・空 Enter 無視・EOF 対応） |
+| `press_enter` | `press_enter [MSG]` | Enter 待ち（q で中断） |
+| `read_or_quit` | `read_or_quit VAR PROMPT` | テキスト入力（空 Enter 無視・q で中断・EOF 対応） |
+| `ask_yn` | `ask_yn "質問"` | Y/N/q 確認（1文字即時入力・q は `die`） |
 
 ### 5.2 `log` のレベル
 
@@ -230,7 +300,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 | 定数 | 値 | 意味 |
 |---|---|---|
 | `RET_OK` | 0 | 成功 |
-| `RET_NG` | 1 | 失敗 |
+| `RET_NG` | 1 | 失敗（`logs/error.log` にも記録） |
 | `RET_NO_CHANGE` | 2 | `NothingToDeploy` など変更なし |
 
 ---
@@ -239,10 +309,11 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 ### 6.1 sf-start.sh
 
-- 接続先組織を確認し、必要なら `sf org login web`
+- 接続先組織を確認し、必要なら `sf org login web`（WSL では wslview シムを一時生成してブラウザ起動）
 - `.sf/config.json` / `.sfdx/sfdx-config.json` を更新
 - `code .` で VS Code を起動
 - バックグラウンドで `sf-install.sh` を実行（フック・リリースDir準備・ツール更新はすべて sf-install.sh が担当）
+- 完了後に `sf-launcher.sh` を起動（`SF_LAUNCHER_ACTIVE=1` で二重起動を防止）
 
 `FORCE_RELOGIN=1` を付けると再ログインを強制できる。
 
@@ -294,6 +365,14 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 - `sf-release.sh` のラッパー（オプションなし = dry-run がデフォルト）
 - ランチャーから呼ばれる dry-run 専用コマンド
 
+### 6.7 sf-launcher.sh
+
+- `sfl` コマンドで起動するメニュー形式ランチャー
+- `lib/common.sh` を source しない standalone 設計（ログ不要・カラー定義を独自に持つ）
+- VSCode 内では `sf-start` / `sf-restart` をメニューから除外（`$TERM_PROGRAM == "vscode"` で判定）
+- `SF_LAUNCHER_ACTIVE=1` をエクスポートして `sf-start.sh` からの二重起動を防止
+- `sflf` エイリアスで fzf モードも利用可能
+
 ### 6.8 sf-deploy.sh
 
 - `sf-release.sh --release --force` のラッパー
@@ -304,6 +383,7 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 - npm / Salesforce CLI / Git を更新
 - `sf-install.sh` から 24 時間間隔でバックグラウンド起動される
+- Git の更新は GitBash（`$OSTYPE == "msys"*` / `"mingw"*`）のみ実行（他環境はパッケージマネージャーを案内）
 
 ### 6.10 sf-push.sh
 
@@ -382,12 +462,13 @@ GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序
 |---|---|---|
 | `sf-restart.sh` | `sf-start.sh` | 設定クリア後に start を実行 |
 | `sf-start.sh` | `sf-install.sh` | バックグラウンド起動 |
+| `sf-start.sh` | `sf-launcher.sh` | install 完了後に起動（二重起動防止あり） |
 | `sf-install.sh` | `sf-hook.sh` | フックインストール |
 | `sf-install.sh` | `sf-upgrade.sh` | 24h 経過時バックグラウンド起動 |
 | `sf-dryrun.sh` | `sf-release.sh` | オプションなし（dry-run）で呼ぶ |
 | `sf-deploy.sh` | `sf-release.sh` | `--release --force` 付きで呼ぶ |
 | `sf-push.sh` | `sf-check.sh` | コミット前にターゲットファイル検証 |
-| `sf-init.sh` | `phases/init/01〜08_*.sh` | フェーズ順に実行 |
+| `sf-init.sh` | `phases/init/02〜08_*.sh` | フェーズ順に実行 |
 | `hooks/pre-push` | `sf-release.sh` | push 時に dry-run 実行 |
 
 ---
