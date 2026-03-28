@@ -179,7 +179,7 @@ phase_upgrade_tools_bg() {
             log "WARNING" "sf-upgrade.sh が見つかりません。スキップします。"
             return $RET_OK
         fi
-        bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>&1 &
+        bash "$SCRIPT_DIR/sf-upgrade.sh" "$@" >/dev/null 2>>"$LOG_FILE" &  # stdout は sf-upgrade.sh の自前ログへ・stderr はこのスクリプトのログへ記録
         local bg_pid=$!
         if kill -0 "$bg_pid" 2>/dev/null; then
             run touch "$UPDATE_STAMP_FILE"

@@ -78,8 +78,8 @@ register_sf_secret() {
 
     log "INFO" "認証 URL を取得中..."
     local sf_json auth_url
-    # VAR=$(cmd) 形式のため run ラッパー内で stdout を返す挙動を利用
-    sf_json=$(run sf org display --verbose --json --target-org "$org_alias" 2>/dev/null)
+    # run 不使用: 出力に sfdxAuthUrl を含むためログへの記録を避ける
+    sf_json=$(sf org display --verbose --json --target-org "$org_alias" 2>/dev/null)
     auth_url=$(echo "$sf_json" \
         | grep '"sfdxAuthUrl"' \
         | sed 's/.*"sfdxAuthUrl": *"\([^"]*\)".*/\1/')
