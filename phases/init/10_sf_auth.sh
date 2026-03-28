@@ -72,21 +72,28 @@ fi
 # --------------------------------------------------------------------------
 log "HEADER" "Phase 10-2: Salesforce Connected App を設定してください。"
 log "INFO" ""
-log "INFO" "  ▼ 以下の証明書（公開鍵）を各組織の Connected App にアップロードしてください。"
-log "INFO" "  ─────────────────────────────────────────────────"
-# run 不使用: cat の出力をそのまま画面に表示するため
-cat "${JWT_DIR}/server.crt" >&2
-log "INFO" "  ─────────────────────────────────────────────────"
+log "INFO" "  ▼ アップロードする証明書ファイル（server.crt）のパス:"
+log "INFO" "    ${JWT_DIR}/server.crt"
 log "INFO" ""
 log "INFO" "  【Connected App 作成手順（組織ごとに実施）】"
-log "INFO" "  1. Salesforce 管理画面 → 設定 → アプリケーション → 接続アプリケーション"
-log "INFO" "  2. 「新規接続アプリケーション」をクリック"
-log "INFO" "  3. OAuth 設定を有効化 → コールバック URL に dummy://callback を入力"
-log "INFO" "  4. 「デジタル署名を使用」にチェック → 上記の server.crt をアップロード"
-log "INFO" "  5. OAuth スコープに「フルアクセス(full)」または必要なスコープを追加"
-log "INFO" "  6. 保存後、「コンシューマーキーとシークレット」でキーをコピー"
-log "INFO" "  7. プロファイル/権限セットに接続ユーザーを追加して「接続アプリケーションを管理」"
-log "INFO" "  8. 「事前に許可済みユーザーに制限」に設定"
+log "INFO" "  1. 設定 → アプリケーション → 接続アプリケーション → 「新規接続アプリケーション」"
+log "INFO" "  2. 基本情報を入力（アプリケーション名・API 参照名・連絡先メール）"
+log "INFO" "  3. 「OAuth 設定を有効化」にチェック"
+log "INFO" "     コールバック URL: https://login.salesforce.com/services/oauth2/callback"
+log "INFO" "  4. OAuth スコープに「フルアクセス (full)」を追加"
+log "INFO" "  5. 「デジタル署名を使用」にチェック → 上記の server.crt をアップロード"
+log "INFO" "  6. 保存 → 「コンシューマーキーとシークレット」をクリック → コンシューマーキーをコピー"
+log "INFO" ""
+log "INFO" "  ★ 保存後 2〜10 分待ってから以下を設定してください ★"
+log "INFO" ""
+log "INFO" "  7. 【OAuth ポリシーの設定】"
+log "INFO" "     「接続アプリケーションを管理」→「OAuth ポリシーを編集」"
+log "INFO" "     ・「許可されているユーザー」→「管理者が承認したユーザーは事前承認済み」に変更"
+log "INFO" "     ・「指名ユーザーの JWT ベースアクセストークンを発行」→ チェックを入れる"
+log "INFO" "     → 保存"
+log "INFO" "  8. 【プロファイルの割り当て】"
+log "INFO" "     「接続アプリケーションを管理」→「プロファイルを管理」"
+log "INFO" "     → 接続ユーザーのプロファイル（例: システム管理者）を追加"
 log "INFO" ""
 press_enter "設定が完了したら Enter を押してください（q で中断）"
 
@@ -104,15 +111,15 @@ log "SUCCESS" "SF_PRIVATE_KEY を登録しました。"
 # --------------------------------------------------------------------------
 log "HEADER" "Phase 10-4: 各組織の JWT 認証情報を設定します。"
 
-# 6-4-1. 本番組織（必須）
+# 10-4-1. 本番組織（必須）
 register_jwt_secret "prod" "PROD" "本番組織" "${JWT_DIR}/server.key" "N"
 
-# 6-4-2. ステージング組織（2 階層以上）
+# 10-4-2. ステージング組織（2 階層以上）
 if [[ $BRANCH_COUNT -ge 2 ]]; then
     register_jwt_secret "staging" "STG" "ステージング組織" "${JWT_DIR}/server.key"
 fi
 
-# 6-4-3. 開発組織（3 階層）
+# 10-4-3. 開発組織（3 階層）
 if [[ $BRANCH_COUNT -ge 3 ]]; then
     register_jwt_secret "develop" "DEV" "開発組織" "${JWT_DIR}/server.key"
 fi
