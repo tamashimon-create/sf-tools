@@ -1,0 +1,246 @@
+# JWT 認証方式 実装仕様書
+
+> **本ドキュメントの範囲:** JWT 認証への移行設計・仕様・実装方針。実装の詳細（コマンド引数等）はコードを正とします。
+
+---
+
+## 1. 目的・背景
+
+### 1.1 現状（sfdxAuthUrl 方式）の課題
+
+現行の認証方式は `sf org login web`（ブラウザ認証）で取得した OAuth リフレッシュトークンを `sfdxAuthUrl` として GitHub Secrets に登録している。
+
+| 課題 | 内容 |
+|---|---|
+| トークン失効 | リフレッシュトークンには有効期限があり、期限切れ時に手動再登録が必要 |
+| 再登録の手間 | 組織ごとにブラウザログインが必要 |
+| セキュリティ | リフレッシュトークンは汎用的な認証情報であり、漏洩リスクがある |
+
+### 1.2 JWT 方式のメリット
+
+| 項目 | 内容 |
+|---|---|
+| 有効期限なし | 秘密鍵は期限がないため再登録不要 |
+| ヘッドレス認証 | ブラウザ不要で CI/CD に最適 |
+| 最小権限 | Connected App で権限を明示的に制限可能 |
+| 業界標準 | OAuth 2.0 JWT Bearer Flow（RFC 7523） |
+
+### 1.3 移行方針
+
+- **CI/CD（GitHub Actions）**: sfdxAuthUrl → JWT に完全移行
+- **ローカル環境（sf-start.sh）**: 変更なし（引き続き `sf org login web` を使用）
+- **既存プロジェクトの移行スクリプト**: 作成しない（新規セットアップから JWT を使用）
+
+---
+
+## 2. GitHub Secrets の設計
+
+### 2.1 Secrets 一覧
+
+| Secret 名 | 共通/組織別 | 内容 |
+|---|---|---|
+| `SF_PRIVATE_KEY` | **プロジェクト共通（1つ）** | 秘密鍵（PEM 形式）。全組織の Connected App に同一の公開鍵証明書を登録するため共通 |
+| `SF_CONSUMER_KEY_PROD` | 組織別 | 本番組織の Connected App コンシューマーキー |
+| `SF_CONSUMER_KEY_STG` | 組織別 | ステージング組織の Connected App コンシューマーキー |
+| `SF_CONSUMER_KEY_DEV` | 組織別 | 開発組織の Connected App コンシューマーキー |
+| `SF_USERNAME_PROD` | 組織別 | 本番組織の接続ユーザー名 |
+| `SF_USERNAME_STG` | 組織別 | ステージング組織の接続ユーザー名 |
+| `SF_USERNAME_DEV` | 組織別 | 開発組織の接続ユーザー名 |
+| `SF_INSTANCE_URL_PROD` | 組織別 | `https://login.salesforce.com` or `https://test.salesforce.com` |
+| `SF_INSTANCE_URL_STG` | 組織別 | 同上 |
+| `SF_INSTANCE_URL_DEV` | 組織別 | 同上 |
+
+> 合計: 1 + 3 + 3 + 3 = **10 secrets**（現行 3 から変更）
+
+### 2.2 SF_CONSUMER_KEY が組織ごとに異なる理由
+
+Connected App は各 Salesforce 組織に個別に作成するため、コンシューマーキーは組織ごとに固有の値となる。
+ただし **証明書（公開鍵）は共通**なので、各組織の Connected App に同一の `server.crt` を登録することで、秘密鍵 1 つで全組織に認証できる。
+
+### 2.3 SF_INSTANCE_URL の値
+
+| 組織種別 | 値 |
+|---|---|
+| 本番組織 / Developer Edition | `https://login.salesforce.com` |
+| Sandbox | `https://test.salesforce.com` |
+
+sf-init の Sandbox 確認プロンプト（Y/N）で自動設定する。
+
+---
+
+## 3. 証明書の管理
+
+### 3.1 生成場所
+
+```
+~/.sf-jwt/<REPO_NAME>/
+  server.key   ← 秘密鍵（GitHub Secrets: SF_PRIVATE_KEY に登録）
+  server.crt   ← 公開鍵証明書（各組織の Connected App にアップロード）
+```
+
+- 秘密鍵はプロジェクトリポジトリには含めない
+- `~/.sf-jwt/` は gitignore 対象外のホームディレクトリに保管
+- 各組織の Connected App に同一の `server.crt` を登録する
+
+### 3.2 生成コマンド（openssl）
+
+sf-init 内で自動実行する。
+
+```bash
+openssl genrsa -out server.key 2048
+openssl req -new -x509 -days 3650 \
+    -key server.key \
+    -out server.crt \
+    -subj "/CN=sf-jwt-${REPO_NAME}/O=sf-cicd"
+```
+
+有効期限は 10 年（3650 日）。
+
+---
+
+## 4. sf-init Phase 6 の処理フロー
+
+### 4.1 フロー概要
+
+```
+[Step 1] 証明書の生成（共通・1回のみ）
+  ├─ ~/.sf-jwt/<REPO_NAME>/ を作成
+  ├─ openssl で server.key / server.crt を生成
+  └─ server.crt の内容を表示（Connected App に貼り付け用）
+
+[Step 2] Connected App 設定案内（共通・1回）
+  ├─ Salesforce 管理画面での操作手順を表示
+  │    1. 設定 → アプリケーション → 接続アプリケーションを作成
+  │    2. OAuth 設定を有効化
+  │    3. 「デジタル署名を使用」→ server.crt をアップロード
+  │    4. 適切なプロファイル/権限セットに接続ユーザーを追加
+  │    5. 「コンシューマーキーとシークレット」でキーをコピー
+  └─ press_enter「設定が完了したら Enter を押してください」
+
+[Step 3] SF_PRIVATE_KEY を GitHub Secrets に登録（共通・1回）
+  └─ gh secret set SF_PRIVATE_KEY（server.key の内容）
+
+[Step 4] 組織ごとの設定（BRANCH_COUNT 回繰り返し）
+  ├─ 「Sandbox ですか？ [Y/N]」→ SF_INSTANCE_URL を決定
+  ├─ コンシューマーキーを入力（read_or_quit）
+  ├─ 接続ユーザー名を入力（read_or_quit）
+  ├─ JWT 接続テスト
+  │    sf org login jwt \
+  │      --client-id    <CONSUMER_KEY> \
+  │      --jwt-key-file ~/.sf-jwt/<REPO>/server.key \
+  │      --username     <USERNAME> \
+  │      --instance-url <INSTANCE_URL> \
+  │      --alias        <prod|staging|develop>
+  │    → 失敗時: die「認証テストに失敗しました。Connected App の設定を確認してください。」
+  └─ gh secret set SF_CONSUMER_KEY_xxx / SF_USERNAME_xxx / SF_INSTANCE_URL_xxx
+```
+
+### 4.2 再開（--resume）時の考慮
+
+Phase 6 は Step 3（SF_PRIVATE_KEY 登録）まで完了していれば、`--resume 6` で Step 4 から再開できるよう設計する。
+
+---
+
+## 5. GitHub Actions の変更
+
+### 5.1 caller workflows（force-XXXX 側）
+
+`wf-validate.yml` / `wf-release.yml` の secrets 定義を変更する。
+
+```yaml
+# 変更前
+secrets:
+  SFDX_AUTH_URL_PROD: ${{ secrets.SFDX_AUTH_URL_PROD }}
+  SFDX_AUTH_URL_STG:  ${{ secrets.SFDX_AUTH_URL_STG }}
+  SFDX_AUTH_URL_DEV:  ${{ secrets.SFDX_AUTH_URL_DEV }}
+
+# 変更後
+secrets:
+  SF_PRIVATE_KEY:       ${{ secrets.SF_PRIVATE_KEY }}
+  SF_CONSUMER_KEY_PROD: ${{ secrets.SF_CONSUMER_KEY_PROD }}
+  SF_CONSUMER_KEY_STG:  ${{ secrets.SF_CONSUMER_KEY_STG }}
+  SF_CONSUMER_KEY_DEV:  ${{ secrets.SF_CONSUMER_KEY_DEV }}
+  SF_USERNAME_PROD:     ${{ secrets.SF_USERNAME_PROD }}
+  SF_USERNAME_STG:      ${{ secrets.SF_USERNAME_STG }}
+  SF_USERNAME_DEV:      ${{ secrets.SF_USERNAME_DEV }}
+  SF_INSTANCE_URL_PROD: ${{ secrets.SF_INSTANCE_URL_PROD }}
+  SF_INSTANCE_URL_STG:  ${{ secrets.SF_INSTANCE_URL_STG }}
+  SF_INSTANCE_URL_DEV:  ${{ secrets.SF_INSTANCE_URL_DEV }}
+```
+
+### 5.2 reusable workflows（sf-tools 側）
+
+`wf-validate-reusable.yml` / `wf-release-reusable.yml` の認証ステップを差し替える。
+
+```yaml
+# 変更前
+- name: Salesforce 認証
+  run: |
+    echo "$SFDX_AUTH_URL" > /tmp/sf_auth.txt
+    sf org login sfdx-url --sfdx-url-file /tmp/sf_auth.txt --alias prod
+
+# 変更後
+- name: Salesforce 認証
+  run: |
+    echo "$SF_PRIVATE_KEY" > /tmp/server.key
+    sf org login jwt \
+      --client-id    "$SF_CONSUMER_KEY" \
+      --jwt-key-file /tmp/server.key \
+      --username     "$SF_USERNAME" \
+      --instance-url "$SF_INSTANCE_URL" \
+      --alias        prod
+    rm -f /tmp/server.key
+```
+
+---
+
+## 6. sf-update-secret.sh の全面改修
+
+### 6.1 処理フロー
+
+```
+選択メニュー:
+  1. 秘密鍵を更新（SF_PRIVATE_KEY）
+     → ファイルパスを入力 → JWT 接続テスト → Secret 登録
+  2. コンシューマーキーを更新（SF_CONSUMER_KEY_xxx）
+     → 組織を選択 → テキスト入力 → JWT 接続テスト → Secret 登録
+  3. ユーザー名を更新（SF_USERNAME_xxx）
+     → 組織を選択 → テキスト入力 → JWT 接続テスト → Secret 登録
+  4. すべて更新
+     → 上記を順番に実行
+```
+
+### 6.2 JWT 接続テスト（更新前に必ず実施）
+
+```bash
+sf org login jwt \
+  --client-id    <CONSUMER_KEY> \
+  --jwt-key-file <KEY_FILE> \
+  --username     <USERNAME> \
+  --instance-url <INSTANCE_URL> \
+  --alias        <alias>
+```
+
+テスト失敗時は Secret を更新せず die で終了する。
+
+---
+
+## 7. 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `phases/init/06_sf_auth.sh` | 全面書き換え | JWT フローに変更 |
+| `phases/init/init-common.sh` | 関数差し替え | `register_sf_secret` 削除・`register_jwt_secret` 追加 |
+| `bin/sf-update-secret.sh` | 全面書き換え | JWT Secrets 対応 |
+| `templates/.github/workflows/wf-validate.yml` | Secrets 定義変更 | sfdxAuthUrl → JWT |
+| `templates/.github/workflows/wf-release.yml` | Secrets 定義変更 | 同上 |
+| `.github/workflows/wf-validate-reusable.yml` | 認証ステップ差し替え | `sfdx-url` → `jwt` |
+| `.github/workflows/wf-release-reusable.yml` | 認証ステップ差し替え | 同上 |
+
+---
+
+## 8. ローカル環境への影響
+
+**変更なし。**
+`sf-start.sh` のローカルログイン（`sf org login web`）はそのまま維持する。
+JWT 認証は GitHub Actions（CI/CD）側のみで使用する。

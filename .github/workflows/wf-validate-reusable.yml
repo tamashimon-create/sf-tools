@@ -19,19 +19,40 @@
 #   9. 検証失敗時はマージをブロック（exit 1）
 #
 # 【必要な GitHub Secrets（呼び出し元リポジトリに設定すること）】
-#   SFDX_AUTH_URL_PROD : 本番組織の認証 URL（main ブランチへの PR 時に使用）
-#   SFDX_AUTH_URL_STG  : ステージング組織の認証 URL（staging ブランチへの PR 時に使用）
-#   SFDX_AUTH_URL_DEV  : 開発組織の認証 URL（develop およびその他ブランチへの PR 時に使用）
+#   SF_PRIVATE_KEY       : 秘密鍵（PEM 形式・全組織共通）
+#   SF_CONSUMER_KEY_PROD : 本番組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_STG  : ステージング組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_DEV  : 開発組織の Connected App コンシューマーキー
+#   SF_USERNAME_PROD     : 本番組織の接続ユーザー名
+#   SF_USERNAME_STG      : ステージング組織の接続ユーザー名
+#   SF_USERNAME_DEV      : 開発組織の接続ユーザー名
+#   SF_INSTANCE_URL_PROD : 本番組織の接続 URL（https://login.salesforce.com 等）
+#   SF_INSTANCE_URL_STG  : ステージング組織の接続 URL
+#   SF_INSTANCE_URL_DEV  : 開発組織の接続 URL
 #
 # ==============================================================================
 on:
   workflow_call:
     secrets:
-      SFDX_AUTH_URL_PROD:
+      SF_PRIVATE_KEY:
+        required: true
+      SF_CONSUMER_KEY_PROD:
         required: false
-      SFDX_AUTH_URL_STG:
+      SF_CONSUMER_KEY_STG:
         required: false
-      SFDX_AUTH_URL_DEV:
+      SF_CONSUMER_KEY_DEV:
+        required: false
+      SF_USERNAME_PROD:
+        required: false
+      SF_USERNAME_STG:
+        required: false
+      SF_USERNAME_DEV:
+        required: false
+      SF_INSTANCE_URL_PROD:
+        required: false
+      SF_INSTANCE_URL_STG:
+        required: false
+      SF_INSTANCE_URL_DEV:
         required: false
 
 jobs:
@@ -108,27 +129,36 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
           if   [[ "$BASE" == "main"    ]]; then
-            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_PROD }}" >> "$GITHUB_ENV"
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_PROD }}" >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_PROD }}"         >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_PROD }}" >> "$GITHUB_ENV"
             echo "接続先: 本番組織"
           elif [[ "$BASE" == "staging" ]]; then
-            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_STG }}"  >> "$GITHUB_ENV"
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_STG }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_STG }}"          >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_STG }}"  >> "$GITHUB_ENV"
             echo "接続先: ステージング組織"
           else
-            echo "SFDX_AUTH_URL=${{ secrets.SFDX_AUTH_URL_DEV }}"  >> "$GITHUB_ENV"
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_DEV }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_DEV }}"          >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_DEV }}"  >> "$GITHUB_ENV"
             echo "接続先: 開発組織"
           fi
 
       # --------------------------------------------------------------------------
-      # Step 6: Salesforce 組織への認証
+      # Step 6: Salesforce 組織への認証（JWT Bearer Flow）
       # --------------------------------------------------------------------------
       - name: Salesforce 組織にログイン
         run: |
-          echo "$SFDX_AUTH_URL" > /tmp/sf_auth.txt
-          sf org login sfdx-url \
-            --sfdx-url-file /tmp/sf_auth.txt \
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id    "$SF_CONSUMER_KEY" \
+            --jwt-key-file /tmp/server.key \
+            --username     "$SF_USERNAME" \
+            --instance-url "$SF_INSTANCE_URL" \
             --set-default \
             --alias ci-org
-          rm -f /tmp/sf_auth.txt
+          rm -f /tmp/server.key
 
       # --------------------------------------------------------------------------
       # Step 7: デプロイ対象ブランチの設定

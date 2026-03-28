@@ -17,6 +17,13 @@ jobs:
       pull-requests: write
       contents: read
     secrets:
-      SFDX_AUTH_URL_PROD: ${{ secrets.SFDX_AUTH_URL_PROD }}
-      SFDX_AUTH_URL_STG:  ${{ secrets.SFDX_AUTH_URL_STG }}
-      SFDX_AUTH_URL_DEV:  ${{ secrets.SFDX_AUTH_URL_DEV }}
+      SF_PRIVATE_KEY:       ${{ secrets.SF_PRIVATE_KEY }}
+      SF_CONSUMER_KEY_PROD: ${{ secrets.SF_CONSUMER_KEY_PROD }}
+      SF_CONSUMER_KEY_STG:  ${{ secrets.SF_CONSUMER_KEY_STG }}
+      SF_CONSUMER_KEY_DEV:  ${{ secrets.SF_CONSUMER_KEY_DEV }}
+      SF_USERNAME_PROD:     ${{ secrets.SF_USERNAME_PROD }}
+      SF_USERNAME_STG:      ${{ secrets.SF_USERNAME_STG }}
+      SF_USERNAME_DEV:      ${{ secrets.SF_USERNAME_DEV }}
+      SF_INSTANCE_URL_PROD: ${{ secrets.SF_INSTANCE_URL_PROD }}
+      SF_INSTANCE_URL_STG:  ${{ secrets.SF_INSTANCE_URL_STG }}
+      SF_INSTANCE_URL_DEV:  ${{ secrets.SF_INSTANCE_URL_DEV }}

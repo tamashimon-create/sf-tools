@@ -286,6 +286,26 @@ EOF
     done
 }
 
+# openssl モック（JWT 証明書生成用）
+create_mock_openssl() {
+    local bin_dir="$1"
+    cat > "$bin_dir/openssl" << 'EOF'
+#!/bin/bash
+echo "openssl $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+# -out <file> を探してダミーファイルを生成する
+_prev=""
+for _arg in "$@"; do
+    if [[ "$_prev" == "-out" ]]; then
+        mkdir -p "$(dirname "$_arg")" 2>/dev/null || true
+        { echo "FAKE KEY/CERT"; echo "dummy openssl output"; } > "$_arg"
+    fi
+    _prev="$_arg"
+done
+exit "${MOCK_OPENSSL_EXIT:-0}"
+EOF
+    chmod +x "$bin_dir/openssl"
+}
+
 # 全モックを一括生成
 create_all_mocks() {
     local bin_dir="$1"
@@ -296,6 +316,7 @@ create_all_mocks() {
     create_mock_gh "$bin_dir"
     create_mock_node "$bin_dir"
     create_mock_browser "$bin_dir"  # ブラウザ起動コマンドを無効化
+    create_mock_openssl "$bin_dir"  # JWT 証明書生成コマンドを無効化
 }
 
 # ------------------------------------------------------------------------------

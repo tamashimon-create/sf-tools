@@ -7,21 +7,42 @@
 #   force-* リポジトリの wf-release.yml（caller）から workflow_call で起動される。
 #
 # 【必要な GitHub Secrets（呼び出し元リポジトリに設定すること）】
-#   SFDX_AUTH_URL_PROD : 本番組織の認証 URL
-#   SFDX_AUTH_URL_STG  : ステージング組織の認証 URL
-#   SFDX_AUTH_URL_DEV  : 開発組織の認証 URL
-#   SLACK_BOT_TOKEN    : Slack API の Bot Token
-#   SLACK_CHANNEL_ID   : 通知先 Slack チャンネル ID
+#   SF_PRIVATE_KEY       : 秘密鍵（PEM 形式・全組織共通）
+#   SF_CONSUMER_KEY_PROD : 本番組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_STG  : ステージング組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_DEV  : 開発組織の Connected App コンシューマーキー
+#   SF_USERNAME_PROD     : 本番組織の接続ユーザー名
+#   SF_USERNAME_STG      : ステージング組織の接続ユーザー名
+#   SF_USERNAME_DEV      : 開発組織の接続ユーザー名
+#   SF_INSTANCE_URL_PROD : 本番組織の接続 URL（https://login.salesforce.com 等）
+#   SF_INSTANCE_URL_STG  : ステージング組織の接続 URL
+#   SF_INSTANCE_URL_DEV  : 開発組織の接続 URL
+#   SLACK_BOT_TOKEN      : Slack API の Bot Token
+#   SLACK_CHANNEL_ID     : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
 on:
   workflow_call:
     secrets:
-      SFDX_AUTH_URL_PROD:
+      SF_PRIVATE_KEY:
+        required: true
+      SF_CONSUMER_KEY_PROD:
         required: false
-      SFDX_AUTH_URL_STG:
+      SF_CONSUMER_KEY_STG:
         required: false
-      SFDX_AUTH_URL_DEV:
+      SF_CONSUMER_KEY_DEV:
+        required: false
+      SF_USERNAME_PROD:
+        required: false
+      SF_USERNAME_STG:
+        required: false
+      SF_USERNAME_DEV:
+        required: false
+      SF_INSTANCE_URL_PROD:
+        required: false
+      SF_INSTANCE_URL_STG:
+        required: false
+      SF_INSTANCE_URL_DEV:
         required: false
       SLACK_BOT_TOKEN:
         required: false
@@ -121,26 +142,41 @@ jobs:
       # --------------------------------------------------------------------------
       # Step 5: マージ先ブランチに対応する Salesforce 組織への認証
       # --------------------------------------------------------------------------
-      - name: 本番組織にログイン
+      - name: 本番組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'main' }}
         run: |
-          echo "${{ secrets.SFDX_AUTH_URL_PROD }}" > auth.txt
-          sf org login sfdx-url --sfdx-url-file auth.txt --set-default --alias prod
-          rm -f auth.txt
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id    "${{ secrets.SF_CONSUMER_KEY_PROD }}" \
+            --jwt-key-file /tmp/server.key \
+            --username     "${{ secrets.SF_USERNAME_PROD }}" \
+            --instance-url "${{ secrets.SF_INSTANCE_URL_PROD }}" \
+            --set-default --alias prod
+          rm -f /tmp/server.key
 
-      - name: ステージング組織にログイン
+      - name: ステージング組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'staging' }}
         run: |
-          echo "${{ secrets.SFDX_AUTH_URL_STG }}" > auth.txt
-          sf org login sfdx-url --sfdx-url-file auth.txt --set-default --alias staging
-          rm -f auth.txt
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id    "${{ secrets.SF_CONSUMER_KEY_STG }}" \
+            --jwt-key-file /tmp/server.key \
+            --username     "${{ secrets.SF_USERNAME_STG }}" \
+            --instance-url "${{ secrets.SF_INSTANCE_URL_STG }}" \
+            --set-default --alias staging
+          rm -f /tmp/server.key
 
-      - name: 開発組織にログイン
+      - name: 開発組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'develop' }}
         run: |
-          echo "${{ secrets.SFDX_AUTH_URL_DEV }}" > auth.txt
-          sf org login sfdx-url --sfdx-url-file auth.txt --set-default --alias develop
-          rm -f auth.txt
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id    "${{ secrets.SF_CONSUMER_KEY_DEV }}" \
+            --jwt-key-file /tmp/server.key \
+            --username     "${{ secrets.SF_USERNAME_DEV }}" \
+            --instance-url "${{ secrets.SF_INSTANCE_URL_DEV }}" \
+            --set-default --alias develop
+          rm -f /tmp/server.key
 
       # --------------------------------------------------------------------------
       # Step 6: sf-tools のクローン

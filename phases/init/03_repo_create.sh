@@ -8,6 +8,10 @@
 # 【可視性ルール】
 #   tama-create 配下はテスト用のため Public（Ruleset 利用可）
 #   その他の組織・ユーザーは Private
+#
+# 【WF 配布】
+#   クローン後に sf-tools/templates/.github/workflows/ の内容を上書きコピーする。
+#   force-template から来た WF を sf-tools 管理の正本で置き換える。
 # ==============================================================================
 
 # SF_TOOLS_DIR は sf-init.sh（司令塔）から export される
@@ -73,6 +77,16 @@ else
         || die "クローンに失敗しました。"
     log "SUCCESS" "リポジトリをクローンしました: ${REPO_DIR}"
 fi
+
+# --- WF コピー（sf-tools/templates/ が正本・force-template 由来を上書き） ---
+wf_src="${SF_TOOLS_DIR}/templates/.github/workflows"
+wf_dst="${REPO_DIR}/.github/workflows"
+log "INFO" "WF ファイルをコピー中: ${wf_src} → ${wf_dst}"
+run mkdir -p "$wf_dst" || die "WF ディレクトリを作成できません: $wf_dst"
+for wf_file in "$wf_src"/*.yml; do
+    run cp "$wf_file" "$wf_dst/" || die "WF ファイルのコピーに失敗しました: $wf_file"
+done
+log "SUCCESS" "WF ファイルをコピーしました（${wf_src}）"
 
 log "SUCCESS" "Phase 3 完了: リポジトリ作成 OK。"
 exit $RET_OK
