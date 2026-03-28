@@ -9,10 +9,11 @@
 #   2. lib/common.sh で mktemp を使用していること（TOCTOU 対策）
 #   3. バックグラウンド実行の stderr を /dev/null に捨てていないこと
 #   4. .sf-init.env に chmod 600 が設定されていること
+#   5. run の一時ファイルをプロジェクト内ディレクトリに置いていないこと（git add -A 競合防止）
 #
 # 【実行時検証】
-#   5. sf-update-secret.sh 実行後にログに sfdxAuthUrl が記録されないこと
-#   6. ログディレクトリに chmod 700 が設定されること（Linux/WSL のみ）
+#   6. sf-update-secret.sh 実行後にログに sfdxAuthUrl が記録されないこと
+#   7. ログディレクトリに chmod 700 が設定されること（Linux/WSL のみ）
 # ==============================================================================
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
 echo -e "${CLR_HEAD}=== セキュリティ監査テスト ===${CLR_RST}"
@@ -193,6 +194,22 @@ EOF
     teardown "$td" "$mb"
 }
 
+# --- 5（新）. run の一時ファイルをプロジェクト内ディレクトリに置いていないこと ---
+# git add -A との競合で一時ファイルがコミットされる問題の再発を防ぐ。
+# _run_tmpdir に "./sf-tools" を使う実装に戻すと cmd_out.* が git に混入する。
+test_static_no_sftools_as_tmpdir() {
+    local found
+    found=$(grep -En '_run_tmpdir.*\./sf-tools|sf-tools.*_run_tmpdir' \
+        "$SF_TOOLS_DIR/lib/common.sh" 2>/dev/null \
+        | grep -vE '^[0-9]+:[[:space:]]*#' || true)
+
+    if [[ -z "$found" ]]; then
+        pass "run の一時ファイルをプロジェクト内ディレクトリ(./sf-tools)に置いていない"
+    else
+        fail "run の _run_tmpdir に ./sf-tools が設定されている（git add -A と競合する）" "$found"
+    fi
+}
+
 # ==============================================================================
 # テスト実行
 # ==============================================================================
@@ -200,6 +217,7 @@ test_static_no_run_sf_org_display
 test_static_mktemp_used_in_common
 test_static_no_devnull_bg_stderr
 test_static_chmod600_sf_init_env
+test_static_no_sftools_as_tmpdir
 test_runtime_sfdxauthurl_not_logged
 test_runtime_log_dir_permission
 

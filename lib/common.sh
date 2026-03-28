@@ -212,9 +212,8 @@ log() {
 # ------------------------------------------------------------------------------
 run() {
     local cmd=("$@")
-    # ./sf-tools/ が存在しない環境（sf-init.sh など）では ${TMPDIR:-/tmp} にフォールバック
-    local _run_tmpdir
-    [[ -d "./sf-tools" ]] && _run_tmpdir="./sf-tools" || _run_tmpdir="${TMPDIR:-/tmp}"
+    # git add -A との競合を避けるため、プロジェクト内ディレクトリは使わずシステム tmp を使用
+    local _run_tmpdir="${TMPDIR:-/tmp}"
     local tmp_out
     tmp_out=$(mktemp "${_run_tmpdir}/cmd_out.XXXXXX") \
         || tmp_out="${_run_tmpdir}/cmd_out_$$_${RANDOM}.tmp"  # run 不使用: 変数代入・mktemp フォールバック
