@@ -9,9 +9,10 @@
 #   tama-create 配下はテスト用のため Public（Ruleset 利用可）
 #   その他の組織・ユーザーは Private
 #
-# 【WF 配布】
-#   クローン後に sf-tools/templates/.github/workflows/ の内容を上書きコピーする。
-#   force-template から来た WF を sf-tools 管理の正本で置き換える。
+# 【テンプレートファイルの配布】
+#   クローン後に sf-tools/templates/ の全ファイルを REPO_DIR/ にコピーする。
+#   force-template リポジトリは廃止済み。sf-tools/templates/ が唯一の正本。
+#   sfdx-project.json の __REPO_NAME__ プレースホルダーを実際のリポジトリ名に置換する。
 # ==============================================================================
 
 # SF_TOOLS_DIR は sf-init.sh（司令塔）から export される
@@ -33,6 +34,7 @@ SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
 
 [[ -z "$REPO_FULL_NAME" ]] && die "REPO_FULL_NAME が未設定です。Phase 2 が完了しているか確認してください。"
 [[ -z "$REPO_DIR" ]]       && die "REPO_DIR が未設定です。Phase 2 が完了しているか確認してください。"
+[[ -z "$REPO_NAME" ]]      && die "REPO_NAME が未設定です。Phase 2 が完了しているか確認してください。"
 
 # ------------------------------------------------------------------------------
 # メイン処理
@@ -48,11 +50,7 @@ else
     # その他の組織・ユーザーは Private で作成
     visibility_opt="--private"
     [[ "$GITHUB_OWNER" == "tama-create" ]] && visibility_opt="--public"
-    run gh repo create "$REPO_FULL_NAME" \
-        --template tama-create/force-template \
-        "$visibility_opt"
-    # gh repo create --template はテンプレートコピーで非ゼロを返す場合がある。
-    # 実際にリポジトリが存在するか確認して判定する。
+    run gh repo create "$REPO_FULL_NAME" "$visibility_opt"
     if ! run gh repo view "$REPO_FULL_NAME" --json name 2>/dev/null; then
         die "リポジトリの作成に失敗しました。
 考えられる原因:
@@ -78,15 +76,24 @@ else
     log "SUCCESS" "リポジトリをクローンしました: ${REPO_DIR}"
 fi
 
-# --- WF コピー（sf-tools/templates/ が正本・force-template 由来を上書き） ---
-wf_src="${SF_TOOLS_DIR}/templates/.github/workflows"
-wf_dst="${REPO_DIR}/.github/workflows"
-log "INFO" "WF ファイルをコピー中: ${wf_src} → ${wf_dst}"
-run mkdir -p "$wf_dst" || die "WF ディレクトリを作成できません: $wf_dst"
-for wf_file in "$wf_src"/*.yml; do
-    run cp "$wf_file" "$wf_dst/" || die "WF ファイルのコピーに失敗しました: $wf_file"
-done
-log "SUCCESS" "WF ファイルをコピーしました（${wf_src}）"
+# --- テンプレートファイルのコピー（sf-tools/templates/ が正本） ---
+tmpl_src="${SF_TOOLS_DIR}/templates"
+log "INFO" "テンプレートファイルをコピー中: ${tmpl_src} → ${REPO_DIR}"
+run mkdir -p "$REPO_DIR" || die "REPO_DIR を作成できません: $REPO_DIR"
+# cp -r でテンプレート配下の全ファイル・ディレクトリをコピー（上書き）
+# サブディレクトリ（.github/workflows/, force-app/, .vscode/ 等）も含む
+cp -r "${tmpl_src}/." "$REPO_DIR/" \
+    || die "テンプレートファイルのコピーに失敗しました。"
+log "SUCCESS" "テンプレートファイルをコピーしました"
+
+# --- sfdx-project.json のプレースホルダー置換 ---
+sfdx_json="${REPO_DIR}/sfdx-project.json"
+if [[ -f "$sfdx_json" ]]; then
+    # sed の -i はGitBash/macOS/Linuxで動作（インプレース置換）
+    sed -i "s/__REPO_NAME__/${REPO_NAME}/g" "$sfdx_json" \
+        || die "sfdx-project.json のプレースホルダー置換に失敗しました。"
+    log "SUCCESS" "sfdx-project.json のプロジェクト名を設定しました: ${REPO_NAME}"
+fi
 
 log "SUCCESS" "Phase 3 完了: リポジトリ作成 OK。"
 exit $RET_OK

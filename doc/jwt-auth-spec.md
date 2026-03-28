@@ -143,54 +143,27 @@ Phase 6 は Step 3（SF_PRIVATE_KEY 登録）まで完了していれば、`--re
 
 ## 5. GitHub Actions の変更
 
-### 5.1 caller workflows（force-XXXX 側）
+### 5.1 セルフコンテインド WF（force-XXXX 側）
 
-`wf-validate.yml` / `wf-release.yml` の secrets 定義を変更する。
-
-```yaml
-# 変更前
-secrets:
-  SFDX_AUTH_URL_PROD: ${{ secrets.SFDX_AUTH_URL_PROD }}
-  SFDX_AUTH_URL_STG:  ${{ secrets.SFDX_AUTH_URL_STG }}
-  SFDX_AUTH_URL_DEV:  ${{ secrets.SFDX_AUTH_URL_DEV }}
-
-# 変更後
-secrets:
-  SF_PRIVATE_KEY:       ${{ secrets.SF_PRIVATE_KEY }}
-  SF_CONSUMER_KEY_PROD: ${{ secrets.SF_CONSUMER_KEY_PROD }}
-  SF_CONSUMER_KEY_STG:  ${{ secrets.SF_CONSUMER_KEY_STG }}
-  SF_CONSUMER_KEY_DEV:  ${{ secrets.SF_CONSUMER_KEY_DEV }}
-  SF_USERNAME_PROD:     ${{ secrets.SF_USERNAME_PROD }}
-  SF_USERNAME_STG:      ${{ secrets.SF_USERNAME_STG }}
-  SF_USERNAME_DEV:      ${{ secrets.SF_USERNAME_DEV }}
-  SF_INSTANCE_URL_PROD: ${{ secrets.SF_INSTANCE_URL_PROD }}
-  SF_INSTANCE_URL_STG:  ${{ secrets.SF_INSTANCE_URL_STG }}
-  SF_INSTANCE_URL_DEV:  ${{ secrets.SF_INSTANCE_URL_DEV }}
-```
-
-### 5.2 reusable workflows（sf-tools 側）
-
-`wf-validate-reusable.yml` / `wf-release-reusable.yml` の認証ステップを差し替える。
+`wf-validate.yml` / `wf-release.yml` 等は CI/CD ロジックを完全内包（reusable WF パターンは廃止済み）。
+認証ステップは JWT Bearer Flow を使用する。
 
 ```yaml
-# 変更前
-- name: Salesforce 認証
+# 認証ステップ（実装済み）
+- name: Salesforce 組織にログイン
   run: |
-    echo "$SFDX_AUTH_URL" > /tmp/sf_auth.txt
-    sf org login sfdx-url --sfdx-url-file /tmp/sf_auth.txt --alias prod
-
-# 変更後
-- name: Salesforce 認証
-  run: |
-    echo "$SF_PRIVATE_KEY" > /tmp/server.key
+    echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
     sf org login jwt \
       --client-id    "$SF_CONSUMER_KEY" \
       --jwt-key-file /tmp/server.key \
       --username     "$SF_USERNAME" \
       --instance-url "$SF_INSTANCE_URL" \
-      --alias        prod
+      --set-default \
+      --alias ci-org
     rm -f /tmp/server.key
 ```
+
+`sf-tools/templates/.github/workflows/` が正本。変更時は `sf-sync-wf.sh`（未実装）で各プロジェクトへ配布する。
 
 ---
 
@@ -225,17 +198,20 @@ sf org login jwt \
 
 ---
 
-## 7. 変更ファイル一覧
+## 7. 変更ファイル一覧（実装済み）
 
 | ファイル | 変更種別 | 内容 |
 |---|---|---|
 | `phases/init/06_sf_auth.sh` | 全面書き換え | JWT フローに変更 |
 | `phases/init/init-common.sh` | 関数差し替え | `register_sf_secret` 削除・`register_jwt_secret` 追加 |
 | `bin/sf-update-secret.sh` | 全面書き換え | JWT Secrets 対応 |
-| `templates/.github/workflows/wf-validate.yml` | Secrets 定義変更 | sfdxAuthUrl → JWT |
-| `templates/.github/workflows/wf-release.yml` | Secrets 定義変更 | 同上 |
-| `.github/workflows/wf-validate-reusable.yml` | 認証ステップ差し替え | `sfdx-url` → `jwt` |
-| `.github/workflows/wf-release-reusable.yml` | 認証ステップ差し替え | 同上 |
+| `templates/.github/workflows/wf-validate.yml` | 認証ステップ変更・自己完結化 | sfdxAuthUrl → JWT、reusable WF パターン廃止 |
+| `templates/.github/workflows/wf-release.yml` | 同上 | 同上 |
+| `templates/.github/workflows/wf-metasync.yml` | 同上 | 同上 |
+| `templates/.github/workflows/wf-propagate.yml` | 自己完結化 | reusable WF パターン廃止 |
+| `templates/.github/workflows/wf-sequence.yml` | 自己完結化 | 同上 |
+
+> `sf-tools/.github/workflows/wf-*-reusable.yml` は全削除済み（セルフコンテインド WF への移行完了）。
 
 ---
 

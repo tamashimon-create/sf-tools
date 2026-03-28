@@ -15,9 +15,9 @@
 #   6. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【WF について】
-#   GitHub Actions ワークフローは force-template から引き継がれるため sf-install.sh では管理しない。
-#   WF のロジックは tama-create/sf-tools の wf-*-reusable.yml に集約されており、
-#   force-* 側は caller（薄いファイル）のみを持つ設計。
+#   GitHub Actions ワークフローは sf-init.sh（Phase 3）が sf-tools/templates/ からコピーするため、
+#   sf-install.sh では管理しない。WF はセルフコンテインド（ロジック内包）設計であり、
+#   sf-tools リポジトリへの実行時依存はない。
 #
 # 【前提】
 #   ~/sf-tools は初回インストール済みであること。
@@ -107,7 +107,7 @@ phase_init_config() {
     local file
     for file in metadata.txt branches.txt; do
         if [[ ! -f "sf-tools/config/$file" ]]; then
-            run cp "$HOME/sf-tools/templates/defaults/$file" "sf-tools/config/$file" \
+            run cp "$HOME/sf-tools/templates/sf-tools/config/$file" "sf-tools/config/$file" \
                 || return $RET_NG
             log "INFO" "sf-tools/config/$file を生成しました。"
         else
@@ -163,9 +163,9 @@ phase_setup_release_dir() {
     local release_dir="sf-tools/release/${branch_name}"
     run mkdir -p "$release_dir" || return $RET_NG
     [[ ! -f "${release_dir}/deploy-target.txt" ]] \
-        && { run cp "$HOME/sf-tools/templates/release/deploy-target.txt" "${release_dir}/deploy-target.txt" || return $RET_NG; }
+        && { run cp "$HOME/sf-tools/templates/sf-tools/release/__BRANCH__/deploy-target.txt" "${release_dir}/deploy-target.txt" || return $RET_NG; }
     [[ ! -f "${release_dir}/remove-target.txt" ]] \
-        && { run cp "$HOME/sf-tools/templates/release/remove-target.txt" "${release_dir}/remove-target.txt" || return $RET_NG; }
+        && { run cp "$HOME/sf-tools/templates/sf-tools/release/__BRANCH__/remove-target.txt" "${release_dir}/remove-target.txt" || return $RET_NG; }
     printf '%s\n' "$branch_name" | run tee "sf-tools/release/branch_name.txt" > /dev/null || return $RET_NG
     log "INFO" "ブランチ: ${branch_name} / branch_name.txt を保存しました"
     return $RET_OK

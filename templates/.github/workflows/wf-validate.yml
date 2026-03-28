@@ -1,29 +1,219 @@
 # ==============================================================================
-# wf-validate.yml - Salesforce デプロイ前検証（caller）
+# wf-validate.yml - Salesforce デプロイ前検証
 # ==============================================================================
-# ロジックは tama-create/sf-tools の wf-validate-reusable.yml に集約されています。
-# このファイルはトリガーと secrets の受け渡しのみを担います。
+#
+# 【概要】
+#   PR 作成・更新時に sf-release.sh を「検証のみ（本番反映なし）」で実行する。
+#   検証結果は PR にコメントとして投稿され、失敗時はマージがブロックされる。
+#
+# 【処理フロー】
+#   1. PR のソースブランチをチェックアウト
+#   2. Node.js / Salesforce CLI をインストール
+#   3. sf-tools をクローン（sf-release.sh の取得）
+#   4. マージ先ブランチに応じて接続する Salesforce 組織を選択
+#   5. 選択した組織に認証
+#   6. sf-release.sh が参照する branch_name.txt を動的生成
+#   7. sf-release.sh を検証モード（--release なし）で実行
+#   8. 検証結果を PR にコメントとして投稿
+#   9. 検証失敗時はマージをブロック（exit 1）
+#
+# 【必要な GitHub Secrets（このリポジトリに設定すること）】
+#   SF_PRIVATE_KEY       : 秘密鍵（PEM 形式・全組織共通）
+#   SF_CONSUMER_KEY_PROD : 本番組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_STG  : ステージング組織の Connected App コンシューマーキー
+#   SF_CONSUMER_KEY_DEV  : 開発組織の Connected App コンシューマーキー
+#   SF_USERNAME_PROD     : 本番組織の接続ユーザー名
+#   SF_USERNAME_STG      : ステージング組織の接続ユーザー名
+#   SF_USERNAME_DEV      : 開発組織の接続ユーザー名
+#   SF_INSTANCE_URL_PROD : 本番組織の接続 URL（https://login.salesforce.com 等）
+#   SF_INSTANCE_URL_STG  : ステージング組織の接続 URL
+#   SF_INSTANCE_URL_DEV  : 開発組織の接続 URL
+#
 # ==============================================================================
-name: "[validate] デプロイ前検証"
-
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
+  check-branch:
+    name: 対象ファイル確認
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: デプロイ対象ファイルを確認
+        run: |
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          DEPLOY="sf-tools/release/${HEAD}/deploy-target.txt"
+          REMOVE="sf-tools/release/${HEAD}/remove-target.txt"
+          # コメント行・空行を除いた実質的な内容があるか確認
+          has_content() {
+            [[ -f "$1" ]] && grep -qvE '^\s*(#|$|\[files\]|\[members\])' "$1"
+          }
+          if ! has_content "$DEPLOY" && ! has_content "$REMOVE"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "デプロイ対象なし（${DEPLOY} / ${REMOVE} に内容なし）のためスキップします。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   validate:
-    uses: tama-create/sf-tools/.github/workflows/wf-validate-reusable.yml@main
+    name: デプロイ検証
+    needs: check-branch
+    if: needs.check-branch.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+
+    # PR へのコメント投稿に必要
     permissions:
       pull-requests: write
       contents: read
-    secrets:
-      SF_PRIVATE_KEY:       ${{ secrets.SF_PRIVATE_KEY }}
-      SF_CONSUMER_KEY_PROD: ${{ secrets.SF_CONSUMER_KEY_PROD }}
-      SF_CONSUMER_KEY_STG:  ${{ secrets.SF_CONSUMER_KEY_STG }}
-      SF_CONSUMER_KEY_DEV:  ${{ secrets.SF_CONSUMER_KEY_DEV }}
-      SF_USERNAME_PROD:     ${{ secrets.SF_USERNAME_PROD }}
-      SF_USERNAME_STG:      ${{ secrets.SF_USERNAME_STG }}
-      SF_USERNAME_DEV:      ${{ secrets.SF_USERNAME_DEV }}
-      SF_INSTANCE_URL_PROD: ${{ secrets.SF_INSTANCE_URL_PROD }}
-      SF_INSTANCE_URL_STG:  ${{ secrets.SF_INSTANCE_URL_STG }}
-      SF_INSTANCE_URL_DEV:  ${{ secrets.SF_INSTANCE_URL_DEV }}
+
+    steps:
+      # --------------------------------------------------------------------------
+      # Step 1: ソースコードのチェックアウト
+      # --------------------------------------------------------------------------
+      - name: ソースコードを取得
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------------------------
+      # Step 2: Node.js のセットアップ
+      # --------------------------------------------------------------------------
+      - name: Node.js をインストール
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # --------------------------------------------------------------------------
+      # Step 3: Salesforce CLI のインストール
+      # --------------------------------------------------------------------------
+      - name: Salesforce CLI をインストール
+        run: npm install -g @salesforce/cli
+
+      # --------------------------------------------------------------------------
+      # Step 4: sf-tools のクローン
+      # --------------------------------------------------------------------------
+      - name: 自動化ツール（sf-tools）を取得
+        run: |
+          git clone https://github.com/tama-create/sf-tools.git "$HOME/sf-tools"
+          chmod +x "$HOME/sf-tools/"*.sh "$HOME/sf-tools/lib/"*.sh
+
+      # --------------------------------------------------------------------------
+      # Step 5: 接続先 Salesforce 組織の選択
+      # --------------------------------------------------------------------------
+      - name: 接続先組織を選択（マージ先ブランチに応じて切り替え）
+        run: |
+          BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
+          if   [[ "$BASE" == "main"    ]]; then
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_PROD }}" >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_PROD }}"         >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_PROD }}" >> "$GITHUB_ENV"
+            echo "接続先: 本番組織"
+          elif [[ "$BASE" == "staging" ]]; then
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_STG }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_STG }}"          >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_STG }}"  >> "$GITHUB_ENV"
+            echo "接続先: ステージング組織"
+          else
+            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_DEV }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ secrets.SF_USERNAME_DEV }}"          >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_DEV }}"  >> "$GITHUB_ENV"
+            echo "接続先: 開発組織"
+          fi
+
+      # --------------------------------------------------------------------------
+      # Step 6: Salesforce 組織への認証（JWT Bearer Flow）
+      # --------------------------------------------------------------------------
+      - name: Salesforce 組織にログイン
+        run: |
+          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id    "$SF_CONSUMER_KEY" \
+            --jwt-key-file /tmp/server.key \
+            --username     "$SF_USERNAME" \
+            --instance-url "$SF_INSTANCE_URL" \
+            --set-default \
+            --alias ci-org
+          rm -f /tmp/server.key
+
+      # --------------------------------------------------------------------------
+      # Step 7: デプロイ対象ブランチの設定
+      # --------------------------------------------------------------------------
+      - name: デプロイ対象ブランチを設定
+        run: |
+          mkdir -p sf-tools/release
+          echo "${{ github.event.pull_request.head.ref || github.ref_name }}" > sf-tools/release/branch_name.txt
+          echo "対象ブランチ: ${{ github.event.pull_request.head.ref || github.ref_name }}"
+
+      # --------------------------------------------------------------------------
+      # Step 8: Salesforce へのデプロイ検証（本番反映なし）
+      # --------------------------------------------------------------------------
+      - name: Salesforce にデプロイ検証を実行（本番反映なし）
+        id: sf_validate
+        env:
+          SF_TARGET_ORG: ci-org
+        run: |
+          set +e
+          bash "$HOME/sf-tools/sf-release.sh" --no-open > /tmp/sf_result.txt 2>&1
+          EXIT_CODE=$?
+          cat /tmp/sf_result.txt
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+      # --------------------------------------------------------------------------
+      # Step 9: 検証結果を PR にコメントとして投稿
+      # --------------------------------------------------------------------------
+      - name: 検証結果を PR に投稿
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let ログ = '';
+            try {
+              ログ = fs.readFileSync('/tmp/sf_result.txt', 'utf8');
+            } catch (e) {
+              ログ = '（ログファイルが見つかりません）';
+            }
+            const 終了コード = parseInt('${{ steps.sf_validate.outputs.exit_code }}') || 0;
+            const アイコン = 終了コード === 0 ? '✅' : '❌';
+            const 結果   = 終了コード === 0 ? '検証成功' : '検証失敗';
+            const 最大文字数 = 3000;
+            const 表示ログ = ログ.length > 最大文字数
+              ? '...(前半省略)...\n' + ログ.slice(-最大文字数)
+              : ログ;
+            const 本文 = [
+              `## ${アイコン} Salesforce 検証結果: ${結果}`,
+              '',
+              `| 項目 | 値 |`,
+              `| --- | --- |`,
+              `| ブランチ | \`${{ github.event.pull_request.head.ref || github.ref_name }}\` → \`${{ github.event.pull_request.base.ref || github.ref_name }}\` |`,
+              `| コミット | \`${{ github.event.pull_request.head.sha || '' }}\` |`,
+              `| 実行モード | 検証のみ（本番反映なし） |`,
+              '',
+              '<details>',
+              '<summary>実行ログ（クリックで展開）</summary>',
+              '',
+              '```',
+              表示ログ,
+              '```',
+              '',
+              '</details>'
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 本文
+            });
+
+      # --------------------------------------------------------------------------
+      # Step 10: 検証失敗時のマージブロック
+      # --------------------------------------------------------------------------
+      - name: 検証失敗時はマージをブロック
+        if: always()
+        run: |
+          EXIT_CODE="${{ steps.sf_validate.outputs.exit_code }}"
+          exit "${EXIT_CODE:-1}"
