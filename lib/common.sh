@@ -66,6 +66,7 @@ if [[ "${SF_INIT_MODE:-0}" != "1" ]]; then
 fi
 
 mkdir -p "$(dirname "$LOG_FILE")"
+chmod 700 "$(dirname "$LOG_FILE")" 2>/dev/null || true  # run 不使用: Windows では効果なし・意図的エラー無視
 [[ "${LOG_MODE:-}" == "NEW" ]] && : > "$LOG_FILE"
 
 # SILENT_EXEC: --verbose / -v が指定されていれば 0（応答表示あり）、デフォルト 1（応答表示なし）
@@ -214,7 +215,9 @@ run() {
     # ./sf-tools/ が存在しない環境（sf-init.sh など）では ${TMPDIR:-/tmp} にフォールバック
     local _run_tmpdir
     [[ -d "./sf-tools" ]] && _run_tmpdir="./sf-tools" || _run_tmpdir="${TMPDIR:-/tmp}"
-    local tmp_out="${_run_tmpdir}/cmd_out_$$_${RANDOM}.tmp"
+    local tmp_out
+    tmp_out=$(mktemp "${_run_tmpdir}/cmd_out.XXXXXX") \
+        || tmp_out="${_run_tmpdir}/cmd_out_$$_${RANDOM}.tmp"  # run 不使用: 変数代入・mktemp フォールバック
     local status
 
     log "CMD" "[${SCRIPT_NAME}.sh] ${cmd[*]}"

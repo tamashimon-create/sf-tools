@@ -61,6 +61,7 @@ TEST_FILES=(
     test_sf-update-secret.sh
     test_sf-launcher.sh
     test_sf-precommit.sh
+    test_security.sh
 )
 
 # ------------------------------------------------------------------------------

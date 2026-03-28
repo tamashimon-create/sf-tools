@@ -63,7 +63,8 @@ log "HEADER" "GitHub Secrets の SFDX_AUTH_URL_* を更新します (${SCRIPT_NA
 log "INFO" "リポジトリ: ${REPO_FULL_NAME}"
 log "INFO" "tama エイリアスから認証 URL を取得中..."
 
-SF_JSON=$(run sf org display --verbose --json --target-org tama 2>/dev/null || true)
+# run 不使用: 出力に sfdxAuthUrl を含むためログへの記録を避ける
+SF_JSON=$(sf org display --verbose --json --target-org tama 2>/dev/null || true)
 AUTH_URL=$(echo "$SF_JSON" \
     | grep '"sfdxAuthUrl"' \
     | sed 's/.*"sfdxAuthUrl": *"\([^"]*\)".*/\1/')
