@@ -13,16 +13,16 @@
 #           ※ {company}/system/ 等のサブフォルダから実行するとエラー
 #
 # 【処理フロー】
-#   Phase 1: 環境チェック（ツール確認・GitHub CLI 認証確認）
-#   Phase 2: プロジェクト情報の確認（フォルダ構成からOWNERとプロジェクト名を自動導出）
-#   Phase 3: リポジトリ作成（gh repo create + git clone）
-#   Phase 4: ファイル生成（sf-install.sh / sf-hook.sh）
-#   Phase 5: ブランチ構成（sf-branch.sh）
-#   Phase 6: Salesforce 認証 URL の設定（JWT 移行時はここだけ差し替え）
-#   Phase 7: PAT_TOKEN の設定
-#   Phase 8: Slack 連携の設定
-#   Phase 9: 初回コミット＆プッシュ
-#   Phase 10: GitHub リポジトリ設定・Ruleset の適用
+#   Phase 1:  環境チェック（ツール確認・GitHub CLI 認証確認）
+#   Phase 2:  プロジェクト情報の確認（フォルダ構成からOWNERとプロジェクト名を自動導出）
+#   Phase 3:  リポジトリ作成（gh repo create + git clone）
+#   Phase 4:  ファイル生成（sf-install.sh / sf-hook.sh）
+#   Phase 5:  ブランチ構成（sf-branch.sh）
+#   Phase 6:  PAT_TOKEN の設定
+#   Phase 7:  Slack 連携の設定
+#   Phase 8:  初回コミット＆プッシュ
+#   Phase 9:  GitHub リポジトリ設定・Ruleset の適用
+#   Phase 10: JWT 認証情報の設定（Salesforce GitHub Secrets 登録）
 #
 # 【手動操作が必要なステップ】
 #   - Salesforce 組織へのブラウザログイン
@@ -84,7 +84,7 @@ while [[ $# -gt 0 ]]; do
         *)
             die "不明なオプションです: $1
 使い方:
-  ~/sf-tools/bin/sf-init.sh              # Phase 1〜8 を順次実行
+  ~/sf-tools/bin/sf-init.sh              # Phase 1〜10 を順次実行
   ~/sf-tools/bin/sf-init.sh --resume N   # Phase N から最後まで順次実行
   ~/sf-tools/bin/sf-init.sh --only N     # Phase N のみ実行"
             ;;
