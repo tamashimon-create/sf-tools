@@ -1,126 +1,160 @@
 #!/bin/bash
 # ==============================================================================
-# test_sf-update-secret.sh - sf-update-secret.sh のテスト
+# test_sf-update-secret.sh - sf-update-secret.sh のテスト（JWT 認証方式）
 # ==============================================================================
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
 echo -e "${CLR_HEAD}=== sf-update-secret.sh ===${CLR_RST}"
 
 # モック生成ヘルパー
 _create_mocks_update_secret() {
-    local mb="$1" td="$2" mode="$3"  # mode: success / sf_fail / gh_fail / cancel
+    local mb="$1" td="$2"
 
-    # git モック
+    # git モック（remote get-url origin → force-test リポジトリを返す）
     cat > "$mb/git" << EOF
 #!/bin/bash
 echo "git \$*" >> "\${MOCK_CALL_LOG:-/dev/null}"
-args=("\$@")
-cmd="\${args[0]}"
-case "\$cmd" in
-    remote) echo "https://github.com/testowner/force-test.git"; exit 0 ;;
-    rev-parse) echo "$td"; exit 0 ;;
+case "\$1" in
+    remote) echo "https://github.com/testowner/force-test.git" ;;
     *)      exit 0 ;;
 esac
 EOF
     chmod +x "$mb/git"
 
-    # sf モック
-    cat > "$mb/sf" << EOF
-#!/bin/bash
-echo "sf \$*" >> "\${MOCK_CALL_LOG:-/dev/null}"
-if [[ "$mode" == "sf_fail" ]]; then
-    exit 1
-fi
-cat << 'SFEOF'
-{
-  "status": 0,
-  "result": {
-    "username": "test@example.com",
-    "sfdxAuthUrl": "force://PlatformCLI::test_token@example.my.salesforce.com"
-  }
-}
-SFEOF
-exit 0
-EOF
-    chmod +x "$mb/sf"
-
-    # gh モック
-    cat > "$mb/gh" << EOF
-#!/bin/bash
-echo "gh \$*" >> "\${MOCK_CALL_LOG:-/dev/null}"
-[[ "$mode" == "gh_fail" ]] && exit 1 || exit 0
-EOF
-    chmod +x "$mb/gh"
+    create_mock_sf  "$mb"
+    create_mock_gh  "$mb"
+    create_mock_openssl "$mb"
 }
 
-# --- 正常系 ---
-test_update_secret_success() {
+# ダミー server.key を JWT_DIR に作成し、branches.txt を PROD のみにする
+# （_update_all は $HOME/.sf-jwt/<REPO_NAME>/server.key と ./sf-tools/config/branches.txt を参照）
+_prepare_update_all_env() {
+    local home_dir="$1" force_dir="$2"
+    mkdir -p "$home_dir/.sf-jwt/force-test"
+    echo "DUMMY KEY" > "$home_dir/.sf-jwt/force-test/server.key"
+    # PROD のみ処理させるため branches.txt を1行にする
+    echo "main" > "$force_dir/sf-tools/config/branches.txt"
+}
+
+# --- 正常系: 全更新（PROD のみ・branches.txt なし）---
+test_update_all_success() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 全更新（PROD のみ）→ 正常終了${CLR_RST}"
+
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    _create_mocks_update_secret "$mb" "$td" "success"
+    _create_mocks_update_secret "$mb" "$td"
+    _prepare_update_all_env "$td" "$td"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
+    # 入力: 4=全更新 Y=SF_PRIVATE_KEY更新 consumer_key username（PROD のみ）
+    printf '4Yfake_consumer_key\nfake@example.com\n' \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /tmp/update-secret-test.log 2>&1
     local ec=$?
-    assert_exit_ok $ec "正常系 → 終了コード 0"
-    assert_file_contains "$mb/calls.log" "gh secret set SFDX_AUTH_URL_PROD" "PROD が更新される"
-    assert_file_contains "$mb/calls.log" "gh secret set SFDX_AUTH_URL_STG"  "STG が更新される"
-    assert_file_contains "$mb/calls.log" "gh secret set SFDX_AUTH_URL_DEV"  "DEV が更新される"
+
+    assert_exit_ok $ec "全更新 → 終了コード 0"
+    assert_file_contains "$mb/calls.log" "gh secret set SF_CONSUMER_KEY_PROD" "SF_CONSUMER_KEY_PROD が更新される"
+    assert_file_contains "$mb/calls.log" "gh secret set SF_USERNAME_PROD"     "SF_USERNAME_PROD が更新される"
+    assert_file_contains "$mb/calls.log" "gh secret set SF_INSTANCE_URL_PROD" "SF_INSTANCE_URL_PROD が更新される"
+
     teardown "$td" "$mb"
+    rm -f /tmp/update-secret-test.log
 }
 
-# --- sf org display 失敗（未接続）→ エラー中止 ---
-test_update_secret_sf_fail() {
+# --- JWT 接続テスト失敗 → エラー中止 ---
+test_update_jwt_login_fail() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] JWT 接続テスト失敗 → エラー中止${CLR_RST}"
+
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    _create_mocks_update_secret "$mb" "$td" "sf_fail"
+    _create_mocks_update_secret "$mb" "$td"
+    _prepare_update_all_env "$td" "$td"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
+    export MOCK_SF_LOGIN_EXIT=1
+
+    printf '4Yfake_consumer_key\nfake@example.com\n' \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
-    assert_exit_fail $ec "sf 未接続 → エラー中止"
-    echo "$out" > "$mb/out.log"
-    assert_file_contains "$mb/out.log" "sf-start.sh" "sf-start.sh の案内が出る"
+
+    assert_exit_fail $ec "JWT 失敗 → エラー中止"
+
+    unset MOCK_SF_LOGIN_EXIT
     teardown "$td" "$mb"
 }
 
 # --- gh secret set 失敗 → エラー中止 ---
-test_update_secret_gh_fail() {
+test_update_gh_fail() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] gh secret set 失敗 → エラー中止${CLR_RST}"
+
     local td mb
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    _create_mocks_update_secret "$mb" "$td" "gh_fail"
+    _create_mocks_update_secret "$mb" "$td"
+    _prepare_update_all_env "$td" "$td"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
+    export MOCK_GH_SECRET_SET_EXIT=1
+
+    printf '4Yfake_consumer_key\nfake@example.com\n' \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
+
     assert_exit_fail $ec "gh 失敗 → エラー中止"
-    teardown "$td" "$mb"
-}
 
-# --- 確認で n → 中断 ---
-test_update_secret_cancel() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    _create_mocks_update_secret "$mb" "$td" "success"
-
-    local out; out=$(cd "$td" && echo "n" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
-    local ec=$?
-    assert_exit_fail $ec "確認 n → 中断（終了コード 非0）"
+    unset MOCK_GH_SECRET_SET_EXIT
     teardown "$td" "$mb"
 }
 
 # --- force-* 以外のディレクトリ → エラー中止 ---
-test_update_secret_not_force_dir() {
+test_update_not_force_dir() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] force-* 以外 → エラー中止${CLR_RST}"
+
     local td mb
     td=$(setup_regular_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
-    _create_mocks_update_secret "$mb" "$td" "success"
+    _create_mocks_update_secret "$mb" "$td"
 
-    local out; out=$(cd "$td" && echo "y" | PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" 2>&1)
+    printf '4\n' \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
+
     assert_exit_fail $ec "force-* 以外 → エラー中止"
+
     teardown "$td" "$mb"
 }
 
-test_update_secret_success
-test_update_secret_sf_fail
-test_update_secret_gh_fail
-test_update_secret_cancel
-test_update_secret_not_force_dir
+# --- 秘密鍵のみ更新（メニュー 1）---
+test_update_private_key() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 秘密鍵のみ更新（メニュー 1）${CLR_RST}"
+
+    local td mb
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    _create_mocks_update_secret "$mb" "$td"
+
+    # ダミー秘密鍵ファイルを /tmp に作成
+    local dummy_key="/tmp/test-server-$$.key"
+    echo "DUMMY KEY" > "$dummy_key"
+
+    # 入力: 1=秘密鍵更新 key_file_path Y=確認
+    printf "1${dummy_key}\nY" \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
+    local ec=$?
+
+    assert_exit_ok $ec "秘密鍵更新 → 終了コード 0"
+    assert_file_contains "$mb/calls.log" "gh secret set SF_PRIVATE_KEY" "SF_PRIVATE_KEY が更新される"
+
+    rm -f "$dummy_key"
+    teardown "$td" "$mb"
+}
+
+test_update_all_success
+test_update_jwt_login_fail
+test_update_gh_fail
+test_update_not_force_dir
+test_update_private_key
 
 echo ""

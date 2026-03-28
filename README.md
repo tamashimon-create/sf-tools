@@ -93,7 +93,7 @@ sf-init.sh
 
 > リポジトリ名は必ず `force-` で始めてください。
 
-`force-template` をベースに `sf-install.sh` が補完した完成形:
+`sf-tools/templates/` をベースに `sf-install.sh` が補完した完成形:
 
 ```text
 force-xxxxx/
@@ -547,12 +547,12 @@ sf-push.sh
 sf-update-secret.sh
 ```
 
-GitHub Secrets の `SFDX_AUTH_URL_PROD` / `_STG` / `_DEV` を一括再登録します。認証 URL の期限切れ時などに使用します。
+GitHub Secrets の JWT 認証情報（`SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*` / `SF_USERNAME_*` / `SF_INSTANCE_URL_*`）を一括再登録します。JWT 秘密鍵の更新時などに使用します。
 
 主な処理:
-1. ローカルの `tama` エイリアスから `sfdxAuthUrl` を取得
-2. 更新対象の組織情報を表示して確認（y/n）
-3. `gh secret set` で3つの Secret を更新
+1. git remote から対象リポジトリ（OWNER/REPO）を自動取得
+2. 更新する Secret 一覧・組織情報を表示して確認（y/n）
+3. `gh secret set` で各組織の JWT 関連 Secret を更新
 
 補足:
 - `force-*` ディレクトリ内で実行してください
@@ -644,11 +644,24 @@ sf-tools/
 ├── hooks/
 │   ├── pre-push                ← sf-hook.sh がプロジェクト側へコピー
 │   └── pre-commit
-├── templates/
-│   ├── defaults/               ← 設定ファイル雛形
-│   ├── release/                ← release ディレクトリ雛形
-│   └── .github/
-│       └── workflows/          ← CI/CD ワークフロー雛形
+├── templates/                  ← force-* プロジェクトの雛形（sf-tools/templates/ が唯一の正本）
+│   ├── .forceignore
+│   ├── .gitattributes
+│   ├── .gitignore
+│   ├── .prettierignore / .prettierrc
+│   ├── .github/
+│   │   └── workflows/          ← 自己完結型 CI/CD ワークフロー
+│   ├── .vscode/
+│   ├── config/
+│   ├── eslint.config.js
+│   ├── force-app/
+│   ├── package.json
+│   ├── scripts/
+│   ├── sfdx-project.json       ← __REPO_NAME__ プレースホルダーあり
+│   ├── sf-start.sh / sf-restart.sh
+│   └── sf-tools/
+│       ├── config/             ← metadata.txt / branches.txt 雛形
+│       └── release/__BRANCH__/ ← deploy-target.txt / remove-target.txt 雛形
 ├── doc/
 │   ├── setup-guide.md
 │   └── sf-cicd-strategy.md

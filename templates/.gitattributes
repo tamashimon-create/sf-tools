@@ -1,0 +1,58 @@
+# ==============================================================================
+# .gitattributes - 改行コード統一設定
+# ==============================================================================
+# Salesforce CLI はメタデータを LF で出力するため、
+# すべてのテキストファイルを LF に統一する。
+# Windows の core.autocrlf 設定による LF→CRLF 変換警告を防ぐ。
+
+# デフォルト: テキストファイルは LF に統一
+* text=auto eol=lf
+
+# --- Salesforce メタデータ ---
+*.xml        text eol=lf
+*.cls        text eol=lf
+*.trigger    text eol=lf
+*.page       text eol=lf
+*.component  text eol=lf
+*.app        text eol=lf
+*.cmp        text eol=lf
+*.evt        text eol=lf
+*.intf       text eol=lf
+*.tokens     text eol=lf
+*.labels     text eol=lf
+*.resource   text eol=lf
+*.permissionset    text eol=lf
+*.profile          text eol=lf
+*.remoteSite       text eol=lf
+*.object           text eol=lf
+*.flow             text eol=lf
+*.flexipage        text eol=lf
+*.layout           text eol=lf
+*.dashboard        text eol=lf
+*.report           text eol=lf
+
+# --- Web / LWC ---
+*.html       text eol=lf
+*.js         text eol=lf
+*.css        text eol=lf
+*.json       text eol=lf
+*.yaml       text eol=lf
+*.yml        text eol=lf
+*.md         text eol=lf
+*.txt        text eol=lf
+*.soql       text eol=lf
+*.apex       text eol=lf
+*.sh         text eol=lf
+
+# --- 開発者個人設定（マージ時は自分の変更を優先）---
+release/branch_name.txt merge=ours
+
+# --- バイナリ（変換しない）---
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.jar   binary

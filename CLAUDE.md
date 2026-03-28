@@ -400,15 +400,14 @@ Salesforce 開発の環境構築と日々の作業を自動化するシェルス
 
 ### 6.11 sf-update-secret.sh
 
-GitHub Secrets の SFDX_AUTH_URL_* を再登録する。実行フロー（順序は変更禁止）:
+GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序は変更禁止）:
 
 1. `force-*` ディレクトリかチェック
 2. git remote から対象リポジトリ（OWNER/REPO）を自動取得
-3. `sf org display --verbose --json --target-org tama` で sfdxAuthUrl を取得
-   - 取得失敗（未接続）→ 「先に sf-start.sh を実行してください」でエラー中止
-4. 更新する Secret 一覧・組織情報を表示して確認（y/n）
-5. `gh secret set` で3つの Secret を更新（`SFDX_AUTH_URL_PROD` / `STG` / `DEV`）
-6. SUCCESS
+3. 更新する Secret 一覧・組織情報を表示して確認（y/n）
+4. `gh secret set` で JWT 関連 Secret を更新
+   （`SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*` / `SF_USERNAME_*` / `SF_INSTANCE_URL_*`）
+5. SUCCESS
 
 ### 6.12 sf-hook.sh / sf-unhook.sh
 

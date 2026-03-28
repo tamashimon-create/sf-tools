@@ -97,25 +97,33 @@ STUB
 }
 
 # ==============================================================================
-# ヘルパー：3ブランチ構成用の stdin 入力シーケンス
+# ヘルパー：3ブランチ構成用の stdin 入力シーケンス（JWT 認証フロー）
 #
-# 入力順:
-#   1. Y             (確認プロンプト - phase_load_project_info)
-#   2. \n            (press_enter - register_sf_secret: prod)
-#   3. \n            (press_enter - register_sf_secret: staging)
-#   4. Y             (Sandbox? - staging)
-#   5. \n            (press_enter - register_sf_secret: develop)
-#   6. Y             (Sandbox? - develop)
-#   7. \n            (press_enter - phase_setup_pat_token)
-#   8. ghp_faketoken (PAT トークン)
-#   9. \n            (press_enter - phase_setup_slack: Bot Token 取得)
-#  10. xoxb-faketoken (Slack Bot Token)
-#  11. C01ABCDEFGH   (Slack チャンネル ID)
-#  12. \n            (press_enter - phase_setup_slack: Bot 招待完了確認)
-#  13. N             (init フォルダ削除をスキップ)
+# 入力順（Phase 6: JWT 認証）:
+#   1. Y                  (確認プロンプト - phase_load_project_info / ask_yn)
+#   ★ \n を press_enter が消費（Y\n の \n が Connected App 案内待ちに使われる）
+#   2. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#   3. prod@example.com   (prod ユーザー名 - read_or_quit)
+#   4. Y                  (staging Sandbox? - ask_yn / read_key)
+#   ★ \n は read_or_quit が空行として無視
+#   5. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#   6. stg@example.com    (staging ユーザー名 - read_or_quit)
+#   7. Y                  (develop Sandbox? - ask_yn / read_key)
+#   ★ \n は read_or_quit が空行として無視
+#   8. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#   9. dev@example.com    (develop ユーザー名 - read_or_quit)
+# 入力順（Phase 7: PAT）:
+#  10. \n                 (press_enter)
+#  11. ghp_faketoken      (PAT トークン - read_or_quit)
+# 入力順（Phase 8: Slack）:
+#  12. \n                 (press_enter - Bot Token 取得案内)
+#  13. xoxb-faketoken     (Slack Bot Token - read_or_quit)
+#  14. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
+#  15. \n                 (press_enter - Bot 招待完了確認)
+#  16. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\n\n\nY\n\nY\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\nN\n'
+    printf 'Y\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\nN\n'
 }
 
 # ==============================================================================
@@ -136,9 +144,6 @@ test_happy_path_3branches() {
     create_mock_gh_for_init "$mb"   # repo view カウンター付きモックで上書き
     _stub_subscripts "$mock_home"
 
-    # sf org display で sfdxAuthUrl を含む JSON を返す（register_sf_secret で使用）
-    export MOCK_SF_ORG_JSON='{"result":{"alias":"prod","sfdxAuthUrl":"force://fakeurl@test.com","id":"00D000000000001AAA"}}'
-
     local exit_code
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
@@ -146,22 +151,24 @@ test_happy_path_3branches() {
           > /tmp/sf-init-test-happy.log 2>&1
     exit_code=$?
 
-    assert_exit_ok   "$exit_code"                                              "正常終了する"
-    assert_file_contains "$MOCK_CALL_LOG" "gh auth status"                    "gh auth status が呼ばれる"
-    assert_file_contains "$MOCK_CALL_LOG" "gh repo create"                    "gh repo create が呼ばれる"
-    assert_file_contains "$MOCK_CALL_LOG" "git clone"                         "git clone が呼ばれる"
-    assert_file_contains "$MOCK_CALL_LOG" "sf org login"                      "sf org login が呼ばれる"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SFDX_AUTH_URL_PROD"  "SFDX_AUTH_URL_PROD が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SFDX_AUTH_URL_STG"   "SFDX_AUTH_URL_STG が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SFDX_AUTH_URL_DEV"   "SFDX_AUTH_URL_DEV が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set PAT_TOKEN"           "PAT_TOKEN が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_BOT_TOKEN"     "SLACK_BOT_TOKEN が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_CHANNEL_ID"    "SLACK_CHANNEL_ID が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "git add"                           "git add が呼ばれる"
+    assert_exit_ok   "$exit_code"                                                    "正常終了する"
+    assert_file_contains "$MOCK_CALL_LOG" "gh auth status"                           "gh auth status が呼ばれる"
+    assert_file_contains "$MOCK_CALL_LOG" "gh repo create"                           "gh repo create が呼ばれる"
+    assert_file_contains "$MOCK_CALL_LOG" "git clone"                                "git clone が呼ばれる"
+    assert_file_exists   "$init_dir/init/force-testproject/.github/workflows/wf-validate.yml"  "WF ファイル(wf-validate.yml)がコピーされる"
+    assert_file_exists   "$init_dir/init/force-testproject/.github/workflows/wf-release.yml"   "WF ファイル(wf-release.yml)がコピーされる"
+    assert_file_contains "$MOCK_CALL_LOG" "sf org login"                             "sf org login jwt が呼ばれる"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_PRIVATE_KEY"             "SF_PRIVATE_KEY が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_CONSUMER_KEY_PROD"       "SF_CONSUMER_KEY_PROD が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_CONSUMER_KEY_STG"        "SF_CONSUMER_KEY_STG が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_CONSUMER_KEY_DEV"        "SF_CONSUMER_KEY_DEV が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set PAT_TOKEN"                  "PAT_TOKEN が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_BOT_TOKEN"            "SLACK_BOT_TOKEN が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_CHANNEL_ID"           "SLACK_CHANNEL_ID が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "git add"                                  "git add が呼ばれる"
 
     teardown "$mb" "$mock_home" "$init_base"
     rm -f /tmp/sf-init-test-happy.log
-    unset MOCK_SF_ORG_JSON
 }
 
 # ==============================================================================
@@ -250,22 +257,21 @@ test_sf_login_failure() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
-    # ログイン失敗かつ org 接続も不可（= 本当の失敗）をシミュレート
+    # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
-    export MOCK_SF_ORG_DISPLAY_EXIT=1
 
-    # confirm + prod の press_enter まで入力（sf org login で失敗するため以降は不要）
+    # confirm → Connected App press_enter → prod consumer_key/username まで入力
+    # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\n\n' \
+    printf 'Y\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
 
     assert_exit_fail "$exit_code"                                              "SF ログイン失敗で非ゼロ終了する"
-    assert_file_contains "$MOCK_CALL_LOG" "sf org login"                      "sf org login が試みられる"
+    assert_file_contains "$MOCK_CALL_LOG" "sf org login"                      "sf org login jwt が試みられる"
 
     unset MOCK_SF_LOGIN_EXIT
-    unset MOCK_SF_ORG_DISPLAY_EXIT
     teardown "$mb" "$mock_home" "$init_base"
 }
 
@@ -348,8 +354,6 @@ test_repo_visibility_public_for_tama_create() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
-    export MOCK_SF_ORG_JSON='{"result":{"alias":"prod","sfdxAuthUrl":"force://fakeurl@test.com","id":"00D000000000001AAA"}}'
-
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
@@ -357,7 +361,6 @@ test_repo_visibility_public_for_tama_create() {
     assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "--public"        "tama-create は --public で作成される"
 
-    unset MOCK_SF_ORG_JSON
     teardown "$mb" "$mock_home" "$init_base"
 }
 
@@ -379,8 +382,6 @@ test_repo_visibility_private_for_other_owner() {
     create_mock_gh_for_init "$mb"
     _stub_subscripts "$mock_home"
 
-    export MOCK_SF_ORG_JSON='{"result":{"alias":"prod","sfdxAuthUrl":"force://fakeurl@test.com","id":"00D000000000001AAA"}}'
-
     _make_input_3branches \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
@@ -388,7 +389,6 @@ test_repo_visibility_private_for_other_owner() {
     assert_file_contains "$MOCK_CALL_LOG" "gh repo create"  "gh repo create が呼ばれる"
     assert_file_contains "$MOCK_CALL_LOG" "--private"       "他オーナーは --private で作成される"
 
-    unset MOCK_SF_ORG_JSON
     teardown "$mb" "$mock_home" "$init_base"
 }
 

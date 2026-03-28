@@ -7,7 +7,8 @@
 #
 # 【提供する関数】
 #   open_browser URL          ... OS を判定してブラウザを開く（lib/common.sh に同名関数あり）
-#   register_sf_secret        ... SF認証URL取得と GitHub Secret 登録
+#   generate_jwt_cert         ... JWT 用秘密鍵・証明書を openssl で生成する
+#   register_jwt_secret       ... JWT 認証情報を取得・テストして GitHub Secret に登録する
 #
 # 【lib/common.sh から利用可能な関数】
 #   press_enter [MSG]         ... Enter 待ち（q で中断）
@@ -31,63 +32,100 @@ if ! declare -f open_browser &>/dev/null; then
 fi
 
 # ------------------------------------------------------------------------------
-# Salesforce 認証 URL を取得して GitHub Secret に登録する
+# JWT 用秘密鍵・証明書を openssl で生成する
 # 引数:
-#   $1 - org_alias          : Salesforce 組織エイリアス（例: prod, staging, develop）
-#   $2 - secret_name        : GitHub Secret 名（例: SFDX_AUTH_URL_PROD）
-#   $3 - label              : 表示用ラベル（例: 本番組織）
-#   $4 - is_sandbox_override: "Y"/"N" で対話をスキップ（省略時は対話で確認）
-# 備考:
-#   sf org login web は MINGW64 等の環境で exit code が信頼できないため直接実行する。
-#   成否は続く sf org display の auth_url 取得で判定する（exit code は無視）。
+#   $1 - jwt_dir  : 保存先ディレクトリ（例: ~/.sf-jwt/force-test）
+#   $2 - repo_name: リポジトリ名（証明書の CN に使用）
+# 出力:
+#   $jwt_dir/server.key（秘密鍵）
+#   $jwt_dir/server.crt（公開鍵証明書）
 # ------------------------------------------------------------------------------
-register_sf_secret() {
+generate_jwt_cert() {
+    local jwt_dir="$1"
+    local repo_name="$2"
+
+    mkdir -p "$jwt_dir"
+    chmod 700 "$jwt_dir" 2>/dev/null || true  # run 不使用: ファイル権限保護（Windows は効果なし）
+
+    log "INFO" "JWT 用証明書を生成中: ${jwt_dir}/"
+    # run 不使用: 変数代入・openssl の終了コードを直接確認するため
+    openssl genrsa -out "${jwt_dir}/server.key" 2048 2>/dev/null \
+        || die "秘密鍵の生成に失敗しました。openssl がインストールされているか確認してください。"
+    openssl req -new -x509 -days 3650 \
+        -key "${jwt_dir}/server.key" \
+        -out "${jwt_dir}/server.crt" \
+        -subj "/CN=sf-jwt-${repo_name}/O=sf-cicd" 2>/dev/null \
+        || die "証明書の生成に失敗しました。"
+
+    chmod 600 "${jwt_dir}/server.key" 2>/dev/null || true  # run 不使用: 秘密鍵の権限保護
+
+    log "SUCCESS" "証明書を生成しました。"
+    log "INFO"    "  秘密鍵: ${jwt_dir}/server.key"
+    log "INFO"    "  証明書: ${jwt_dir}/server.crt"
+}
+
+# ------------------------------------------------------------------------------
+# JWT 認証情報を取得・テストして GitHub Secret に登録する
+# 引数:
+#   $1 - org_alias        : Salesforce 組織エイリアス（例: prod, staging, develop）
+#   $2 - suffix           : Secret 名のサフィックス（例: PROD, STG, DEV）
+#   $3 - label            : 表示用ラベル（例: 本番組織）
+#   $4 - key_file         : 秘密鍵ファイルパス
+#   $5 - is_sandbox_override: "Y"/"N" で対話をスキップ（省略時は対話で確認）
+# 登録する Secrets:
+#   SF_CONSUMER_KEY_<suffix>
+#   SF_USERNAME_<suffix>
+#   SF_INSTANCE_URL_<suffix>
+# ------------------------------------------------------------------------------
+register_jwt_secret() {
     local org_alias="$1"
-    local secret_name="$2"
+    local suffix="$2"
     local label="$3"
-    local is_sandbox_override="${4:-}"   # 省略時は対話で確認
+    local key_file="$4"
+    local is_sandbox_override="${5:-}"  # 省略時は対話で確認
 
-    log "INFO" "${label}（${org_alias}）に接続します。ブラウザが開くのでログインしてください。"
-    press_enter
+    log "HEADER" "${label}（SF_*_${suffix}）の設定"
 
-    local login_opts="--alias $org_alias"
-    # prod 以外は Sandbox か Developer Edition かを確認してログイン URL を切り替える
-    if [[ "$org_alias" != "prod" ]]; then
-        local is_sandbox_input
-        if [[ -n "$is_sandbox_override" ]]; then
-            is_sandbox_input="$is_sandbox_override"
-        else
-            ask_yn "Sandbox ですか？" && is_sandbox_input="Y" || is_sandbox_input="N"
-        fi
-        if [[ ! "$is_sandbox_input" =~ ^[Nn] ]]; then
-            login_opts="$login_opts --instance-url https://test.salesforce.com"
-        fi
+    # Sandbox か確認して接続 URL を決定
+    local instance_url="https://login.salesforce.com"
+    local is_sandbox_input
+    if [[ -n "$is_sandbox_override" ]]; then
+        is_sandbox_input="$is_sandbox_override"
+    else
+        ask_yn "  ${label}は Sandbox ですか？" && is_sandbox_input="Y" || is_sandbox_input="N"
     fi
+    if [[ "$is_sandbox_input" =~ ^[Yy] ]]; then
+        instance_url="https://test.salesforce.com"
+    fi
+    log "INFO" "  接続 URL: ${instance_url}"
 
-    # ログイン前に既存エイリアスをクリアする。
-    # これにより、ログイン失敗・中断時でも古い credentials が sf org display に残らず、
-    # 後続の auth_url チェックで確実に失敗を検出できる。
-    log "CMD" "[${SCRIPT_NAME}] sf org logout --target-org ${org_alias} --no-prompt"
-    sf org logout --target-org "$org_alias" --no-prompt 2>/dev/null || true
+    # コンシューマーキーを入力
+    local consumer_key
+    read_or_quit consumer_key "  コンシューマーキーを入力してください"
 
-    # sf org login web は exit code が信頼できないため直接実行する（run を使わない）。
-    # 成否は続く sf org display の auth_url 取得で判定する。
-    log "CMD" "[${SCRIPT_NAME}] sf org login web ${login_opts}"
-    # shellcheck disable=SC2086
-    sf org login web $login_opts || true
+    # 接続ユーザー名を入力
+    local username
+    read_or_quit username "  接続ユーザー名を入力してください（例: admin@example.com）"
 
-    log "INFO" "認証 URL を取得中..."
-    local sf_json auth_url
-    # run 不使用: 出力に sfdxAuthUrl を含むためログへの記録を避ける
-    sf_json=$(sf org display --verbose --json --target-org "$org_alias" 2>/dev/null)
-    auth_url=$(echo "$sf_json" \
-        | grep '"sfdxAuthUrl"' \
-        | sed 's/.*"sfdxAuthUrl": *"\([^"]*\)".*/\1/')
+    # JWT 接続テスト
+    log "INFO" "  JWT 接続テストを実行中..."
+    # run 不使用: sf org login jwt は exit code が信頼できない場合があるため直接実行して確認
+    sf org login jwt \
+        --client-id    "$consumer_key" \
+        --jwt-key-file "$key_file" \
+        --username     "$username" \
+        --instance-url "$instance_url" \
+        --alias        "$org_alias" 2>/dev/null \
+        || die "  JWT 接続テストに失敗しました。\n  Connected App の設定・コンシューマーキー・ユーザー名を確認してください。"
+    log "SUCCESS" "  JWT 接続テスト成功。"
 
-    [[ -z "$auth_url" ]] && die "${label}の認証 URL を取得できませんでした。\n  sf org display の出力を確認してください。"
+    # GitHub Secrets に登録
+    run gh secret set "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
+        || die "SF_CONSUMER_KEY_${suffix} の登録に失敗しました。"
+    run gh secret set "SF_USERNAME_${suffix}"     --body "$username"     -R "$REPO_FULL_NAME" \
+        || die "SF_USERNAME_${suffix} の登録に失敗しました。"
+    run gh secret set "SF_INSTANCE_URL_${suffix}" --body "$instance_url" -R "$REPO_FULL_NAME" \
+        || die "SF_INSTANCE_URL_${suffix} の登録に失敗しました。"
 
-    echo "$auth_url" | run gh secret set "$secret_name" -R "$REPO_FULL_NAME" \
-        || die "${secret_name} の登録に失敗しました。"
-
-    log "SUCCESS" "${secret_name} を登録しました。"
+    log "SUCCESS" "  SF_CONSUMER_KEY_${suffix} / SF_USERNAME_${suffix} / SF_INSTANCE_URL_${suffix} を登録しました。"
 }

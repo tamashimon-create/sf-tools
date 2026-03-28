@@ -196,7 +196,7 @@ test_release_dir_init_fail() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
-    rm -f "$mh/sf-tools/templates/release/deploy-target.txt"
+    rm -f "$mh/sf-tools/templates/sf-tools/release/__BRANCH__/deploy-target.txt"
 
     local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 

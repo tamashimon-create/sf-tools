@@ -35,7 +35,7 @@ test_pattern1_creates_three_branches() {
     create_all_mocks "$mb"
 
     # branches.txt を空（コメントのみ）にする
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "1" "$mb" "$mh")
     local ec=$?
@@ -56,7 +56,7 @@ test_pattern2_creates_two_branches() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "2" "$mb" "$mh")
     local ec=$?
@@ -77,7 +77,7 @@ test_pattern3_creates_one_branch() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "3" "$mb" "$mh")
     local ec=$?
@@ -98,7 +98,7 @@ test_invalid_choice() {
     export MOCK_CALL_LOG="$mb/calls.log"
     create_all_mocks "$mb"
 
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "9" "$mb" "$mh")
     local ec=$?
@@ -129,7 +129,7 @@ test_comment_header_preserved() {
     create_all_mocks "$mb"
 
     # テンプレートのコメント付き branches.txt を使用
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "1" "$mb" "$mh")
     local ec=$?
@@ -207,7 +207,7 @@ test_existing_remote_branch_skipped() {
     create_all_mocks "$mb"
     export MOCK_GIT_LS_REMOTE_EXIT=0  # リモートにブランチが存在する
 
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "1" "$mb" "$mh")
     local ec=$?
@@ -225,7 +225,7 @@ test_new_branch_created() {
     create_all_mocks "$mb"
     export MOCK_GIT_LS_REMOTE_EXIT=2  # リモートにブランチが存在しない
 
-    cp "$SF_TOOLS_DIR/templates/defaults/branches.txt" "$td/sf-tools/config/branches.txt"
+    cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
 
     local out; out=$(run_sf_branch "$td" "2" "$mb" "$mh")
     local ec=$?

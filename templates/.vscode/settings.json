@@ -1,0 +1,38 @@
+{
+  "files.exclude": {
+    "node_modules": true,
+    "logs": true,
+    "config": true,
+    "**/sf-tools/logs": true,
+    "**/sf-tools/config": true,
+    "**/sf-tools/temp_*": true,
+    "**/sf-tools/release/branch_name.txt": true,
+    ".claude": true,
+    ".git": true,
+    ".github": true,
+    ".sf": true,
+    ".sfdx": true,
+    ".vscode": true,
+    ".forceignore": true,
+    ".gitattributes": true,
+    ".gitignore": true,
+    ".prettierignore": true,
+    ".prettierrc": true,
+    "eslint.config.js": true,
+    "jest.config.js": true,
+    "package.json": true,
+    "package-lock.json": true,
+    "sfdx-project.json": true,
+    "sf-start.sh": true,
+    "sf-restart.sh": true,
+    "README.md": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/.sf": true,
+    "**/.sfdx": true
+  },
+  "xml.preferences.showSchemaDocumentationType": "none",
+  "xml.server.vmargs": "-Xmx2048M"
+}
