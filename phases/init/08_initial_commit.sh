@@ -34,7 +34,7 @@ SF_INIT_ENV_FILE="${SF_INIT_ENV_FILE:-${PWD}/.sf-init.env}"
 # ------------------------------------------------------------------------------
 # メイン処理
 # ------------------------------------------------------------------------------
-log "HEADER" "Phase 9: 初回コミット＆プッシュ"
+log "HEADER" "Phase 8: 初回コミット＆プッシュ"
 
 log "INFO" "初回コミット＆プッシュを実行中..."
 
@@ -60,8 +60,35 @@ fi
 origin_url=$(git remote get-url origin)   # VAR=$(cmd) 形式のため run 不要
 pat_url="https://${PAT_TOKEN_VALUE}@github.com/${REPO_FULL_NAME}.git"
 run git remote set-url origin "$pat_url"
+
+# main をプッシュ（.github/workflows/ を含むため workflow スコープ付き PAT が必須）
 run git push --no-verify origin main \
     || { run git remote set-url origin "$origin_url"; die "git push に失敗しました。"; }
+
+# main 以外のブランチを作成・プッシュ
+# sf-branch.sh は初回コミット前のため push をスキップ済み。ここで PAT URL のまま作成する
+branches_file="${REPO_DIR}/sf-tools/config/branches.txt"
+if [[ -f "$branches_file" ]]; then
+    while IFS= read -r branch || [[ -n "$branch" ]]; do
+        branch="${branch%$'\r'}"
+        [[ "$branch" =~ ^[[:space:]]*# ]] && continue  # コメント行スキップ
+        [[ -z "${branch// }" ]]            && continue  # 空行スキップ
+        [[ "$branch" == "main" ]]          && continue  # main はスキップ
+        # リモートに既に存在するか確認
+        if git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
+            log "INFO" "${branch} — スキップ（既に存在）"
+            continue
+        fi
+        run git checkout -B "$branch" \
+            || { run git remote set-url origin "$origin_url"; die "${branch} ブランチの作成に失敗しました。"; }
+        run git push --no-verify -u origin "$branch" \
+            || { run git remote set-url origin "$origin_url"; die "${branch} ブランチのプッシュに失敗しました。"; }
+        run git checkout main \
+            || { run git remote set-url origin "$origin_url"; die "main への切り替えに失敗しました。"; }
+        log "SUCCESS" "${branch} ブランチを作成しました。"
+    done < "$branches_file"
+fi
+
 run git remote set-url origin "$origin_url"
 
 log "SUCCESS" "初回コミット＆プッシュ完了。"
@@ -72,5 +99,5 @@ log "INFO" "pre-push フックをインストール中..."
 run bash "${SF_TOOLS_DIR}/bin/sf-hook.sh" \
     || die "sf-hook.sh の実行に失敗しました。"
 
-log "SUCCESS" "Phase 9 完了: 初回コミット＆プッシュ OK。"
+log "SUCCESS" "Phase 8 完了: 初回コミット＆プッシュ OK。"
 exit $RET_OK
