@@ -47,14 +47,23 @@ generate_jwt_cert() {
     mkdir -p "$jwt_dir"
     chmod 700 "$jwt_dir" 2>/dev/null || true  # run 不使用: ファイル権限保護（Windows は効果なし）
 
+    # 既存の証明書があればスキップ（--resume 時の再生成による Salesforce との不一致を防ぐ）
+    if [[ -f "${jwt_dir}/server.key" && -f "${jwt_dir}/server.crt" ]]; then
+        log "INFO" "既存の証明書を使用します（スキップ）: ${jwt_dir}/"
+        log "INFO" "  秘密鍵: ${jwt_dir}/server.key"
+        log "INFO" "  証明書: ${jwt_dir}/server.crt"
+        return 0
+    fi
+
     log "INFO" "JWT 用証明書を生成中: ${jwt_dir}/"
     # run 不使用: 変数代入・openssl の終了コードを直接確認するため
     openssl genrsa -out "${jwt_dir}/server.key" 2048 2>/dev/null \
         || die "秘密鍵の生成に失敗しました。openssl がインストールされているか確認してください。"
+    # // プレフィックス: Git Bash が -subj の /CN= を Windows パスに変換するのを防ぐ定番の回避策
     openssl req -new -x509 -days 3650 \
         -key "${jwt_dir}/server.key" \
         -out "${jwt_dir}/server.crt" \
-        -subj "/CN=sf-jwt-${repo_name}/O=sf-cicd" 2>/dev/null \
+        -subj "//CN=sf-jwt-${repo_name}" \
         || die "証明書の生成に失敗しました。"
 
     chmod 600 "${jwt_dir}/server.key" 2>/dev/null || true  # run 不使用: 秘密鍵の権限保護
