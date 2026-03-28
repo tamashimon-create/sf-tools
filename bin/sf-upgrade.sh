@@ -66,7 +66,7 @@ fi
 # Git のアップデート（最後に実行 ※アップデート時は GUI インストーラーが起動する）
 # ------------------------------------------------------------------------------
 log "INFO" "Git をアップデートします..."
-if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
+if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "mingw"* ]]; then
     run git update-git-for-windows --yes \
         || log "WARNING" "Git のアップデートに失敗しました（続行します）"
 else

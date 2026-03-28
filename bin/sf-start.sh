@@ -42,7 +42,7 @@ source "$COMMON_LIB"
 log "HEADER" "開発タスクのスタートアップを開始します (${SCRIPT_NAME}.sh)"
 
 trap '' INT  # Ctrl+C を無効化（q で中断すること）
-trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
+trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null; rm -rf /tmp/sf-wsl-bin 2>/dev/null' EXIT
 
 # ------------------------------------------------------------------------------
 # 4. Salesforce 接続確認・ログイン
@@ -89,15 +89,16 @@ if [ "$SKIP_LOGIN" -eq 0 ]; then
     # WSL: sf org login web 内部の open パッケージが wslview を探すため、
     #       未インストール時は powershell.exe でブラウザを開く wslview を一時補完する
     if grep -qi microsoft /proc/version 2>/dev/null && ! command -v wslview &>/dev/null; then
-        mkdir -p /tmp/sf-wsl-bin
+        mkdir -p /tmp/sf-wsl-bin          # run 不使用: PATH export 前のシェル設定操作
         printf '#!/bin/bash\npowershell.exe Start-Process "$1" 2>/dev/null\n' \
             > /tmp/sf-wsl-bin/wslview
-        chmod +x /tmp/sf-wsl-bin/wslview
+        chmod +x /tmp/sf-wsl-bin/wslview  # run 不使用: 同上
         export PATH="/tmp/sf-wsl-bin:$PATH"
     fi
 
     # ブラウザ起動に TTY が必要なため run ラッパーを使用しない
-    sf org login web --set-default --alias "$ORG_ALIAS" --instance-url "$LOGIN_URL" || true
+    sf org login web --set-default --alias "$ORG_ALIAS" --instance-url "$LOGIN_URL" \
+        || log "WARNING" "ログインに失敗した可能性があります。接続が確立されていない場合は再実行してください。"
     log "SUCCESS" "接続完了！"
 fi
 
