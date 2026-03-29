@@ -120,7 +120,7 @@ gh auth switch --user tamashimon         # 完了後は必ず元に戻す
 ```bash
 bash tests/run_tests.sh                        # 全テスト実行（mm 前に必ず実行）
 bash tests/run_tests.sh test_sf-metasync.sh   # 単体実行
-bash tests/run_tests.sh --changed             # 変更ファイルに対応するテストのみ（開発中）
+bash tests/run_tests.sh --changed             # 変更ファイルに対応するテストのみ実行
 ```
 
 > **開発中は `--changed`、mm 前は全件** が基本ワークフロー。
