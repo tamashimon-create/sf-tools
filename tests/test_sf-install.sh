@@ -190,6 +190,19 @@ test_deploy_remove_target_created() {
     teardown "$td" "$mb" "$mh"
 }
 
+# .gitmessage が作成され git config に設定される
+test_gitmessage_created() {
+    local td mb mh
+    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    create_all_mocks "$mb"
+
+    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
+
+    assert_file_exists "$td/.gitmessage" ".gitmessage が作成された"
+    assert_file_contains "$MOCK_CALL_LOG" "config commit.template" "git config commit.template が呼び出された"
+    teardown "$td" "$mb" "$mh"
+}
+
 # release 初期化に失敗 → WARNING が出力される（SUCCESS にならない）
 test_release_dir_init_fail() {
     local td mb mh
@@ -211,6 +224,7 @@ test_release_dir_init_fail() {
 }
 
 test_normal_run
+test_gitmessage_created
 test_upgrade_skipped_within_24h
 test_upgrade_triggered_on_first_run
 test_upgrade_called_on_first_run
