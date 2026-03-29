@@ -10,8 +10,9 @@
 #   2. sf-tools/config/ 配下の設定ファイルを生成（未存在時のみ）
 #   3. Git フック (pre-push) をインストール
 #   4. リリース管理ディレクトリの準備 & branch_name.txt を更新
-#   5. package.json があれば npm install を実行（時間がかかる場合あり）
-#   6. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
+#   5. コミットメッセージテンプレートを設置（.gitmessage）
+#   6. package.json があれば npm install を実行（時間がかかる場合あり）
+#   7. 開発ツールのアップデート（sf-upgrade.sh をバックグラウンドで起動）※24 時間に 1 回のみ
 #
 # 【WF について】
 #   GitHub Actions ワークフローは sf-init.sh（Phase 3）が sf-tools/templates/ からコピーするため、
@@ -174,6 +175,19 @@ phase_setup_release_dir() {
     return $RET_OK
 }
 
+# 【GITMESSAGE】コミットメッセージテンプレートの設置
+phase_setup_gitmessage() {
+    local template="$HOME/sf-tools/templates/gitmessage"
+    if [[ ! -f "$template" ]]; then
+        log "WARNING" "gitmessage テンプレートが見つかりません: $template"
+        return $RET_OK
+    fi
+    run cp "$template" ".gitmessage" || return $RET_NG
+    git config commit.template .gitmessage
+    log "INFO" "コミットメッセージテンプレートを設置しました (.gitmessage)"
+    return $RET_OK
+}
+
 # 【UPGRADE】開発ツールのアップデート（バックグラウンド実行）
 phase_upgrade_tools_bg() {
     if _is_tool_update_needed; then
@@ -222,6 +236,12 @@ if phase_setup_release_dir; then
     log "SUCCESS" "リリース管理ディレクトリの準備が完了しました。"
 else
     log "WARNING" "リリース管理ディレクトリの準備に失敗しました（続行します）"
+fi
+
+if phase_setup_gitmessage; then
+    log "SUCCESS" "コミットメッセージテンプレートの設置が完了しました。"
+else
+    log "WARNING" "コミットメッセージテンプレートの設置に失敗しました（続行します）"
 fi
 
 phase_npm_install
