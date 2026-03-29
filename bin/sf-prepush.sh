@@ -32,6 +32,10 @@ if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    awk '/^# ==/{f++; next} f==2{sub(/^# ?/,""); print} f==3{exit}' "${BASH_SOURCE[0]}"
+    exit 0
+fi
 source "$COMMON_LIB"
 
 # ------------------------------------------------------------------------------
@@ -44,6 +48,7 @@ log "HEADER" "main 同期チェックを開始します (${SCRIPT_NAME}.sh)"
 # ------------------------------------------------------------------------------
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --help|-h) show_help ;;
         --verbose|-v) : ;;  # SILENT_EXEC は common.sh が設定済み
         --*)
             die "不明なオプションです: $1"

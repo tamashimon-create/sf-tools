@@ -61,6 +61,10 @@ if [[ ! -f "$COMMON_LIB" ]]; then
     echo "[FATAL ERROR] Library not found: $COMMON_LIB" >&2
     exit 1
 fi
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    awk '/^# ==/{f++; next} f==2{sub(/^# ?/,""); print} f==3{exit}' "${BASH_SOURCE[0]}"
+    exit 0
+fi
 source "$COMMON_LIB"
 
 trap '' INT  # Ctrl+C を無効化（子プロセスにも継承される）
@@ -73,6 +77,7 @@ RESUME_PHASE=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --help|-h) show_help ;;
         --only)
             ONLY_PHASE="$2"
             shift 2
