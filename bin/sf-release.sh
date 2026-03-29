@@ -107,8 +107,6 @@ fi
 
 readonly RELEASE_BASE="sf-tools/release"
 readonly RELEASE_DIR="${RELEASE_BASE}/${BRANCH_NAME}"
-readonly TEMPLATE_DEPLOY="$HOME/sf-tools/templates/release/deploy-target.txt"
-readonly TEMPLATE_REMOVE="$HOME/sf-tools/templates/release/remove-target.txt"
 readonly DEPLOY_LIST="${RELEASE_DIR}/deploy-target.txt"
 readonly REMOVE_LIST="${RELEASE_DIR}/remove-target.txt"
 readonly DEPLOY_XML="${RELEASE_DIR}/package.xml"
@@ -126,18 +124,8 @@ phase_check_target() {
     run mkdir -p "$RELEASE_DIR"
 
     for target in "$DEPLOY_LIST" "$REMOVE_LIST"; do
-        if [[ ! -f "$target" ]]; then
-            local template="$TEMPLATE_DEPLOY"
-            [[ "$target" == "$REMOVE_LIST" ]] && template="$TEMPLATE_REMOVE"
-            if [[ -f "$template" ]]; then
-                run cp "$template" "$target"
-                created=1
-            fi
-        fi
+        [[ ! -f "$target" ]] && die "ターゲットファイルが見つかりません: ${target}"
     done
-
-    # 新規作成された場合はユーザーに記入を促すため停止
-    [[ "$created" -eq 1 ]] && die "リストを作成しました。中身を記入して再実行してください。"
 
     # 構文チェック
     run bash "${SCRIPT_DIR}/sf-check.sh" "$DEPLOY_LIST" "$REMOVE_LIST" \

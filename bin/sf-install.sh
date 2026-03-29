@@ -223,8 +223,17 @@ else
     log "WARNING" "sf-tools の最新化に失敗しました（続行します）"
 fi
 
-phase_init_config || die "設定ファイルの初期化に失敗しました。"
-log "SUCCESS" "設定ファイルの確認が完了しました。"
+if [[ -n "${SF_INIT_RUNNING:-}" ]]; then
+    # sf-init 時: テンプレートから設定ファイルを生成
+    phase_init_config || die "設定ファイルの初期化に失敗しました。"
+    log "SUCCESS" "設定ファイルの確認が完了しました。"
+else
+    # 通常起動時: 設定ファイルが存在しなければプロジェクト破損 → エラー終了
+    for _cfg in "sf-tools/config/metadata.txt" "sf-tools/config/branches.txt"; do
+        [[ ! -f "$_cfg" ]] && die "設定ファイルが見つかりません: ${_cfg}"
+    done
+    log "SUCCESS" "設定ファイルの確認が完了しました。"
+fi
 
 if phase_setup_hook "$@"; then
     log "SUCCESS" "Git フックのインストールが完了しました。"
@@ -238,10 +247,13 @@ else
     log "WARNING" "リリース管理ディレクトリの準備に失敗しました（続行します）"
 fi
 
-if phase_setup_gitmessage; then
-    log "SUCCESS" "コミットメッセージテンプレートの設置が完了しました。"
-else
-    log "WARNING" "コミットメッセージテンプレートの設置に失敗しました（続行します）"
+# sf-init からの呼び出し時のみ実行（テンプレートコピーを伴う初期セットアップ）
+if [[ -n "${SF_INIT_RUNNING:-}" ]]; then
+    if phase_setup_gitmessage; then
+        log "SUCCESS" "コミットメッセージテンプレートの設置が完了しました。"
+    else
+        log "WARNING" "コミットメッセージテンプレートの設置に失敗しました（続行します）"
+    fi
 fi
 
 phase_npm_install

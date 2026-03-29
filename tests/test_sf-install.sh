@@ -182,7 +182,7 @@ test_deploy_remove_target_created() {
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_file_exists "$td/sf-tools/release/feature/test/deploy-target.txt" "deploy-target.txt が作成された"
     assert_file_exists "$td/sf-tools/release/feature/test/remove-target.txt" "remove-target.txt が作成された"
@@ -196,7 +196,7 @@ test_gitmessage_created() {
     td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
     create_all_mocks "$mb"
 
-    cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
+    cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
 
     assert_file_exists "$td/.gitmessage" ".gitmessage が作成された"
     assert_file_contains "$MOCK_CALL_LOG" "config commit.template" "git config commit.template が呼び出された"
@@ -211,7 +211,7 @@ test_release_dir_init_fail() {
     export MOCK_GIT_BRANCH="feature/test"
     rm -f "$mh/sf-tools/templates/sf-tools/release/__BRANCH__/deploy-target.txt"
 
-    local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
+    local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
     echo "$out" | grep -q "リリース管理ディレクトリの準備に失敗" \
         && pass "release 初期化失敗 → WARNING が出力された" \
