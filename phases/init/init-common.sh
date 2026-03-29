@@ -125,7 +125,7 @@ register_jwt_secret() {
         --username     "$username" \
         --instance-url "$instance_url" \
         --alias        "$org_alias" 2>/dev/null \
-        || die "  JWT 接続テストに失敗しました。\n  Connected App の設定・コンシューマーキー・ユーザー名を確認してください。"
+        || die "  JWT 接続テストに失敗しました。以下を確認してください:\n  ・コンシューマーキーが正しいか（コピーミスに注意）\n  ・ユーザー名が正しいか\n  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか\n  ・プロファイルに接続ユーザーが割り当てられているか\n  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）\n  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"
     log "SUCCESS" "  JWT 接続テスト成功。"
 
     # GitHub Secrets に登録
