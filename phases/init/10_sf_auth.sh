@@ -60,9 +60,14 @@ log "HEADER" "Phase 10-1: JWT 用証明書を生成します。"
 
 if [[ -f "${JWT_DIR}/server.key" && -f "${JWT_DIR}/server.crt" ]]; then
     log "INFO" "既存の証明書が見つかりました: ${JWT_DIR}/"
-    ask_yn "  既存の証明書を再利用しますか？（N を選ぶと再生成します）" \
-        && log "INFO" "  既存の証明書を使用します。" \
-        || generate_jwt_cert "$JWT_DIR" "$REPO_NAME"
+    if ask_yn "  既存の証明書を再利用しますか？（N を選ぶと再生成します）"; then
+        log "INFO" "  既存の証明書を使用します。"
+    else
+        # N を選んだ場合は既存ファイルを削除してから再生成
+        # （削除しないと generate_jwt_cert 内のスキップ判定に引っかかるため）
+        rm -f "${JWT_DIR}/server.key" "${JWT_DIR}/server.crt"
+        generate_jwt_cert "$JWT_DIR" "$REPO_NAME"
+    fi
 else
     generate_jwt_cert "$JWT_DIR" "$REPO_NAME"
 fi
@@ -75,25 +80,26 @@ log "INFO" ""
 log "INFO" "  ▼ アップロードする証明書ファイル（server.crt）のパス:"
 log "INFO" "    ${JWT_DIR}/server.crt"
 log "INFO" ""
-log "INFO" "  【Connected App 作成手順（組織ごとに実施）】"
-log "INFO" "  1. 設定 → アプリケーション → 接続アプリケーション → 「新規接続アプリケーション」"
-log "INFO" "  2. 基本情報を入力（アプリケーション名・API 参照名・連絡先メール）"
-log "INFO" "  3. 「OAuth 設定を有効化」にチェック"
+log "INFO" "  ╔══════════════════════════════════════════════════╗"
+log "INFO" "  ║  STEP A: Connected App を作成する（作成画面）    ║"
+log "INFO" "  ╚══════════════════════════════════════════════════╝"
+log "INFO" "  1. 設定の検索窓に「外部クライアントアプリケーション」と入力 → 設定 → 「新規接続アプリケーション」"
+log "INFO" "  2. 基本情報を入力（アプリケーション名: SF_TOOLS・API 参照名: SF_TOOLS・連絡先メール: 任意）"
+log "INFO" "  3. 「OAuth 設定の有効化」にチェック"
 log "INFO" "     コールバック URL: https://login.salesforce.com/services/oauth2/callback"
-log "INFO" "  4. OAuth スコープに「フルアクセス (full)」を追加"
+log "INFO" "  4. 「選択した OAuth 範囲」に「フルアクセス (full)」を追加"
 log "INFO" "  5. 「デジタル署名を使用」にチェック → 上記の server.crt をアップロード"
-log "INFO" "  6. 保存 → 「コンシューマーキーとシークレット」をクリック → コンシューマーキーをコピー"
+log "INFO" "  6. 「指名ユーザーの JSON Web トークン (JWT) ベースのアクセストークンを発行」→ チェックを入れる"
+log "INFO" "  7. 保存 → 次へ → [コンシューマーの詳細管理] をクリック → 「コンシューマー鍵」をコピー"
 log "INFO" ""
-log "INFO" "  ★ 保存後 2〜10 分待ってから以下を設定してください ★"
+log "INFO" "  ★ 保存後 2〜10 分待ってから STEP B へ進んでください ★"
 log "INFO" ""
-log "INFO" "  7. 【OAuth ポリシーの設定】"
-log "INFO" "     「接続アプリケーションを管理」→「OAuth ポリシーを編集」"
-log "INFO" "     ・「許可されているユーザー」→「管理者が承認したユーザーは事前承認済み」に変更"
-log "INFO" "     ・「指名ユーザーの JWT ベースアクセストークンを発行」→ チェックを入れる"
-log "INFO" "     → 保存"
-log "INFO" "  8. 【プロファイルの割り当て】"
-log "INFO" "     「接続アプリケーションを管理」→「プロファイルを管理」"
-log "INFO" "     → 接続ユーザーのプロファイル（例: システム管理者）を追加"
+log "INFO" "  ╔══════════════════════════════════════════════════╗"
+log "INFO" "  ║  STEP B: 管理画面でポリシーを設定する           ║"
+log "INFO" "  ╚══════════════════════════════════════════════════╝"
+log "INFO" "  設定の検索窓に「接続アプリケーションを管理」と入力 → 作成したアプリをクリック"
+log "INFO" "  ・「ポリシーを編集」→「許可されているユーザー」→「管理者が承認したユーザーは事前承認済み」→ 保存"
+log "INFO" "  ・「プロファイルを管理する」→ 接続ユーザーのプロファイル（例: システム管理者）を追加"
 log "INFO" ""
 press_enter "設定が完了したら Enter を押してください（q で中断）"
 
