@@ -2,3 +2,4 @@
 logs/
 doc/setup-guide.html
 release/
+.sfdx/
