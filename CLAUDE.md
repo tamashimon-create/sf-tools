@@ -26,12 +26,19 @@
 
 ### 1.3 mm 実行手順
 
-「mm」と明示された場合のみ、コミット・プッシュ・main マージを一括実行すること。
+「mm」と明示された場合のみ、以下の手順を一括実行すること。
 
 ```bash
-gh auth switch --user tama-create   # 実行前に切り替え
-# ... コミット・プッシュ・マージ ...
-gh auth switch --user tamashimon    # 完了後は必ず元に戻す
+gh auth switch --user tama-create        # 実行前に切り替え
+git checkout development                 # development ブランチに移動
+git add <対象ファイル>
+git commit -m "..."
+git push origin development
+gh pr create --base main
+gh pr merge <PR番号> --merge             # --delete-branch は付けない
+git checkout development                 # マージ後も development に戻る
+git pull origin main                     # main の最新を取り込む
+gh auth switch --user tamashimon         # 完了後は必ず元に戻す
 ```
 
 ### 1.4 メモリ・ドキュメント管理
