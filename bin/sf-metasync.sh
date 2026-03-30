@@ -2,8 +2,9 @@
 # ==============================================================================
 # sf-metasync.sh - Salesforce メタデータ Git 自動同期スクリプト
 # ==============================================================================
-# 本番組織(prod)の最新メタデータを取得し、main ブランチへ自動反映します。
-# ※ 接続中の本番組織を対象とします（Sandbox 接続中は実行不可）。
+# sf-init で設定した prod エイリアスの組織（本番または Sandbox）から最新メタデータを取得し、
+# main ブランチへ自動反映します。
+# ※ sf-init の設定により、本番組織・Sandbox どちらにも対応します。
 # ※ どのブランチから実行しても main へ自動切替して処理します。
 # ※ Salesforce 組織の変更を正とする。main のローカル未コミット変更がある場合は中止。
 #   1. main ブランチへ自動切替（他ブランチから実行した場合は stash して切替）
@@ -69,18 +70,11 @@ done
 # ------------------------------------------------------------------------------
 # 5. 固有設定
 # ------------------------------------------------------------------------------
-# 接続中の組織情報を一度だけ取得（エイリアス解決 + Sandbox チェックに共用）
-ORG_DISPLAY_JSON=$(run sf org display --json || echo "")
-[[ -z "$ORG_DISPLAY_JSON" ]] && die "接続先組織を特定できませんでした。"
-
-readonly TARGET_ORG=$(echo "$ORG_DISPLAY_JSON" | grep '"alias"' | sed 's/.*"alias"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-[[ -z "$TARGET_ORG" ]] && die "接続先組織のエイリアスを特定できませんでした。"
+# sf-init で登録した prod エイリアスの組織情報を取得（本番・Sandbox どちらも許容）
+readonly TARGET_ORG="prod"
+ORG_DISPLAY_JSON=$(run sf org display --target-org "$TARGET_ORG" --json || echo "")
+[[ -z "$ORG_DISPLAY_JSON" ]] && die "prod エイリアスの組織情報を取得できませんでした。sf-init を実行して prod 組織を登録してください。"
 log "INFO" "接続先組織: ${TARGET_ORG}"
-
-# Sandbox への接続中は実行を禁止（本番組織のみ許可）
-if echo "$ORG_DISPLAY_JSON" | grep -qi '"isSandbox".*true'; then
-    die "Sandbox 組織への接続中は実行できません。本番組織に接続してから再実行してください。"
-fi
 
 # 常に main ブランチで作業する
 readonly BRANCH_NAME="main"
