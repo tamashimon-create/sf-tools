@@ -22,6 +22,15 @@
 #   秘密鍵は ~/.sf-jwt/<REPO_NAME>/server.key に保存される。
 #   証明書（server.crt）は各組織の Connected App にアップロードが必要。
 #   BRANCH_COUNT は Phase 5 で .sf-init.env に書き出される。
+#
+# 【Connected App 運用上の注意】
+#   ・作成した Connected App を「外部クライアントアプリへの移行」または「削除」しないこと。
+#     OAuth 内部状態が破損し client_identifier_invalid エラーが発生する。
+#     問題が起きた場合は同じアプリを修正せず、別名で新規作成すること。
+#   ・Spring '26 以降の組織では Connected App 作成時に PKCE がデフォルト ON になる場合がある。
+#     JWT Bearer Flow には不要なため「PKCE 拡張を要求」のチェックを外すこと。
+#   ・Developer Edition 組織では pre-authorization の反映が遅延・失敗する場合がある。
+#     JWT Bearer Flow は Production / Sandbox 組織での使用を推奨。
 # ==============================================================================
 
 # SF_TOOLS_DIR は sf-init.sh（司令塔）から export される
@@ -87,8 +96,12 @@ log "INFO" "  1. 設定の検索窓に「外部クライアントアプリケー
 log "INFO" "  2. 基本情報を入力（アプリケーション名: SF_TOOLS・API 参照名: SF_TOOLS・連絡先メール: 任意）"
 log "INFO" "  3. 「OAuth 設定の有効化」にチェック"
 log "INFO" "     コールバック URL: https://login.salesforce.com/services/oauth2/callback"
-log "INFO" "  4. 「選択した OAuth 範囲」に「フルアクセス (full)」を追加"
+log "INFO" "  4. 「選択した OAuth 範囲」に以下を追加"
+log "INFO" "     ・フルアクセス (full)"
+log "INFO" "     ・いつでも要求を実行 (refresh_token, offline_access)"
 log "INFO" "  5. 「デジタル署名を使用」にチェック → 上記の server.crt をアップロード"
+log "INFO" "  ★ 「Proof Key for Code Exchange (PKCE) 拡張を要求」が ON の場合は外してください"
+log "INFO" "     （Spring '26 以降の組織でデフォルト ON になっている場合があります）"
 log "INFO" "  6. 「指名ユーザーの JSON Web トークン (JWT) ベースのアクセストークンを発行」→ チェックを入れる"
 log "INFO" "  7. 保存 → 次へ → [コンシューマーの詳細管理] をクリック → 「コンシューマー鍵」をコピー"
 log "INFO" ""
@@ -97,7 +110,7 @@ log "INFO" ""
 log "INFO" "  ╔══════════════════════════════════════════════════╗"
 log "INFO" "  ║  STEP B: 管理画面でポリシーを設定する            ║"
 log "INFO" "  ╚══════════════════════════════════════════════════╝"
-log "INFO" "  設定の検索窓に「接続アプリケーションを管理」と入力 → 作成したアプリをクリック"
+log "INFO" "  設定の検索窓に「接続アプリケーションを管理」と入力 → 作成したアプリ（SF_TOOLS）をクリック"
 log "INFO" "  ・「ポリシーを編集」→「許可されているユーザー」→「管理者が承認したユーザーは事前承認済み」→ 保存"
 log "INFO" "  ・「プロファイルを管理する」→ 接続ユーザーのプロファイル（例: システム管理者）を追加"
 log "INFO" ""
