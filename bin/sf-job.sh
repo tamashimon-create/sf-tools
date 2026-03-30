@@ -133,7 +133,7 @@ phase_ask_job_name() {
     echo ""
 
     while true; do
-        read_or_quit JOB_NAME "  ジョブ名: "
+        read_or_quit JOB_NAME "  ジョブ名："
 
         if [[ -z "$JOB_NAME" ]]; then
             log "WARNING" "ジョブ名を入力してください。"

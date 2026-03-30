@@ -122,7 +122,7 @@ _update_private_key() {
     log "HEADER" "秘密鍵（SF_PRIVATE_KEY）を更新します"
 
     local key_file
-    read_or_quit key_file "  秘密鍵ファイルのパスを入力してください（例: ~/.sf-jwt/${REPO_NAME}/server.key）"
+    read_or_quit key_file "  秘密鍵ファイルのパスを入力してください（例: ~/.sf-jwt/${REPO_NAME}/server.key）："
     # ~ を展開
     key_file="${key_file/#\~/$HOME}"
     [[ -f "$key_file" ]] || die "ファイルが存在しません: ${key_file}"
@@ -147,13 +147,13 @@ _update_consumer_key() {
     # 秘密鍵ファイルの確認（接続テスト用）
     local key_file="${JWT_DIR}/server.key"
     if [[ ! -f "$key_file" ]]; then
-        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください"
+        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください："
         key_file="${key_file/#\~/$HOME}"
         [[ -f "$key_file" ]] || die "ファイルが存在しません: ${key_file}"
     fi
 
     local consumer_key
-    read_or_quit consumer_key "  ${label}のコンシューマーキーを入力してください"
+    read_or_quit consumer_key "  ${label}のコンシューマーキーを入力してください："
 
     # 現在の username / instance_url を GitHub から取得（テスト用）
     local username instance_url
@@ -161,8 +161,8 @@ _update_consumer_key() {
     username=$(gh secret list -R "$REPO_FULL_NAME" 2>/dev/null \
         | grep "SF_USERNAME_${suffix}" | head -1 | awk '{print $1}' || true)
     # GitHub Secrets の値は取得不可のため入力を要求
-    read_or_quit username     "  ${label}の接続ユーザー名を入力してください（接続テスト用）"
-    read_or_quit instance_url "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）"
+    read_or_quit username     "  ${label}の接続ユーザー名を入力してください（接続テスト用）："
+    read_or_quit instance_url "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）："
 
     _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
@@ -182,15 +182,15 @@ _update_username() {
 
     local key_file="${JWT_DIR}/server.key"
     if [[ ! -f "$key_file" ]]; then
-        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください"
+        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください："
         key_file="${key_file/#\~/$HOME}"
         [[ -f "$key_file" ]] || die "ファイルが存在しません: ${key_file}"
     fi
 
     local consumer_key username instance_url
-    read_or_quit consumer_key  "  ${label}のコンシューマーキーを入力してください（接続テスト用）"
-    read_or_quit username      "  ${label}の新しい接続ユーザー名を入力してください"
-    read_or_quit instance_url  "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）"
+    read_or_quit consumer_key  "  ${label}のコンシューマーキーを入力してください（接続テスト用）："
+    read_or_quit username      "  ${label}の新しい接続ユーザー名を入力してください："
+    read_or_quit instance_url  "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）："
 
     _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
@@ -208,7 +208,7 @@ _update_all() {
     # 秘密鍵
     local key_file="${JWT_DIR}/server.key"
     if [[ ! -f "$key_file" ]]; then
-        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください"
+        read_or_quit key_file "  秘密鍵ファイルのパスを入力してください："
         key_file="${key_file/#\~/$HOME}"
         [[ -f "$key_file" ]] || die "ファイルが存在しません: ${key_file}"
     fi
@@ -236,8 +236,8 @@ _update_all() {
         log "HEADER" "  ${label}（${suffix}）の設定"
 
         local consumer_key username instance_url
-        read_or_quit consumer_key  "    コンシューマーキーを入力してください"
-        read_or_quit username      "    接続ユーザー名を入力してください"
+        read_or_quit consumer_key  "    コンシューマーキーを入力してください："
+        read_or_quit username      "    接続ユーザー名を入力してください："
 
         instance_url="https://login.salesforce.com"
         if [[ "$suffix" != "PROD" ]]; then

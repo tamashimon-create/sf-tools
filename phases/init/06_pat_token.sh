@@ -51,7 +51,7 @@ open_browser "https://github.com/settings/tokens"
 press_enter "トークンをコピーしたら Enter を押してください..."
 
 PAT_TOKEN_VALUE=""
-read_or_quit PAT_TOKEN_VALUE "  生成されたトークンを貼り付けてください（q で中断）: "
+read_or_quit PAT_TOKEN_VALUE "  生成されたトークンを貼り付けてください（q で中断）："
 echo ""
 
 echo "$PAT_TOKEN_VALUE" | run gh secret set PAT_TOKEN -R "$REPO_FULL_NAME" \
