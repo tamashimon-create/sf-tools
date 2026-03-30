@@ -110,11 +110,11 @@ register_jwt_secret() {
 
     # コンシューマーキーを入力
     local consumer_key
-    read_or_quit consumer_key "  コンシューマーキーを入力してください"
+    read_or_quit consumer_key "  コンシューマーキーを入力してください："
 
     # 接続ユーザー名を入力
     local username
-    read_or_quit username "  接続ユーザー名を入力してください（例: admin@example.com）"
+    read_or_quit username "  接続ユーザー名を入力してください（例: admin@example.com）："
 
     # JWT 接続テスト
     log "INFO" "  JWT 接続テストを実行中..."

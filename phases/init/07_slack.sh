@@ -55,7 +55,7 @@ open_browser "https://api.slack.com/apps"
 press_enter "Bot Token を取得したら Enter を押してください..."
 
 slack_token=""
-read_or_quit slack_token "  Bot User OAuth Token を貼り付けてください（q で中断）: "
+read_or_quit slack_token "  Bot User OAuth Token を貼り付けてください（q で中断）："
 echo ""
 
 echo "$slack_token" | run gh secret set SLACK_BOT_TOKEN -R "$REPO_FULL_NAME" \
@@ -70,7 +70,7 @@ echo "            C から始まる文字列（例: C01ABCDEFGH）"
 echo ""
 
 channel_id=""
-read_or_quit channel_id "  チャンネル ID（q で中断）: "
+read_or_quit channel_id "  チャンネル ID（q で中断）："
 
 echo "$channel_id" | run gh secret set SLACK_CHANNEL_ID -R "$REPO_FULL_NAME" \
     || die "SLACK_CHANNEL_ID の登録に失敗しました。"
