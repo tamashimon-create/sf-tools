@@ -9,7 +9,7 @@
 #   1. openssl で秘密鍵・証明書を生成（~/.sf-jwt/<REPO_NAME>/）
 #   2. Connected App 設定手順を案内（証明書をアップロードするまで待機）
 #   3. 秘密鍵を SF_PRIVATE_KEY として GitHub Secrets に登録
-#   4. 組織ごとにコンシューマーキー・ユーザー名を入力して JWT 接続テスト
+#   4. 組織ごとに本番 or Sandbox を選択・コンシューマーキー・ユーザー名を入力して JWT 接続テスト
 #   5. SF_CONSUMER_KEY_xxx / SF_USERNAME_xxx / SF_INSTANCE_URL_xxx を登録
 #
 # 【登録する GitHub Secrets】
@@ -130,8 +130,8 @@ log "SUCCESS" "SF_PRIVATE_KEY を登録しました。"
 # --------------------------------------------------------------------------
 log "HEADER" "Phase 10-4: 各組織の JWT 認証情報を設定します。"
 
-# 10-4-1. 本番組織（必須）
-register_jwt_secret "prod" "PROD" "本番組織" "${JWT_DIR}/server.key" "N"
+# 10-4-1. メイン組織（必須・本番 or Sandbox を選択）
+register_jwt_secret "prod" "PROD" "メイン組織" "${JWT_DIR}/server.key"
 
 # 10-4-2. ステージング組織（2 階層以上）
 if [[ $BRANCH_COUNT -ge 2 ]]; then
