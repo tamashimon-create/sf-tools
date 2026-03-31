@@ -146,6 +146,88 @@ test_auto_resolve_branch() {
     teardown "$td"
 }
 
+# ------------------------------------------------------------------------------
+# テストクラス不足: 通常 Apex のみで対応テストクラスがローカルに存在する → WARNING
+# ------------------------------------------------------------------------------
+test_missing_test_class_warning() {
+    local td
+    td=$(setup_force_dir)
+    mkdir -p "$td/force-app/main/default/classes"
+    printf 'public class MyClass {}\n' \
+        > "$td/force-app/main/default/classes/MyClass.cls"
+    printf '@isTest\npublic class MyClassTest {}\n' \
+        > "$td/force-app/main/default/classes/MyClassTest.cls"
+
+    local deploy="$td/deploy.txt"
+    printf '[files]\nforce-app/main/default/classes/MyClass.cls\n' > "$deploy"
+    local remove="$td/remove.txt"
+    printf '[files]\n' > "$remove"
+
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local ret=$?
+
+    assert_exit_ok  "$ret" "テストクラス不足 → exit 0（warning のみ）"
+    echo "$out" | grep -qi "warning" \
+        && pass "テストクラス不足 → warning が表示された" \
+        || fail "テストクラス不足 → warning が表示された"
+    echo "$out" | grep -q "MyClassTest" \
+        && pass "テストクラス不足 → テストクラス名が表示された" \
+        || fail "テストクラス不足 → テストクラス名が表示された"
+    teardown "$td"
+}
+
+# ------------------------------------------------------------------------------
+# テストクラス不足: テストクラスが deploy-target.txt に含まれている → WARNING なし
+# ------------------------------------------------------------------------------
+test_no_warning_when_test_included() {
+    local td
+    td=$(setup_force_dir)
+    mkdir -p "$td/force-app/main/default/classes"
+    printf 'public class MyClass {}\n' \
+        > "$td/force-app/main/default/classes/MyClass.cls"
+    printf '@isTest\npublic class MyClassTest {}\n' \
+        > "$td/force-app/main/default/classes/MyClassTest.cls"
+
+    local deploy="$td/deploy.txt"
+    printf '[files]\nforce-app/main/default/classes/MyClass.cls\nforce-app/main/default/classes/MyClassTest.cls\n' > "$deploy"
+    local remove="$td/remove.txt"
+    printf '[files]\n' > "$remove"
+
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local ret=$?
+
+    assert_exit_ok "$ret" "テストクラス含まれている → exit 0"
+    echo "$out" | grep -qi "テストクラス不足の可能性" \
+        && fail "テストクラス含まれている → warning なし" \
+        || pass "テストクラス含まれている → warning なし"
+    teardown "$td"
+}
+
+# ------------------------------------------------------------------------------
+# テストクラス不足: @isTest クラス自身のみ → WARNING なし
+# ------------------------------------------------------------------------------
+test_no_warning_for_test_class_itself() {
+    local td
+    td=$(setup_force_dir)
+    mkdir -p "$td/force-app/main/default/classes"
+    printf '@isTest\npublic class MyClassTest {}\n' \
+        > "$td/force-app/main/default/classes/MyClassTest.cls"
+
+    local deploy="$td/deploy.txt"
+    printf '[files]\nforce-app/main/default/classes/MyClassTest.cls\n' > "$deploy"
+    local remove="$td/remove.txt"
+    printf '[files]\n' > "$remove"
+
+    local out; out=$(cd "$td" && bash "$SF_TOOLS_DIR/bin/sf-check.sh" "$deploy" "$remove" 2>&1)
+    local ret=$?
+
+    assert_exit_ok "$ret" "@isTest クラス自身 → exit 0"
+    echo "$out" | grep -qi "テストクラス不足の可能性" \
+        && fail "@isTest クラス自身 → warning なし" \
+        || pass "@isTest クラス自身 → warning なし"
+    teardown "$td"
+}
+
 test_files_valid_path
 test_files_missing_path
 test_members_valid_format
@@ -153,5 +235,8 @@ test_members_invalid_format
 test_markers_only_no_error
 test_file_not_exists
 test_auto_resolve_branch
+test_missing_test_class_warning
+test_no_warning_when_test_included
+test_no_warning_for_test_class_itself
 
 print_summary
