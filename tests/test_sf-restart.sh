@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-restart.sh ===${CLR_RST}"
 # 設定ファイルがクリアされる
 test_clears_config_files() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     echo '{"target-org":"oldorg"}' > "$td/.sf/config.json"
@@ -33,7 +33,7 @@ EOF
 # sf-start.sh が FORCE_RELOGIN=1 で呼び出される
 test_calls_sf_start_with_force_relogin() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     mkdir -p "$mh/sf-tools/bin"
@@ -53,7 +53,7 @@ EOF
 # sf-start.sh が存在しない → エラー
 test_no_sf_start() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     # sf-start.sh を bin/ に用意しない
     mkdir -p "$mh/sf-tools/bin"

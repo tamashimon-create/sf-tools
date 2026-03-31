@@ -62,8 +62,8 @@ EOF
 
 # --- 3ブランチ構成: develop マージ済み → 次は staging ---
 test_next_is_staging() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -74,12 +74,9 @@ test_next_is_staging() {
     local ec=$?
 
     assert_exit_ok $ec "develop 済み → 終了コード 0"
-    echo "$out" | grep -q "✓.*develop" \
-        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
-    echo "$out" | grep -q "▶.*staging" \
-        && pass "staging が ▶ (次のPR先)" || fail "staging が ▶ (次のPR先)"
-    echo "$out" | grep -q "✗.*main" \
-        && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
+    assert_output_contains "$out" "✓.*develop" "develop が ✓ (マージ済み)"
+    assert_output_contains "$out" "▶.*staging" "staging が ▶ (次のPR先)"
+    assert_output_contains "$out" "✗.*main" "main が ✗ (未着手)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -87,8 +84,8 @@ test_next_is_staging() {
 
 # --- 3ブランチ構成: develop+staging マージ済み → 次は main ---
 test_next_is_main() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -99,12 +96,9 @@ test_next_is_main() {
     local ec=$?
 
     assert_exit_ok $ec "develop+staging 済み → 終了コード 0"
-    echo "$out" | grep -q "✓.*develop" \
-        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
-    echo "$out" | grep -q "✓.*staging" \
-        && pass "staging が ✓ (マージ済み)" || fail "staging が ✓ (マージ済み)"
-    echo "$out" | grep -q "▶.*main" \
-        && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
+    assert_output_contains "$out" "✓.*develop" "develop が ✓ (マージ済み)"
+    assert_output_contains "$out" "✓.*staging" "staging が ✓ (マージ済み)"
+    assert_output_contains "$out" "▶.*main" "main が ▶ (次のPR先)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -112,8 +106,8 @@ test_next_is_main() {
 
 # --- 3ブランチ構成: 全ブランチマージ済み → 完了メッセージ ---
 test_all_merged() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -124,8 +118,7 @@ test_all_merged() {
     local ec=$?
 
     assert_exit_ok $ec "全ブランチマージ済み → 終了コード 0"
-    echo "$out" | grep -q "全ブランチへのマージが完了" \
-        && pass "完了メッセージが表示される" || fail "完了メッセージが表示される"
+    assert_output_contains "$out" "全ブランチへのマージが完了" "完了メッセージが表示される"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -133,8 +126,8 @@ test_all_merged() {
 
 # --- 3ブランチ構成: 未マージ → 次は develop ---
 test_none_merged() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -145,12 +138,9 @@ test_none_merged() {
     local ec=$?
 
     assert_exit_ok $ec "未マージ → 終了コード 0"
-    echo "$out" | grep -q "▶.*develop" \
-        && pass "develop が ▶ (次のPR先)" || fail "develop が ▶ (次のPR先)"
-    echo "$out" | grep -q "✗.*staging" \
-        && pass "staging が ✗ (未着手)" || fail "staging が ✗ (未着手)"
-    echo "$out" | grep -q "✗.*main" \
-        && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
+    assert_output_contains "$out" "▶.*develop" "develop が ▶ (次のPR先)"
+    assert_output_contains "$out" "✗.*staging" "staging が ✗ (未着手)"
+    assert_output_contains "$out" "✗.*main" "main が ✗ (未着手)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -158,8 +148,8 @@ test_none_merged() {
 
 # --- 2ブランチ構成（main + staging）: 未マージ → 次は staging ---
 test_two_branches_none_merged() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     # branches.txt を2ブランチに上書き
     printf 'main\nstaging\n' > "$td/sf-tools/config/branches.txt"
     create_mock_git_with_remote "$mb"
@@ -172,10 +162,8 @@ test_two_branches_none_merged() {
     local ec=$?
 
     assert_exit_ok $ec "2ブランチ未マージ → 終了コード 0"
-    echo "$out" | grep -q "▶.*staging" \
-        && pass "staging が ▶ (次のPR先)" || fail "staging が ▶ (次のPR先)"
-    echo "$out" | grep -q "✗.*main" \
-        && pass "main が ✗ (未着手)" || fail "main が ✗ (未着手)"
+    assert_output_contains "$out" "▶.*staging" "staging が ▶ (次のPR先)"
+    assert_output_contains "$out" "✗.*main" "main が ✗ (未着手)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -183,8 +171,8 @@ test_two_branches_none_merged() {
 
 # --- 保護ブランチから実行 → エラー ---
 test_protected_branch_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="main"
@@ -193,8 +181,7 @@ test_protected_branch_blocked() {
     local ec=$?
 
     assert_exit_fail $ec "保護ブランチ → エラー終了"
-    echo "$out" | grep -q "保護ブランチ" \
-        && pass "エラーメッセージが表示される" || fail "エラーメッセージが表示される"
+    assert_output_contains "$out" "保護ブランチ" "エラーメッセージが表示される"
 
     unset MOCK_GIT_BRANCH
     teardown "$td" "$mb"
@@ -202,8 +189,8 @@ test_protected_branch_blocked() {
 
 # --- 1ブランチ構成（main のみ）: 未マージ → main が次のPR先 ---
 test_single_branch_none_merged() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     # branches.txt を1ブランチに上書き
     printf 'main\n' > "$td/sf-tools/config/branches.txt"
     create_mock_git_with_remote "$mb"
@@ -216,8 +203,7 @@ test_single_branch_none_merged() {
     local ec=$?
 
     assert_exit_ok $ec "1ブランチ未マージ → 終了コード 0"
-    echo "$out" | grep -q "▶.*main" \
-        && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
+    assert_output_contains "$out" "▶.*main" "main が ▶ (次のPR先)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -225,8 +211,8 @@ test_single_branch_none_merged() {
 
 # --- 1ブランチ構成（main のみ）: マージ済み → 完了 ---
 test_single_branch_merged() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     printf 'main\n' > "$td/sf-tools/config/branches.txt"
     create_mock_git_with_remote "$mb"
 
@@ -238,10 +224,8 @@ test_single_branch_merged() {
     local ec=$?
 
     assert_exit_ok $ec "1ブランチマージ済み → 終了コード 0"
-    echo "$out" | grep -q "✓.*main" \
-        && pass "main が ✓ (マージ済み)" || fail "main が ✓ (マージ済み)"
-    echo "$out" | grep -q "全ブランチへのマージが完了" \
-        && pass "完了メッセージが表示される" || fail "完了メッセージが表示される"
+    assert_output_contains "$out" "✓.*main" "main が ✓ (マージ済み)"
+    assert_output_contains "$out" "全ブランチへのマージが完了" "完了メッセージが表示される"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -249,8 +233,8 @@ test_single_branch_merged() {
 
 # --- PR発行中: develop ✓ / staging → PR発行中 / main ▶ 次のPR先 ---
 test_pr_open_shown() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -261,12 +245,9 @@ test_pr_open_shown() {
     local ec=$?
 
     assert_exit_ok $ec "PR発行中あり → 終了コード 0"
-    echo "$out" | grep -q "✓.*develop" \
-        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
-    echo "$out" | grep -q "→.*staging" \
-        && pass "staging が → (PR発行中)" || fail "staging が → (PR発行中)"
-    echo "$out" | grep -q "▶.*main" \
-        && pass "main が ▶ (次のPR先)" || fail "main が ▶ (次のPR先)"
+    assert_output_contains "$out" "✓.*develop" "develop が ✓ (マージ済み)"
+    assert_output_contains "$out" "→.*staging" "staging が → (PR発行中)"
+    assert_output_contains "$out" "▶.*main" "main が ▶ (次のPR先)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -274,8 +255,8 @@ test_pr_open_shown() {
 
 # --- 順序外マージ: develop ✓ / staging ▶ / main ⚠（main が先にマージ済み）---
 test_out_of_order_merge() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -287,12 +268,9 @@ test_out_of_order_merge() {
     local ec=$?
 
     assert_exit_ok $ec "順序外マージ → 終了コード 0"
-    echo "$out" | grep -q "✓.*develop" \
-        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
-    echo "$out" | grep -q "▶.*staging" \
-        && pass "staging が ▶ (次のPR先)" || fail "staging が ▶ (次のPR先)"
-    echo "$out" | grep -q "⚠.*main" \
-        && pass "main が ⚠ (順序外マージ済み)" || fail "main が ⚠ (順序外マージ済み)"
+    assert_output_contains "$out" "✓.*develop" "develop が ✓ (マージ済み)"
+    assert_output_contains "$out" "▶.*staging" "staging が ▶ (次のPR先)"
+    assert_output_contains "$out" "⚠.*main" "main が ⚠ (順序外マージ済み)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS
     teardown "$td" "$mb"
@@ -300,8 +278,8 @@ test_out_of_order_merge() {
 
 # --- ブランチ同期: develop ✓ / staging ✓(同期) / main ⚠（PR なしで伝播、staging デプロイ未実行）---
 test_staging_synced() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_mock_git_with_remote "$mb"
 
     export MOCK_GIT_BRANCH="feature/my-feature"
@@ -315,12 +293,9 @@ test_staging_synced() {
     local ec=$?
 
     assert_exit_ok $ec "ブランチ同期あり → 終了コード 0"
-    echo "$out" | grep -q "✓.*develop" \
-        && pass "develop が ✓ (マージ済み)" || fail "develop が ✓ (マージ済み)"
-    echo "$out" | grep -q "✓.*staging.*ブランチ同期" \
-        && pass "staging が ✓ (ブランチ同期)" || fail "staging が ✓ (ブランチ同期)"
-    echo "$out" | grep -q "⚠.*main" \
-        && pass "main が ⚠ (順序外マージ済み)" || fail "main が ⚠ (順序外マージ済み)"
+    assert_output_contains "$out" "✓.*develop" "develop が ✓ (マージ済み)"
+    assert_output_contains "$out" "✓.*staging.*ブランチ同期" "staging が ✓ (ブランチ同期)"
+    assert_output_contains "$out" "⚠.*main" "main が ⚠ (順序外マージ済み)"
 
     unset MOCK_GIT_BRANCH MOCK_GH_MERGED_PRS MOCK_GH_OPEN_PRS MOCK_GIT_MERGED_TARGETS
     teardown "$td" "$mb"

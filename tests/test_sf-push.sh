@@ -53,8 +53,8 @@ EOF
 
 # --- 変更なし → エラー終了 ---
 test_push_no_changes() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_push "$mb" "$td" "no_changes"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
@@ -65,8 +65,8 @@ test_push_no_changes() {
 
 # --- VSCode でメッセージ未入力 → 正常終了（キャンセル）---
 test_push_cancel() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_push "$mb" "$td" "cancel"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
@@ -77,8 +77,8 @@ test_push_cancel() {
 
 # --- 正常系: VSCode でメッセージ入力 → commit & push ---
 test_push_success() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_push "$mb" "$td" "success"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)
@@ -92,8 +92,8 @@ test_push_success() {
 
 # --- sf-check.sh がエラー → コミット中止 ---
 test_push_check_fail() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_push "$mb" "$td" "success"
 
     # sf-check.sh が失敗するよう、存在しないパスを deploy-target.txt に書く
@@ -110,8 +110,8 @@ test_push_check_fail() {
 
 # --- マージコンフリクト → エラー中止 ---
 test_push_merge_conflict() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_push "$mb" "$td" "conflict"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-push.sh" 2>&1)

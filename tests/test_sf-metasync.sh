@@ -7,8 +7,8 @@ echo -e "${CLR_HEAD}=== sf-metasync.sh ===${CLR_RST}"
 
 # 変更あり → commit と push が実行される
 test_changes_are_committed() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # 1回目の diff-index（phase_git_update）: 0 = ローカル変更なし → 通過
@@ -29,8 +29,8 @@ test_changes_are_committed() {
 
 # 変更なし → commit されずに正常終了
 test_no_changes() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     export MOCK_GIT_BRANCH="main"
@@ -50,8 +50,8 @@ test_no_changes() {
 
 # main 以外のブランチ → main へ自動切替して正常終了
 test_non_main_branch_switches() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     export MOCK_GIT_BRANCH="feature/test"
@@ -72,8 +72,8 @@ test_non_main_branch_switches() {
 
 # staging チェックアウト失敗 → develop は main からマージする（prev_branch バグ修正確認）
 test_staging_fail_dev_merges_main() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     export MOCK_GIT_BRANCH="main"
@@ -108,8 +108,8 @@ test_outside_force_dir() {
 
 # feature ブランチ + ローカル変更あり → stash して処理し、終了後に stash pop
 test_stash_pop_on_exit() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     export MOCK_GIT_BRANCH="feature/test"

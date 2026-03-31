@@ -7,8 +7,8 @@ echo -e "${CLR_HEAD}=== sf-dryrun.sh ===${CLR_RST}"
 
 # 機能ブランチ → sf-release.sh が --dry-run で呼び出される
 test_feature_branch_dry_run() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td" "feature/dryrun-test"
 
@@ -28,8 +28,8 @@ test_feature_branch_dry_run() {
 
 # --release オプション転送 → dry-run なしで実行される
 test_release_option_forwarded() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td" "feature/dryrun-test"
 
@@ -46,8 +46,8 @@ test_release_option_forwarded() {
 
 # 保護組織（branches.txt 記載）へのローカル実行 → エラー
 test_protected_org_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     unset GITHUB_ACTIONS
@@ -56,9 +56,7 @@ test_protected_org_blocked() {
     local ec=$?
 
     assert_exit_fail $ec "保護組織(main) + ローカル → エラー終了"
-    echo "$out" | grep -q "PR 経由で GitHub Actions" \
-        && pass "保護組織(main) + ローカル → 適切なエラーメッセージ" \
-        || fail "保護組織(main) + ローカル → 適切なエラーメッセージ"
+    assert_output_contains "$out" "PR 経由で GitHub Actions" "保護組織(main) + ローカル → 適切なエラーメッセージ"
     teardown "$td" "$mb"
 }
 

@@ -30,8 +30,7 @@ get_active_branches() {
 # [1] 選択 → main / staging / develop が branches.txt に書き込まれる
 test_pattern1_creates_three_branches() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # branches.txt を空（コメントのみ）にする
@@ -43,17 +42,16 @@ test_pattern1_creates_three_branches() {
     assert_exit_ok $ec "パターン1 選択 → 正常終了"
 
     local branches; branches=$(get_active_branches "$td/sf-tools/config/branches.txt")
-    echo "$branches" | grep -q "main"    && pass "branches.txt に main がある"    || fail "branches.txt に main がない"
-    echo "$branches" | grep -q "staging" && pass "branches.txt に staging がある" || fail "branches.txt に staging がない"
-    echo "$branches" | grep -q "develop" && pass "branches.txt に develop がある" || fail "branches.txt に develop がない"
+    assert_output_contains "$branches" "main"    "branches.txt に main がある"
+    assert_output_contains "$branches" "staging" "branches.txt に staging がある"
+    assert_output_contains "$branches" "develop" "branches.txt に develop がある"
     teardown "$td" "$mb" "$mh"
 }
 
 # [2] 選択 → main / staging が書き込まれる
 test_pattern2_creates_two_branches() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
@@ -64,8 +62,8 @@ test_pattern2_creates_two_branches() {
     assert_exit_ok $ec "パターン2 選択 → 正常終了"
 
     local branches; branches=$(get_active_branches "$td/sf-tools/config/branches.txt")
-    echo "$branches" | grep -q "main"    && pass "branches.txt に main がある"    || fail "branches.txt に main がない"
-    echo "$branches" | grep -q "staging" && pass "branches.txt に staging がある" || fail "branches.txt に staging がない"
+    assert_output_contains "$branches" "main"    "branches.txt に main がある"
+    assert_output_contains "$branches" "staging" "branches.txt に staging がある"
     echo "$branches" | grep -q "develop" || pass "branches.txt に develop がない" && true || fail "develop が含まれている"
     teardown "$td" "$mb" "$mh"
 }
@@ -73,8 +71,7 @@ test_pattern2_creates_two_branches() {
 # [3] 選択 → main のみ
 test_pattern3_creates_one_branch() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
@@ -85,7 +82,7 @@ test_pattern3_creates_one_branch() {
     assert_exit_ok $ec "パターン3 選択 → 正常終了"
 
     local branches; branches=$(get_active_branches "$td/sf-tools/config/branches.txt")
-    echo "$branches" | grep -q "main"    && pass "branches.txt に main がある"    || fail "branches.txt に main がない"
+    assert_output_contains "$branches" "main" "branches.txt に main がある"
     echo "$branches" | grep -q "staging" || pass "branches.txt に staging がない" && true || fail "staging が含まれている"
     echo "$branches" | grep -q "develop" || pass "branches.txt に develop がない" && true || fail "develop が含まれている"
     teardown "$td" "$mb" "$mh"
@@ -94,8 +91,7 @@ test_pattern3_creates_one_branch() {
 # 無効な番号 → エラー終了
 test_invalid_choice() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cp "$SF_TOOLS_DIR/templates/sf-tools/config/branches.txt" "$td/sf-tools/config/branches.txt"
@@ -124,8 +120,7 @@ test_outside_force_dir() {
 # コメントヘッダーが保持される
 test_comment_header_preserved() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # テンプレートのコメント付き branches.txt を使用
@@ -144,8 +139,7 @@ test_comment_header_preserved() {
 # 既存設定ありで N 回答 → 変更なしで終了
 test_existing_config_decline() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # 既にアクティブなブランチが設定済み
@@ -156,15 +150,14 @@ test_existing_config_decline() {
 
     assert_exit_ok $ec "変更拒否 → 正常終了"
     local branches; branches=$(get_active_branches "$td/sf-tools/config/branches.txt")
-    echo "$branches" | grep -q "staging" && pass "既存設定が維持された" || fail "既存設定が維持されていない"
+    assert_output_contains "$branches" "staging" "既存設定が維持された"
     teardown "$td" "$mb" "$mh"
 }
 
 # 既存設定ありで Y 回答 → 構成変更可能
 test_existing_config_accept() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # 3階層 → 1階層にダウングレード
@@ -175,7 +168,7 @@ test_existing_config_accept() {
 
     assert_exit_ok $ec "構成変更 → 正常終了"
     local branches; branches=$(get_active_branches "$td/sf-tools/config/branches.txt")
-    echo "$branches" | grep -q "main"    && pass "main が残っている" || fail "main がない"
+    assert_output_contains "$branches" "main" "main が残っている"
     echo "$branches" | grep -q "staging" || pass "staging が除外された" && true || fail "staging が残っている"
     teardown "$td" "$mb" "$mh"
 }
@@ -183,8 +176,7 @@ test_existing_config_accept() {
 # ダウングレード時に削除対象ブランチが案内される
 test_downgrade_shows_removed_branches() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # 3階層 → 1階層
@@ -194,16 +186,15 @@ test_downgrade_shows_removed_branches() {
     local ec=$?
 
     assert_exit_ok $ec "ダウングレード → 正常終了"
-    echo "$out" | grep -q "staging" && pass "staging の削除案内が表示された" || fail "staging の削除案内がない"
-    echo "$out" | grep -q "develop" && pass "develop の削除案内が表示された" || fail "develop の削除案内がない"
+    assert_output_contains "$out" "staging" "staging の削除案内が表示された"
+    assert_output_contains "$out" "develop" "develop の削除案内が表示された"
     teardown "$td" "$mb" "$mh"
 }
 
 # git ls-remote が成功 → ブランチ作成をスキップ
 test_existing_remote_branch_skipped() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_LS_REMOTE_EXIT=0  # リモートにブランチが存在する
 
@@ -213,15 +204,14 @@ test_existing_remote_branch_skipped() {
     local ec=$?
 
     assert_exit_ok $ec "既存ブランチスキップ → 正常終了"
-    echo "$out" | grep -q "スキップ" && pass "スキップメッセージが表示された" || fail "スキップメッセージがない"
+    assert_output_contains "$out" "スキップ" "スキップメッセージが表示された"
     teardown "$td" "$mb" "$mh"
 }
 
 # git ls-remote が失敗 → ブランチ作成が実行される
 test_new_branch_created() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); mh=$(setup_mock_home)
-    export MOCK_CALL_LOG="$mb/calls.log"
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_LS_REMOTE_EXIT=2  # リモートにブランチが存在しない
 

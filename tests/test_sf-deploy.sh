@@ -7,8 +7,8 @@ echo -e "${CLR_HEAD}=== sf-deploy.sh ===${CLR_RST}"
 
 # 機能ブランチ → sf-release.sh が --release --force で呼び出される
 test_feature_branch() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td" "feature/deploy-test"
 
@@ -31,8 +31,8 @@ test_feature_branch() {
 
 # main ブランチ → エラー終了
 test_main_branch_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="main"
 
@@ -49,8 +49,8 @@ test_main_branch_blocked() {
 
 # staging ブランチ → エラー終了
 test_staging_branch_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="staging"
 
@@ -64,8 +64,8 @@ test_staging_branch_blocked() {
 
 # develop ブランチ → エラー終了
 test_development_branch_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="develop"
 

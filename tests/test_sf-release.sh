@@ -7,8 +7,8 @@ echo -e "${CLR_HEAD}=== sf-release.sh ===${CLR_RST}"
 
 # デフォルト（dry-run）実行 → sf deploy に --dry-run が渡される
 test_dry_run_default() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -24,8 +24,8 @@ test_dry_run_default() {
 
 # --release フラグ → --dry-run なしで実行
 test_release_mode() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -40,8 +40,8 @@ test_release_mode() {
 
 # --force フラグ → --ignore-conflicts が渡される
 test_force_flag() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -56,8 +56,8 @@ test_force_flag() {
 
 # --target オプション → 指定した組織エイリアスが使われる
 test_target_option() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
 
@@ -70,8 +70,8 @@ test_target_option() {
 
 # デプロイ対象が空（コメント行のみ）→ 早期終了
 test_empty_deploy_target() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     mkdir -p "$td/sf-tools/release/feature/test"
     echo "feature/test" > "$td/sf-tools/release/branch_name.txt"
@@ -81,16 +81,15 @@ test_empty_deploy_target() {
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --no-open 2>&1)
 
-    echo "$out" | grep -q "デプロイ対象がありません" \
-        && pass "対象なし → 警告メッセージが表示された" || fail "対象なし → 警告メッセージが表示された"
+    assert_output_contains "$out" "デプロイ対象がありません" "対象なし → 警告メッセージが表示された"
     unset MOCK_SF_ORG_JSON
     teardown "$td" "$mb"
 }
 
 # 不明なオプション → エラー終了
 test_unknown_option() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
@@ -118,8 +117,8 @@ test_outside_force_dir() {
 
 # 保護組織（main/staging/develop）へのローカル実行 → エラー
 test_protected_org_local_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     unset GITHUB_ACTIONS
@@ -128,16 +127,14 @@ test_protected_org_local_blocked() {
     local ec=$?
 
     assert_exit_fail $ec "保護組織(main) + ローカル → エラー終了"
-    echo "$out" | grep -q "PR 経由で GitHub Actions" \
-        && pass "保護組織(main) + ローカル → 適切なエラーメッセージ" \
-        || fail "保護組織(main) + ローカル → 適切なエラーメッセージ"
+    assert_output_contains "$out" "PR 経由で GitHub Actions" "保護組織(main) + ローカル → 適切なエラーメッセージ"
     teardown "$td" "$mb"
 }
 
 # GitHub Actions 上からの保護組織実行 → 通過
 test_protected_org_github_actions_allowed() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     export GITHUB_ACTIONS="true"
@@ -152,8 +149,8 @@ test_protected_org_github_actions_allowed() {
 
 # 保護組織外（個人 Sandbox）へのローカル実行 → 通過
 test_unprotected_org_local_allowed() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     unset GITHUB_ACTIONS
@@ -167,8 +164,8 @@ test_unprotected_org_local_allowed() {
 
 # staging もローカル実行禁止
 test_protected_org_staging_blocked() {
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     setup_release_dir "$td"
     unset GITHUB_ACTIONS

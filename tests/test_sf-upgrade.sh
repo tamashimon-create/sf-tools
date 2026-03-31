@@ -7,9 +7,8 @@ echo -e "${CLR_HEAD}=== sf-upgrade.sh ===${CLR_RST}"
 
 # 正常実行 → npm / sf / git が呼び出される
 test_normal_run() {
-    local td mb
-    td=$(setup_force_dir)
-    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1)
@@ -28,9 +27,8 @@ test_normal_run() {
 
 # npm が存在しない → WARNING で続行、正常終了
 test_no_npm() {
-    local td mb
-    td=$(setup_force_dir)
-    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     # npm モックを作成しない（PATH に npm が存在しない状態）
     # システムの npm がヒットしないよう PATH をモックビンと基本コマンドのみに制限する
     create_mock_git "$mb"
@@ -41,15 +39,14 @@ test_no_npm() {
     local ec=$?
 
     assert_exit_ok $ec "npm なし → 正常終了（続行）"
-    echo "$out" | grep -q "WARNING" && pass "WARNING ログが出力された" || fail "WARNING ログが出力された"
+    assert_output_contains "$out" "WARNING" "WARNING ログが出力された"
     teardown "$td" "$mb"
 }
 
 # sf が存在しない → WARNING で続行、正常終了
 test_no_sf() {
-    local td mb
-    td=$(setup_force_dir)
-    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     # sf モックを作成しない（PATH に sf が存在しない状態）
     # システムの sf がヒットしないよう PATH をモックビンと基本コマンドのみに制限する
     create_mock_git "$mb"
@@ -60,15 +57,14 @@ test_no_sf() {
     local ec=$?
 
     assert_exit_ok $ec "sf なし → 正常終了（続行）"
-    echo "$out" | grep -q "WARNING" && pass "WARNING ログが出力された" || fail "WARNING ログが出力された"
+    assert_output_contains "$out" "WARNING" "WARNING ログが出力された"
     teardown "$td" "$mb"
 }
 
 # git update-git-for-windows は npm・sf の後に実行される（順序確認）
 test_git_update_is_last() {
-    local td mb
-    td=$(setup_force_dir)
-    mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-upgrade.sh" 2>&1 >/dev/null

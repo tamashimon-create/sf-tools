@@ -246,9 +246,7 @@ test_local_job_dir_duplicate() {
     ec=$?
 
     assert_exit_ok $ec "重複後に新しい名前で正常終了"
-    echo "$out" | grep -q "すでに存在します" \
-        && pass "ローカル重複 WARNING が表示される" \
-        || fail "ローカル重複 WARNING が表示される" "WARNING が見つからない"
+    assert_output_contains "$out" "すでに存在します" "ローカル重複 WARNING が表示される"
     assert_file_contains "$MOCK_CALL_LOG" "git clone" "git clone が呼ばれる"
 
     teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
@@ -288,9 +286,7 @@ EOF
     ec=$?
 
     assert_exit_ok $ec "ブランチ重複後に新しい名前で正常終了"
-    echo "$out" | grep -q "すでに同名のブランチ" \
-        && pass "GitHub ブランチ重複 WARNING が表示される" \
-        || fail "GitHub ブランチ重複 WARNING が表示される" "WARNING が見つからない"
+    assert_output_contains "$out" "すでに同名のブランチ" "GitHub ブランチ重複 WARNING が表示される"
 
     teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
@@ -316,9 +312,7 @@ test_invalid_job_name() {
     ec=$?
 
     assert_exit_ok $ec "無効な名前の後に有効な名前で正常終了"
-    echo "$out" | grep -q "無効なジョブ名" \
-        && pass "無効なジョブ名 WARNING が表示される" \
-        || fail "無効なジョブ名 WARNING が表示される" "WARNING が見つからない"
+    assert_output_contains "$out" "無効なジョブ名" "無効なジョブ名 WARNING が表示される"
 
     teardown "$mb" "$mock_home" "$(dirname "$(dirname "$(dirname "$cdir")")")"
 }
