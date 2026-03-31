@@ -231,7 +231,7 @@ test_new_branch_created() {
     local ec=$?
 
     assert_exit_ok $ec "新規ブランチ作成 → 正常終了"
-    grep -q "git checkout -B staging" "$mb/calls.log" && pass "git checkout -B staging が呼ばれた" || fail "git checkout -B staging が呼ばれていない"
+    grep -q "git checkout -b staging" "$mb/calls.log" && pass "git checkout -b staging が呼ばれた" || fail "git checkout -b staging が呼ばれていない"
     grep -q "git push --no-verify -u origin staging" "$mb/calls.log" && pass "git push --no-verify -u origin staging が呼ばれた" || fail "git push --no-verify -u origin staging が呼ばれていない"
     teardown "$td" "$mb" "$mh"
 }

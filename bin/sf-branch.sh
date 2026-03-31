@@ -33,7 +33,7 @@
 # ------------------------------------------------------------------------------
 # 1. 共通ライブラリの必須設定
 # ------------------------------------------------------------------------------
-readonly SCRIPT_NAME=$(basename "$0" .sh)
+readonly SCRIPT_NAME=$(basename "$0" .sh)  # VAR=$(cmd) のため run 不使用
 readonly LOG_FILE="./sf-tools/logs/${SCRIPT_NAME}.log"
 readonly LOG_MODE="NEW"
 
@@ -48,7 +48,7 @@ if [[ ! -f "$COMMON_LIB" ]]; then
     exit 1
 fi
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    awk '/^# ==/{f++; next} f==2{sub(/^# ?/,""); print} f==3{exit}' "${BASH_SOURCE[0]}"
+    awk '/^# ==/{f++; next} f==2{sub(/^# ?/,""); print} f==3{exit}' "${BASH_SOURCE[0]}"  # ヘルプ出力のため直接実行（run 不使用）
     exit 0
 fi
 source "$COMMON_LIB"
@@ -70,7 +70,7 @@ OLD_BRANCHES=()
 
 # 既にブランチ構成が設定済みか確認（コメント・空行以外の行があるか）
 if [[ -f "$BRANCH_LIST_FILE" ]]; then
-    ACTIVE_LINES=$(grep -v '^[[:space:]]*#' "$BRANCH_LIST_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')
+    ACTIVE_LINES=$(grep -v '^[[:space:]]*#' "$BRANCH_LIST_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')  # VAR=$(cmd) のため run 不使用
     if [[ -n "$ACTIVE_LINES" ]]; then
         mapfile -t OLD_BRANCHES <<< "$ACTIVE_LINES"
         log "INFO" "現在の構成: $(echo "$ACTIVE_LINES" | tr '\n' ' ')"
@@ -156,7 +156,7 @@ for branch in "${BRANCHES[@]}"; do
         continue
     fi
 
-    run git checkout -B "$branch" || die "${branch} ブランチの作成に失敗しました。"
+    run git checkout -b "$branch" || die "${branch} ブランチの作成に失敗しました（既にローカルに存在している可能性があります）。"
     run git push --no-verify -u origin "$branch" || die "${branch} ブランチのプッシュに失敗しました。"
     log "SUCCESS" "${branch} ブランチを作成しました。"
     CREATED=$((CREATED + 1))
