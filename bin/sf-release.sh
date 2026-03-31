@@ -46,6 +46,9 @@ log "HEADER" "リリース・検証処理を開始します (${SCRIPT_NAME}.sh)"
 
 trap 'rm -f ./sf-tools/cmd_out_*.tmp 2>/dev/null' EXIT
 
+# デプロイ対象から検出したテストクラス名（phase_generate_manifest → phase_release で共有）
+RUN_TESTS=()
+
 # ------------------------------------------------------------------------------
 # 4. 実行時引数の解析
 # ------------------------------------------------------------------------------
@@ -178,6 +181,24 @@ phase_generate_manifest() {
     process_list "$DEPLOY_LIST" deploy_args || return $RET_NG
     process_list "$REMOVE_LIST" remove_args || return $RET_NG
 
+    # @isTest アノテーションを持つ .cls ファイルを検出して RUN_TESTS に登録
+    local i=0
+    while [[ $i -lt ${#deploy_args[@]} ]]; do
+        if [[ "${deploy_args[$i]}" == "--source-dir" ]]; then
+            local filepath="${deploy_args[$((i+1))]}"
+            if [[ "$filepath" == *.cls ]] && grep -qi "@isTest" "$filepath" 2>/dev/null; then
+                local classname
+                classname=$(basename "$filepath" .cls)  # VAR=$(cmd) のため run 不使用
+                RUN_TESTS+=("$classname")
+                log "INFO" "  テストクラス検出: ${classname}"
+            fi
+        fi
+        ((i++))
+    done
+    if [[ ${#RUN_TESTS[@]} -gt 0 ]]; then
+        log "INFO" "テストクラス合計: ${#RUN_TESTS[@]}件 → --run-tests に自動設定します"
+    fi
+
     # デプロイ対象がゼロの場合は sf CLI に渡す前に早期終了
     if [[ ${#deploy_args[@]} -eq 0 && ${#remove_args[@]} -eq 0 ]]; then
         log "WARNING" "デプロイ対象がありません。${DEPLOY_LIST} または ${REMOVE_LIST} にパスを記入してください。"
@@ -211,6 +232,14 @@ phase_release() {
     local deploy_cmd=("sf" "project" "deploy" "start" "--target-org" "$TARGET_ORG" "--manifest" "$DEPLOY_XML" "${JSON_FLAG[@]}")
     [[ -f "$REMOVE_XML" ]]          && deploy_cmd+=("--pre-destructive-changes" "$REMOVE_XML")
     [[ "$IGNORE_CONFLICTS" -eq 1 ]] && deploy_cmd+=("--ignore-conflicts")
+
+    # テストクラスが検出されていれば RunSpecifiedTests を指定
+    if [[ ${#RUN_TESTS[@]} -gt 0 ]]; then
+        local IFS=","
+        local tests_csv="${RUN_TESTS[*]}"
+        deploy_cmd+=("--test-level" "RunSpecifiedTests" "--run-tests" "$tests_csv")
+        log "INFO" "テスト実行: --test-level RunSpecifiedTests --run-tests ${tests_csv}"
+    fi
 
     if [[ "$IS_VALIDATE_MODE" -eq 1 ]]; then
         log "INFO" "検証モード (Dry-Run) を開始します"
