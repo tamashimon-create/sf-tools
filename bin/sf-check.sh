@@ -67,22 +67,49 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 4. GCC/Clang スタイルエラー出力関数
+# 4. ユーティリティ関数
 # ------------------------------------------------------------------------------
 
-# GCC/Clang スタイルでエラーを表示する
-# 引数: $1 = ファイル名, $2 = 行番号, $3 = 行内容, $4 = エラーメッセージ
-print_gcc_error() {
-    local file="$1" lineno="$2" content="$3" message="$4"
-    printf "  ${CLR_INFO}%s:%s:${CLR_RESET} ${CLR_ERR}error:${CLR_RESET} %s\n" "$file" "$lineno" "$message"
-    printf "    ${CLR_WARNING}→${CLR_RESET} %s\n" "$content"
+# \r 除去・前後空白トリムした結果を変数に格納する
+# 引数: $1 = 出力変数名(nameref), $2 = 入力行
+trim_line() {
+    local -n _result="$1"
+    local tmp="$2"
+    tmp="${tmp//$'\r'/}"
+    tmp="${tmp#"${tmp%%[^[:space:]]*}"}"
+    tmp="${tmp%"${tmp##*[^[:space:]]}"}"
+    _result="$tmp"
 }
 
-# GCC/Clang スタイルで警告を表示する
-# 引数: $1 = ファイル名, $2 = 行内容, $3 = 警告メッセージ
-print_gcc_warning() {
-    local file="$1" content="$2" message="$3"
-    printf "  ${CLR_INFO}%s:${CLR_RESET} ${CLR_WARNING}warning:${CLR_RESET} %s\n" "$file" "$message"
+# セクションマーカーを判定し、セクション変数を更新する
+# 引数: $1 = セクション変数名(nameref), $2 = トリム済み行
+# 戻り値: 0=マーカーだった（呼び出し元で continue すべき） / 1=マーカーではない
+parse_section() {
+    local -n _section="$1"
+    local line="$2"
+    if [[ "$line" == "[files]" ]]; then
+        _section="files"; return 0
+    elif [[ "$line" == "[members]" ]]; then
+        _section="members"; return 0
+    fi
+    return 1
+}
+
+# GCC/Clang スタイルでメッセージを表示する
+# 引数: $1 = レベル(error|warning), $2 = ファイル名, $3 = 行番号(空文字可), $4 = 行内容, $5 = メッセージ
+print_gcc_message() {
+    local level="$1" file="$2" lineno="$3" content="$4" message="$5"
+    local level_color
+    if [[ "$level" == "error" ]]; then
+        level_color="$CLR_ERR"
+    else
+        level_color="$CLR_WARNING"
+    fi
+    if [[ -n "$lineno" ]]; then
+        printf "  ${CLR_INFO}%s:%s:${CLR_RESET} ${level_color}%s:${CLR_RESET} %s\n" "$file" "$lineno" "$level" "$message"
+    else
+        printf "  ${CLR_INFO}%s:${CLR_RESET} ${level_color}%s:${CLR_RESET} %s\n" "$file" "$level" "$message"
+    fi
     printf "    ${CLR_WARNING}→${CLR_RESET} %s\n" "$content"
 }
 
@@ -92,6 +119,7 @@ print_gcc_warning() {
 
 # ターゲットファイルの構文チェック
 # 引数: $1 = ファイルパス, $2 = ファイル種別ラベル
+# エラー数は _CHECK_ERRORS に加算する（return のオーバーフロー防止）
 check_target_file() {
     local file="$1"
     local label="$2"
@@ -110,34 +138,27 @@ check_target_file() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         lineno=$(( lineno + 1 ))
 
-        # \r 除去・前後空白トリム
         local clean
-        clean="${line//$'\r'/}"
-        clean="${clean#"${clean%%[^[:space:]]*}"}"
-        clean="${clean%"${clean##*[^[:space:]]}"}"
+        trim_line clean "$line"
 
         # 空行・コメント行はスキップ
         [[ -z "$clean" || "$clean" == \#* ]] && continue
 
-        # セクションマーカー
-        if [[ "$clean" == "[files]" ]]; then
-            section="files"; continue
-        elif [[ "$clean" == "[members]" ]]; then
-            section="members"; continue
-        fi
+        # セクションマーカー判定
+        parse_section section "$clean" && continue
 
         entry_count=$(( entry_count + 1 ))
 
         if [[ "$section" == "files" ]]; then
-            # [files]: パスがリポジトリ内に存在するか
-            if [[ ! -e "$clean" ]]; then
-                print_gcc_error "$label" "$lineno" "$clean" "パスが存在しません"
+            # [files]: パスがリポジトリ内にファイルとして存在するか
+            if [[ ! -f "$clean" ]]; then
+                print_gcc_message "error" "$label" "$lineno" "$clean" "パスが存在しません"
                 error_count=$(( error_count + 1 ))
             fi
         else
-            # [members]: 「種別名:メンバー名」形式チェック
-            if [[ "$clean" != *:* ]]; then
-                print_gcc_error "$label" "$lineno" "$clean" "書式エラー（種別名:メンバー名）"
+            # [members]: 「種別名:メンバー名」形式チェック（コロン必須・両側が非空）
+            if [[ "$clean" != *:* || "$clean" == :* || "$clean" == *: ]]; then
+                print_gcc_message "error" "$label" "$lineno" "$clean" "書式エラー（種別名:メンバー名）"
                 error_count=$(( error_count + 1 ))
             fi
         fi
@@ -152,7 +173,9 @@ check_target_file() {
         log "SUCCESS" "${label}: 問題なし。"
     fi
 
-    return "$error_count"
+    # グローバル変数にエラー数を加算（return 255 上限を回避）
+    _CHECK_ERRORS=$(( _CHECK_ERRORS + error_count ))
+    return 0
 }
 
 # Apex クラスに対応するテストクラスが deploy-target.txt に含まれているか検証
@@ -165,12 +188,10 @@ check_missing_tests() {
     local deployed_files=()
     local section="files"
     while IFS= read -r line || [[ -n "$line" ]]; do
-        local clean="${line//$'\r'/}"
-        clean="${clean#"${clean%%[^[:space:]]*}"}"
-        clean="${clean%"${clean##*[^[:space:]]}"}"
+        local clean
+        trim_line clean "$line"
         [[ -z "$clean" || "$clean" == \#* ]] && continue
-        if [[ "$clean" == "[files]" ]]; then section="files"; continue
-        elif [[ "$clean" == "[members]" ]]; then section="members"; continue; fi
+        parse_section section "$clean" && continue
         [[ "$section" == "files" && "$clean" == *.cls ]] && deployed_files+=("$clean")
     done < "$deploy_list"
 
@@ -213,7 +234,7 @@ check_missing_tests() {
         done
 
         if [[ "$in_deploy" == false ]]; then
-            print_gcc_warning "$deploy_list" "$found_test" \
+            print_gcc_message "warning" "$deploy_list" "" "$found_test" \
                 "${classname} のテストクラスが deploy-target.txt に含まれていません（本番/Sandbox に存在する場合は無視可）"
             warning_count=$(( warning_count + 1 ))
         fi
@@ -232,17 +253,15 @@ check_missing_tests() {
 # ------------------------------------------------------------------------------
 log "HEADER" "デプロイターゲットファイルを検証します (${SCRIPT_NAME}.sh)"
 
-deploy_errors=0
-remove_errors=0
+# エラー数の集計用グローバル変数（check_target_file 内で加算される）
+_CHECK_ERRORS=0
 
-check_target_file "$DEPLOY_LIST" "deploy-target.txt" || deploy_errors=$?
-check_target_file "$REMOVE_LIST" "remove-target.txt"  || remove_errors=$?
+check_target_file "$DEPLOY_LIST" "deploy-target.txt"
+check_target_file "$REMOVE_LIST" "remove-target.txt"
 check_missing_tests "$DEPLOY_LIST"
 
-total_errors=$(( deploy_errors + remove_errors ))
-
-if [[ "$total_errors" -gt 0 ]]; then
-    printf "\n${CLR_ERR}error${CLR_RESET}: %s 件のエラーが検出されました。ターゲットファイルを修正してください。\n\n" "$total_errors"
+if [[ "$_CHECK_ERRORS" -gt 0 ]]; then
+    printf "\n${CLR_ERR}error${CLR_RESET}: %s 件のエラーが検出されました。ターゲットファイルを修正してください。\n\n" "$_CHECK_ERRORS"
     exit 1
 fi
 
