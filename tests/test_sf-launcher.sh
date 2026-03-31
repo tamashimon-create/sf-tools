@@ -18,8 +18,7 @@ test_not_in_force_dir() {
     local ec=$?
 
     assert_exit_fail $ec "force-* 以外のディレクトリ → exit 1"
-    echo "$out" | grep -q "force-" && pass "force-* メッセージが表示された" \
-                                   || fail "force-* メッセージが表示された"
+    assert_output_contains "$out" "force-" "force-* メッセージが表示された"
     teardown "$td" "$mb"
 }
 
@@ -54,8 +53,7 @@ test_out_of_range_number() {
     local ec=$?
 
     assert_exit_fail $ec "範囲外の番号 (99) → exit 1"
-    echo "$out" | grep -q "範囲外" && pass "範囲外メッセージが表示された" \
-                                   || fail "範囲外メッセージが表示された"
+    assert_output_contains "$out" "範囲外" "範囲外メッセージが表示された"
     teardown "$td" "$mb"
 }
 

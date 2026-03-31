@@ -40,8 +40,8 @@ test_update_all_success() {
     echo ""
     echo -e "${CLR_HEAD}[TEST] 全更新（PROD のみ）→ 正常終了${CLR_RST}"
 
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_update_secret "$mb" "$td"
     _prepare_update_all_env "$td" "$td"
 
@@ -65,8 +65,8 @@ test_update_jwt_login_fail() {
     echo ""
     echo -e "${CLR_HEAD}[TEST] JWT 接続テスト失敗 → エラー中止${CLR_RST}"
 
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_update_secret "$mb" "$td"
     _prepare_update_all_env "$td" "$td"
 
@@ -88,8 +88,8 @@ test_update_gh_fail() {
     echo ""
     echo -e "${CLR_HEAD}[TEST] gh secret set 失敗 → エラー中止${CLR_RST}"
 
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_update_secret "$mb" "$td"
     _prepare_update_all_env "$td" "$td"
 
@@ -130,8 +130,8 @@ test_update_private_key() {
     echo ""
     echo -e "${CLR_HEAD}[TEST] 秘密鍵のみ更新（メニュー 1）${CLR_RST}"
 
-    local td mb
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"
+    local td mb mh
+    setup_std_env td mb mh
     _create_mocks_update_secret "$mb" "$td"
 
     # ダミー秘密鍵ファイルを /tmp に作成

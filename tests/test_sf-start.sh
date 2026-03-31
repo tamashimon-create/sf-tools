@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-start.sh ===${CLR_RST}"
 # 接続済みの場合 → ログインスキップ、VS Code が起動される
 test_connected_org() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     mkdir -p "$mh/sf-tools/bin"
     printf '#!/bin/bash\necho "sf-launcher called" >> "%s"\n' "$MOCK_CALL_LOG" > "$mh/sf-tools/bin/sf-launcher.sh"
@@ -31,7 +31,7 @@ test_connected_org() {
 # 接続済みの場合 → VS Code の設定ファイルが書き込まれる
 test_config_files_written() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     mkdir -p "$mh/sf-tools/bin"
     printf '#!/bin/bash\nexit 0\n' > "$mh/sf-tools/bin/sf-launcher.sh"
@@ -52,7 +52,7 @@ test_config_files_written() {
 # FORCE_RELOGIN=1 → 接続済みでも強制ログインフローに入る
 test_force_relogin() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     mkdir -p "$mh/sf-tools/bin"
     printf '#!/bin/bash\nexit 0\n' > "$mh/sf-tools/bin/sf-launcher.sh"
@@ -74,7 +74,7 @@ test_force_relogin() {
 # sf-start.sh → sf-launcher.sh が呼ばれる
 test_launcher_called() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     mkdir -p "$mh/sf-tools/bin"
     printf '#!/bin/bash\necho "sf-launcher called" >> "%s"\n' "$MOCK_CALL_LOG" > "$mh/sf-tools/bin/sf-launcher.sh"

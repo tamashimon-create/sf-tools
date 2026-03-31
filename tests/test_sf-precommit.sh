@@ -49,8 +49,7 @@ test_check_fail() {
     local ec=$?
 
     assert_exit_fail $ec "sf-check エラー → コミット中止 (exit 1)"
-    echo "$out" | grep -q "中止" && pass "コミット中止メッセージが表示された" \
-                                 || fail "コミット中止メッセージが表示された"
+    assert_output_contains "$out" "中止" "コミット中止メッセージが表示された"
     teardown "$td" "$mb"
 }
 

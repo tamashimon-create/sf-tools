@@ -8,7 +8,7 @@ echo -e "${CLR_HEAD}=== sf-install.sh ===${CLR_RST}"
 # 正常実行 → git pull、マージドライバー登録、npm install が行われる
 test_normal_run() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
@@ -22,7 +22,7 @@ test_normal_run() {
 # スタンプファイルが新しい（24h以内）→ sf-upgrade.sh がバックグラウンド起動されない
 test_upgrade_skipped_within_24h() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # 1時間前のタイムスタンプでスタンプファイルを作成
@@ -31,15 +31,14 @@ test_upgrade_skipped_within_24h() {
 
     local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
-    echo "$out" | grep -q "スキップ" && pass "24h 以内のためスキップメッセージが表示された" \
-        || fail "24h 以内のためスキップメッセージが表示された"
+    assert_output_contains "$out" "スキップ" "24h 以内のためスキップメッセージが表示された"
     teardown "$td" "$mb" "$mh"
 }
 
 # スタンプファイルなし（初回）→ sf-upgrade.sh がバックグラウンド起動される
 test_upgrade_triggered_on_first_run() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     # スタンプファイルなし（初回実行を再現）
@@ -55,15 +54,13 @@ test_upgrade_triggered_on_first_run() {
 # package.json が存在しない → npm install がスキップされる
 test_npm_install_skipped_no_package_json() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     rm -f "$mh/.sf-tools-last-update"  # アップグレードも動かすが npm install のみ確認
 
     local out; out=$(cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
-    echo "$out" | grep -q "package.json が見つかりません" \
-        && pass "package.json なし → npm install スキップメッセージ" \
-        || fail "package.json なし → npm install スキップメッセージ"
+    assert_output_contains "$out" "package.json が見つかりません" "package.json なし → npm install スキップメッセージ"
     teardown "$td" "$mb" "$mh"
 }
 
@@ -83,14 +80,12 @@ test_outside_force_dir() {
 # SF_INIT_RUNNING=1 の場合 → git pull をスキップ
 test_skip_pull_when_sf_init_running() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
-    echo "$out" | grep -q "git pull をスキップ" \
-        && pass "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された" \
-        || fail "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された"
+    assert_output_contains "$out" "git pull をスキップ" "SF_INIT_RUNNING=1 → git pull スキップメッセージが表示された"
 
     grep "git -C" "$MOCK_CALL_LOG" 2>/dev/null | grep -q "pull" \
         && fail "SF_INIT_RUNNING=1 → git pull が呼び出されていない" \
@@ -102,7 +97,7 @@ test_skip_pull_when_sf_init_running() {
 # sf-hook.sh が呼び出され pre-push フックが生成される
 test_hook_installed() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
@@ -114,7 +109,7 @@ test_hook_installed() {
 # branch_name.txt とリリースディレクトリが作成される
 test_release_dir_created() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
 
@@ -129,7 +124,7 @@ test_release_dir_created() {
 # main ブランチでは release ディレクトリを作成しない
 test_release_dir_skipped_on_main() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="main"
 
@@ -145,7 +140,7 @@ test_release_dir_skipped_on_main() {
 # sf-upgrade.sh が呼び出された（初回実行時）
 test_upgrade_called_on_first_run() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     rm -f "$mh/.sf-tools-last-update"
 
@@ -161,7 +156,7 @@ test_upgrade_called_on_first_run() {
 # sf-upgrade.sh が呼び出されない（24h以内）
 test_upgrade_not_called_within_24h() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     touch -t "$(date -d '1 hour ago' +'%Y%m%d%H%M' 2>/dev/null || date -v -1H +'%Y%m%d%H%M' 2>/dev/null || date +'%Y%m%d%H%M')" "$mh/.sf-tools-last-update" 2>/dev/null \
         || touch "$mh/.sf-tools-last-update"
@@ -178,7 +173,7 @@ test_upgrade_not_called_within_24h() {
 # deploy-target.txt と remove-target.txt が作成される
 test_deploy_remove_target_created() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
 
@@ -193,7 +188,7 @@ test_deploy_remove_target_created() {
 # .gitmessage が作成され git config に設定される
 test_gitmessage_created() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
 
     cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1 >/dev/null
@@ -206,19 +201,15 @@ test_gitmessage_created() {
 # release 初期化に失敗 → WARNING が出力される（SUCCESS にならない）
 test_release_dir_init_fail() {
     local td mb mh
-    td=$(setup_force_dir); mb=$(setup_mock_bin); export MOCK_CALL_LOG="$mb/calls.log"; mh=$(setup_mock_home)
+    setup_std_env td mb mh
     create_all_mocks "$mb"
     export MOCK_GIT_BRANCH="feature/test"
     rm -f "$mh/sf-tools/templates/sf-tools/release/__BRANCH__/deploy-target.txt"
 
     local out; out=$(cd "$td" && SF_INIT_RUNNING=1 HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-install.sh" 2>&1)
 
-    echo "$out" | grep -q "リリース管理ディレクトリの準備に失敗" \
-        && pass "release 初期化失敗 → WARNING が出力された" \
-        || fail "release 初期化失敗 → WARNING が出力された"
-    echo "$out" | grep -q "リリース管理ディレクトリの準備が完了" \
-        && fail "release 初期化失敗 → SUCCESS ログが出ていない" \
-        || pass "release 初期化失敗 → SUCCESS ログが出ていない"
+    assert_output_contains "$out" "リリース管理ディレクトリの準備に失敗" "release 初期化失敗 → WARNING が出力された"
+    assert_output_not_contains "$out" "リリース管理ディレクトリの準備が完了" "release 初期化失敗 → SUCCESS ログが出ていない"
     unset MOCK_GIT_BRANCH
     teardown "$td" "$mb" "$mh"
 }

@@ -42,12 +42,8 @@ test_files_missing_path() {
     local ret=$?
 
     assert_exit_fail "$ret" "[files] 存在しないパス → エラー終了"
-    echo "$out" | grep -q ":2" \
-        && pass "[files] 存在しないパス → 行番号が表示された" \
-        || fail "[files] 存在しないパス → 行番号が表示された"
-    echo "$out" | grep -q "Missing.cls" \
-        && pass "[files] 存在しないパス → ファイル名が表示された" \
-        || fail "[files] 存在しないパス → ファイル名が表示された"
+    assert_output_contains "$out" ":2" "[files] 存在しないパス → 行番号が表示された"
+    assert_output_contains "$out" "Missing.cls" "[files] 存在しないパス → ファイル名が表示された"
     teardown "$td"
 }
 
@@ -86,12 +82,8 @@ test_members_invalid_format() {
     local ret=$?
 
     assert_exit_fail "$ret" "[members] コロンなし → エラー終了"
-    echo "$out" | grep -q ":2" \
-        && pass "[members] コロンなし → 行番号が表示された" \
-        || fail "[members] コロンなし → 行番号が表示された"
-    echo "$out" | grep -q "書式エラー（種別名:メンバー名）" \
-        && pass "[members] コロンなし → 書式エラーメッセージが表示された" \
-        || fail "[members] コロンなし → 書式エラーメッセージが表示された"
+    assert_output_contains "$out" ":2" "[members] コロンなし → 行番号が表示された"
+    assert_output_contains "$out" "書式エラー（種別名:メンバー名）" "[members] コロンなし → 書式エラーメッセージが表示された"
     teardown "$td"
 }
 
@@ -170,9 +162,7 @@ test_missing_test_class_warning() {
     echo "$out" | grep -qi "warning" \
         && pass "テストクラス不足 → warning が表示された" \
         || fail "テストクラス不足 → warning が表示された"
-    echo "$out" | grep -q "MyClassTest" \
-        && pass "テストクラス不足 → テストクラス名が表示された" \
-        || fail "テストクラス不足 → テストクラス名が表示された"
+    assert_output_contains "$out" "MyClassTest" "テストクラス不足 → テストクラス名が表示された"
     teardown "$td"
 }
 

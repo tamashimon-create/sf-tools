@@ -27,8 +27,7 @@ test_block_push_to_main() {
     local ec=$?
 
     assert_exit_fail $ec "main への直接プッシュ → エラー終了"
-    echo "$out" | grep -q "禁止" && pass "main プッシュ禁止メッセージが出る" \
-                                  || fail "main プッシュ禁止メッセージが出る"
+    assert_output_contains "$out" "禁止" "main プッシュ禁止メッセージが出る"
     teardown "$td" "$mb"
     unset MOCK_GIT_BRANCH
 }
@@ -254,9 +253,7 @@ test_syntax_error_blocks_push() {
     local ec=$?
 
     assert_exit_fail $ec "構文エラーあり → プッシュを中断"
-    echo "$out" | grep -q "構文エラー" \
-        && pass "構文エラーメッセージが表示された" \
-        || fail "構文エラーメッセージが表示された"
+    assert_output_contains "$out" "構文エラー" "構文エラーメッセージが表示された"
     teardown "$td" "$mb"
     unset MOCK_GIT_BRANCH
 }
