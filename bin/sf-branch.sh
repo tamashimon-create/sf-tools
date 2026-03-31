@@ -40,7 +40,7 @@ readonly LOG_MODE="NEW"
 # ------------------------------------------------------------------------------
 # 2. 共通ライブラリの読み込み
 # ------------------------------------------------------------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # VAR=$(cmd) 形式のため run 不使用・source 前で run 未定義
 COMMON_LIB="${SCRIPT_DIR}/../lib/common.sh"
 
 if [[ ! -f "$COMMON_LIB" ]]; then
@@ -55,6 +55,10 @@ source "$COMMON_LIB"
 
 trap '' INT  # Ctrl+C を無効化（q で中断すること）
 
+# 一時ファイルのクリーンアップ（die / 異常終了時に .tmp が残留しないよう保護）
+TMP_BRANCH_FILE=""
+trap '[[ -n "$TMP_BRANCH_FILE" ]] && rm -f "$TMP_BRANCH_FILE"' EXIT
+
 # ------------------------------------------------------------------------------
 # 3. 事前チェック
 # ------------------------------------------------------------------------------
@@ -68,7 +72,7 @@ OLD_BRANCHES=()
 if [[ -f "$BRANCH_LIST_FILE" ]]; then
     ACTIVE_LINES=$(grep -v '^[[:space:]]*#' "$BRANCH_LIST_FILE" | grep -v '^[[:space:]]*$' | tr -d '\r')
     if [[ -n "$ACTIVE_LINES" ]]; then
-        OLD_BRANCHES=($ACTIVE_LINES)
+        mapfile -t OLD_BRANCHES <<< "$ACTIVE_LINES"
         log "INFO" "現在の構成: $(echo "$ACTIVE_LINES" | tr '\n' ' ')"
         echo "" >&2
         ask_yn "ブランチ構成は設定済みです。変更しますか？" \
@@ -90,6 +94,7 @@ echo "      開発組織を使わない場合。検証→本番の2段階" >&2
 echo "" >&2
 echo -e "  ${CLR_INFO}[3]${CLR_RESET} main" >&2
 echo "      小規模プロジェクト・単独開発向け" >&2
+echo -e "  ${CLR_INFO}[q]${CLR_RESET} 中断" >&2
 echo -e "  ${CLR_INFO}─────────────────────────────────────────────${CLR_RESET}" >&2
 echo "" >&2
 read_key choice "  番号を入力 [1-3/q]: " "[1-3Qq]"
@@ -107,6 +112,7 @@ log "INFO" "branches.txt を更新します..."
 run mkdir -p "sf-tools/config"
 
 # コメントヘッダーを保持し、ブランチ行だけ差し替える
+TMP_BRANCH_FILE="${BRANCH_LIST_FILE}.tmp"
 {
     # 既存ファイルのコメント行（# で始まる行）を残す
     if [[ -f "$BRANCH_LIST_FILE" ]]; then
@@ -120,8 +126,9 @@ run mkdir -p "sf-tools/config"
     for b in "${BRANCHES[@]}"; do
         echo "$b"
     done
-} > "${BRANCH_LIST_FILE}.tmp"
-run mv "${BRANCH_LIST_FILE}.tmp" "$BRANCH_LIST_FILE"
+} > "$TMP_BRANCH_FILE"
+run mv "$TMP_BRANCH_FILE" "$BRANCH_LIST_FILE"
+TMP_BRANCH_FILE=""  # mv 成功後はクリア（trap での削除対象から外す）
 
 log "SUCCESS" "branches.txt を更新しました: ${BRANCHES[*]}"
 
@@ -142,7 +149,7 @@ SKIPPED=0
 for branch in "${BRANCHES[@]}"; do
     [[ "$branch" == "main" ]] && continue
 
-    # リモートに既に存在するか確認
+    # リモートに既に存在するか確認（if cmd; then 形式のため run 不使用・条件チェック）
     if git ls-remote --exit-code --heads origin "$branch" > /dev/null 2>&1; then
         log "INFO" "${branch} — スキップ（既に存在）"
         SKIPPED=$((SKIPPED + 1))
