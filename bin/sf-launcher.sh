@@ -219,7 +219,7 @@ fzf_mode() {
         [[ -z "$selected" ]] && break
 
         local label
-        label=$(echo "$selected" | awk '{print $1}')
+        label=$(echo "$selected" | awk '{print tolower($1)}')
         run_command "sf-${label}"
     done
 }
