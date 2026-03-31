@@ -151,6 +151,12 @@
 
 主なオプション: `--release` / `--no-open` / `--force` / `--target`
 
+`@isTest` 自動検出フロー:
+1. `phase_generate_manifest` 内で `deploy_args` を走査し、`--source-dir` に続く `.cls` ファイルを `grep -qi "@isTest"` で検査
+2. 検出されたクラス名をスクリプトレベル変数 `RUN_TESTS=()` に追加
+3. `phase_release` で `${#RUN_TESTS[@]} -gt 0` の場合、`--test-level RunSpecifiedTests --run-tests <CSV>` を `deploy_cmd` に追加して実行
+4. テストクラスが 0 件の場合は従来通り（`--test-level` 未指定）の動作を維持
+
 ### 4.3 sf-metasync.sh
 
 - 本番組織でのみ実行可（Sandbox に接続中の場合はエラー終了）
@@ -260,6 +266,23 @@ GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序
 オプション:
 - `--resume N`: Phase N から再開（エラー後の再試行）
 - `--only N`: Phase N のみ実行（デバッグ用）
+
+### 4.14 sf-check.sh
+
+ターゲットファイルの構文チェックと、テストクラス不足検出を行う。`sf-release.sh` / `sf-prepush.sh` / `sf-push.sh` から自動呼び出しされる。
+
+`check_target_file` の処理（`deploy-target.txt` / `remove-target.txt` 共通）:
+- `[files]` セクション: ファイルパスの存在確認（`[[ ! -e "$clean" ]]`）→ エラー時は `print_gcc_error` で GCC スタイル出力
+- `[members]` セクション: `種別名:メンバー名` 書式確認（コロンなし → `print_gcc_error`）
+- `error_count > 0` の場合のみ終了コード 1
+
+`check_missing_tests` の処理（WARNING のみ・エラーにならない）:
+- `deploy-target.txt` の `[files]` セクションから `.cls` ファイルを収集
+- 各 `.cls` に対して `@isTest` があればテストクラス自身と判断してスキップ
+- Step A: 同一ディレクトリ内で `MyClassTest.cls` / `MyClass_Test.cls` を探す
+- Step B: A で見つからない場合、`grep -rl --include="*.cls" "@isTest" .` → `xargs grep -lw "$classname"` でコンテンツ検索
+- 見つかったテストクラスが `deployed_files` に含まれていなければ `print_gcc_warning` を出力
+- 設計思想: 本番/Sandbox に既存のテストクラスは含めなくてよい → WARNING 扱い（エラーにはしない）
 
 ---
 

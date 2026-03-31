@@ -384,6 +384,7 @@ sf-release.sh [オプション]
 補足:
 - `--json`, `-j` で `sf` コマンド出力を JSON 形式で表示できます
 - `--verbose`, `-v` でコマンド出力をコンソールにも表示できます
+- `deploy-target.txt` に記述した `.cls` ファイルに `@isTest` アノテーションがあれば自動検出し、`--test-level RunSpecifiedTests --run-tests` を自動設定します（ユーザーが手動で指定する必要はありません）
 
 ### 4.8 `sf-deploy.sh`
 
@@ -422,9 +423,17 @@ sf-check.sh [deploy-target.txt] [remove-target.txt]
 
 ターゲットファイルの構文をチェックします。通常は `sf-release.sh` や `sf-prepush.sh` から自動実行されます。
 
+チェック内容:
+- `[files]` セクション: 記述したパスがリポジトリ内に存在するか
+- `[members]` セクション: `種別名:メンバー名` の書式になっているか
+- **テストクラス不足検出**: Apex クラス（通常クラス）に対応するテストクラスがローカルに存在するのに `deploy-target.txt` に含まれていない場合に WARNING を表示します（エラーにはならない）
+  - Step A: 命名規則（`MyClassTest.cls` / `MyClass_Test.cls`）で同一ディレクトリを検索
+  - Step B: A で見つからない場合、`@isTest` を含む `.cls` ファイルをコンテンツ検索
+  - ※ 本番/Sandbox に既存のテストクラスは含めなくてよいため WARNING 扱い
+
 補足:
 - 引数省略時は現在ブランチの `release/<branch>/` 配下を自動解決します
-- 終了コードは `0` が正常、`1` が構文エラーです
+- 終了コードは `0` が正常（WARNING あり含む）、`1` が構文エラーです
 
 ### 4.11 `sf-metasync.sh`
 
@@ -562,6 +571,7 @@ GitHub Secrets の JWT 認証情報（`SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*` / `
 [files]
 # ファイルパスで指定
 force-app/main/default/classes/MyController.cls
+force-app/main/default/classes/MyControllerTest.cls
 force-app/main/default/lwc/myComponent
 
 [members]
@@ -574,6 +584,8 @@ force-app/main/default/lwc/myComponent
 - `[files]` と `[members]` の 2 セクション構成
 - 行頭 `#` はコメント
 - 空行は無視
+- `@isTest` アノテーションを持つ `.cls` ファイルを記述すると、`sf-release.sh` が `--test-level RunSpecifiedTests --run-tests <クラス名>` を自動設定します
+- テストクラスを記述するかどうかはユーザーの責任です。`sf-check.sh` がローカルに存在するテストクラスの記述漏れを WARNING で通知します
 
 ### 5.2 `remove-target.txt`
 
