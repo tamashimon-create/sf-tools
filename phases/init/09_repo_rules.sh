@@ -165,6 +165,17 @@ else
     log "WARNING" "protect-staging の作成に失敗しました（無料プランでは利用不可の場合があります）。"
 fi
 
-log "SUCCESS" "Phase 10 完了: GitHub リポジトリ設定・Ruleset の適用 OK。"
+# --- 4. SF_TOOLS_BRANCH GitHub Variable 登録（検証環境のみ）---
+if [[ "${SF_TOOLS_BRANCH:-main}" == "development" ]]; then
+    log "INFO" "SF_TOOLS_BRANCH=development を GitHub Variable に登録中..."
+    if run gh variable set SF_TOOLS_BRANCH --body "development" -R "$REPO_FULL_NAME"; then
+        log "SUCCESS" "SF_TOOLS_BRANCH=development を登録しました。GitHub Actions は sf-tools development ブランチを使用します。"
+    else
+        log "WARNING" "SF_TOOLS_BRANCH の登録に失敗しました。手動で設定してください:"
+        log "WARNING" "  gh variable set SF_TOOLS_BRANCH --body \"development\" -R \"${REPO_FULL_NAME}\""
+    fi
+fi
+
+log "SUCCESS" "Phase 9 完了: GitHub リポジトリ設定・Ruleset の適用 OK。"
 
 exit $RET_OK

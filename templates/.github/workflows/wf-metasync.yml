@@ -93,7 +93,7 @@ jobs:
       # --------------------------------------------------------------------------
       - name: 自動化ツール（sf-tools）を取得
         run: |
-          git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
+          git clone -b ${{ vars.SF_TOOLS_BRANCH || 'main' }} https://github.com/tama-create/sf-tools.git ~/sf-tools
           chmod +x ~/sf-tools/bin/sf-metasync.sh
 
       # --------------------------------------------------------------------------
