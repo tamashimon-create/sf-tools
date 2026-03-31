@@ -118,14 +118,21 @@ register_jwt_secret() {
 
     # JWT 接続テスト
     log "INFO" "  JWT 接続テストを実行中..."
+    log "INFO" "  [jwt cmd] sf org login jwt --client-id ***masked*** --jwt-key-file ${key_file} --username ${username} --instance-url ${instance_url} --alias ${org_alias}"
     # run 不使用: sf org login jwt は exit code が信頼できない場合があるため直接実行して確認
-    sf org login jwt \
+    # VAR=$(cmd) 形式のため run 不使用（stderr をキャプチャしてログに残す）
+    local jwt_err
+    jwt_err=$(sf org login jwt \
         --client-id    "$consumer_key" \
         --jwt-key-file "$key_file" \
         --username     "$username" \
         --instance-url "$instance_url" \
-        --alias        "$org_alias" 2>/dev/null \
-        || die "  JWT 接続テストに失敗しました。以下を確認してください:\n  ・コンシューマーキーが正しいか（コピーミスに注意）\n  ・ユーザー名が正しいか\n  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか\n  ・プロファイルに接続ユーザーが割り当てられているか\n  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）\n  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"
+        --alias        "$org_alias" 2>&1)
+    local jwt_exit=$?
+    if [[ $jwt_exit -ne 0 ]]; then
+        log "ERROR" "  [jwt error] ${jwt_err}"
+        die "  JWT 接続テストに失敗しました。以下を確認してください:\n  ・コンシューマーキーが正しいか（コピーミスに注意）\n  ・ユーザー名が正しいか\n  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか\n  ・プロファイルに接続ユーザーが割り当てられているか\n  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）\n  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"
+    fi
     log "SUCCESS" "  JWT 接続テスト成功。"
 
     # GitHub Secrets に登録
