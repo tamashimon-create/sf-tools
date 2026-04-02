@@ -125,7 +125,7 @@ jobs:
       - name: 本番組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'main' }}
         run: |
-          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 -d > /tmp/server.key
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_PROD }}" \
             --jwt-key-file /tmp/server.key \
@@ -137,7 +137,7 @@ jobs:
       - name: ステージング組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'staging' }}
         run: |
-          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 -d > /tmp/server.key
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_STG }}" \
             --jwt-key-file /tmp/server.key \
@@ -149,7 +149,7 @@ jobs:
       - name: 開発組織にログイン（JWT）
         if: ${{ (github.event.pull_request.base.ref || github.ref_name) == 'develop' }}
         run: |
-          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 -d > /tmp/server.key
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_DEV }}" \
             --jwt-key-file /tmp/server.key \
