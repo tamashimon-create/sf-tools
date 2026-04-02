@@ -9,6 +9,7 @@
 #   open_browser URL          ... OS を判定してブラウザを開く（lib/common.sh に同名関数あり）
 #   generate_jwt_cert         ... JWT 用秘密鍵・証明書を openssl で生成する
 #   register_jwt_secret       ... JWT 認証情報を取得・テストして GitHub Secret に登録する
+#                                 テスト失敗時はスキップして続行するか確認する（DE 組織対応）
 #
 # 【lib/common.sh から利用可能な関数】
 #   press_enter [MSG]         ... Enter 待ち（q で中断）
@@ -131,9 +132,25 @@ register_jwt_secret() {
     local jwt_exit=$?
     if [[ $jwt_exit -ne 0 ]]; then
         log "ERROR" "  [jwt error] ${jwt_err}"
-        die "  JWT 接続テストに失敗しました。以下を確認してください:\n  ・コンシューマーキーが正しいか（コピーミスに注意）\n  ・ユーザー名が正しいか\n  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか\n  ・プロファイルに接続ユーザーが割り当てられているか\n  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）\n  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"
+        log "WARNING" "  JWT 接続テストに失敗しました。以下を確認してください:"
+        log "WARNING" "  ・コンシューマーキーが正しいか（コピーミスに注意）"
+        log "WARNING" "  ・ユーザー名が正しいか"
+        log "WARNING" "  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか"
+        log "WARNING" "  ・プロファイルに接続ユーザーが割り当てられているか"
+        log "WARNING" "  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）"
+        log "WARNING" "  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"
+        log "WARNING" "  ・Developer Edition 組織では認証反映が遅延・失敗する場合があります"
+        # テスト失敗時はスキップして続行するか確認する
+        # （DE 組織などローカルで認証できない場合でも GitHub Secrets への登録だけ済ませて
+        #   GitHub Actions で動作確認できるようにするため）
+        if ask_yn "  接続テストをスキップして GitHub Secrets への登録のみ行いますか？（GitHub Actions で後でテストできます）"; then
+            log "WARNING" "  接続テストをスキップします。GitHub Actions で動作を確認してください。"
+        else
+            die "  JWT 接続テストに失敗しました。設定を見直してから再実行してください。"
+        fi
+    else
+        log "SUCCESS" "  JWT 接続テスト成功。"
     fi
-    log "SUCCESS" "  JWT 接続テスト成功。"
 
     # GitHub Secrets に登録
     run gh secret set "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
