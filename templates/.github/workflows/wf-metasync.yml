@@ -70,7 +70,7 @@ jobs:
       # --------------------------------------------------------------------------
       - name: Salesforce 組織にログイン
         run: |
-          echo "${{ secrets.SF_PRIVATE_KEY }}" > /tmp/server.key
+          echo "${{ secrets.SF_PRIVATE_KEY }}" | base64 -d > /tmp/server.key
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_PROD }}" \
             --jwt-key-file /tmp/server.key \
