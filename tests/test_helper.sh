@@ -262,7 +262,8 @@ case "$1 $2" in
     "auth status") exit "${MOCK_GH_AUTH_STATUS_EXIT:-0}" ;;
     "auth login")  exit "${MOCK_GH_AUTH_LOGIN_EXIT:-0}" ;;
     "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
-    "secret set")  exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
+    "secret set")   exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
+    "variable set") exit "${MOCK_GH_VARIABLE_SET_EXIT:-0}" ;;
     "api user")    echo "${MOCK_GH_API_USER:-tama-create}" ;;
     *) exit 0 ;;
 esac

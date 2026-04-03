@@ -8,6 +8,8 @@
 # 【必要な GitHub Secrets（このリポジトリに設定すること）】
 #   PAT_TOKEN        : GitHub PAT（ブランチ保護ルールのバイパスに使用）
 #   SLACK_BOT_TOKEN  : Slack API の Bot Token（コンフリクト時の通知に使用）
+#
+# 【必要な GitHub Variables（このリポジトリに設定すること）】
 #   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
@@ -89,7 +91,7 @@ jobs:
           )
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_CHANNEL_ID: ${{ vars.SLACK_CHANNEL_ID }}
         run: |
           CONFLICTS=""
           if [ "${{ steps.merge_staging.outputs.result }}" = "conflict" ]; then

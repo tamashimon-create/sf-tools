@@ -22,6 +22,8 @@
 #   SF_CONSUMER_KEY_PROD : 本番組織の Connected App コンシューマーキー
 #   SF_CONSUMER_KEY_STG  : ステージング組織の Connected App コンシューマーキー
 #   SF_CONSUMER_KEY_DEV  : 開発組織の Connected App コンシューマーキー
+#
+# 【必要な GitHub Variables（このリポジトリに設定すること）】
 #   SF_USERNAME_PROD     : 本番組織の接続ユーザー名
 #   SF_USERNAME_STG      : ステージング組織の接続ユーザー名
 #   SF_USERNAME_DEV      : 開発組織の接続ユーザー名
@@ -109,18 +111,18 @@ jobs:
           BASE="${{ github.event.pull_request.base.ref || github.ref_name }}"
           if   [[ "$BASE" == "main"    ]]; then
             echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_PROD }}" >> "$GITHUB_ENV"
-            echo "SF_USERNAME=${{ secrets.SF_USERNAME_PROD }}"         >> "$GITHUB_ENV"
-            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_PROD }}" >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ vars.SF_USERNAME_PROD }}"            >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ vars.SF_INSTANCE_URL_PROD }}"    >> "$GITHUB_ENV"
             echo "接続先: 本番組織"
           elif [[ "$BASE" == "staging" ]]; then
             echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_STG }}"  >> "$GITHUB_ENV"
-            echo "SF_USERNAME=${{ secrets.SF_USERNAME_STG }}"          >> "$GITHUB_ENV"
-            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_STG }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ vars.SF_USERNAME_STG }}"             >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ vars.SF_INSTANCE_URL_STG }}"     >> "$GITHUB_ENV"
             echo "接続先: ステージング組織"
           else
             echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY_DEV }}"  >> "$GITHUB_ENV"
-            echo "SF_USERNAME=${{ secrets.SF_USERNAME_DEV }}"          >> "$GITHUB_ENV"
-            echo "SF_INSTANCE_URL=${{ secrets.SF_INSTANCE_URL_DEV }}"  >> "$GITHUB_ENV"
+            echo "SF_USERNAME=${{ vars.SF_USERNAME_DEV }}"             >> "$GITHUB_ENV"
+            echo "SF_INSTANCE_URL=${{ vars.SF_INSTANCE_URL_DEV }}"     >> "$GITHUB_ENV"
             echo "接続先: 開発組織"
           fi
 

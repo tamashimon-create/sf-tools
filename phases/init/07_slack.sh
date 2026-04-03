@@ -2,10 +2,10 @@
 # ==============================================================================
 # 07_slack.sh - Phase 7: Slack 連携の設定
 # ==============================================================================
-# Slack App を作成して Bot Token とチャンネル ID を GitHub Secrets に登録する。
+# Slack App を作成して Bot Token と チャンネル ID を GitHub に登録する。
 #
-#   8-1. Slack App 作成・Bot Token 取得・SLACK_BOT_TOKEN 登録
-#   8-2. SLACK_CHANNEL_ID 登録
+#   8-1. Slack App 作成・Bot Token 取得・SLACK_BOT_TOKEN 登録（Secret）
+#   8-2. SLACK_CHANNEL_ID 登録（Variable）
 #   8-3. Bot をチャンネルに招待
 # ==============================================================================
 
@@ -72,7 +72,7 @@ echo ""
 channel_id=""
 read_or_quit channel_id "  チャンネル ID（q で中断）："
 
-echo "$channel_id" | run gh secret set SLACK_CHANNEL_ID -R "$REPO_FULL_NAME" \
+echo "$channel_id" | run gh variable set SLACK_CHANNEL_ID -R "$REPO_FULL_NAME" \
     || die "SLACK_CHANNEL_ID の登録に失敗しました。"
 log "SUCCESS" "SLACK_CHANNEL_ID を登録しました。"
 
