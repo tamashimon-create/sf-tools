@@ -58,8 +58,18 @@ generate_jwt_cert() {
 
     log "INFO" "JWT 用証明書を生成中: ${jwt_dir}/"
     # run 不使用: 変数代入・openssl の終了コードを直接確認するため
-    openssl genrsa -out "${jwt_dir}/server.key" 2048 2>/dev/null \
+    # OpenSSL 3.x は genrsa が PKCS#8 を出力するため、-traditional で PKCS#1(RSA) に変換する
+    # Salesforce JWT Bearer Flow は PKCS#1 形式（-----BEGIN RSA PRIVATE KEY-----）を要求する
+    openssl genrsa -out "${jwt_dir}/server.key.tmp" 2048 2>/dev/null \
         || die "秘密鍵の生成に失敗しました。openssl がインストールされているか確認してください。"
+    # -traditional: OpenSSL 3.x で PKCS#1 形式を強制。1.x では不要なためフォールバック
+    if openssl rsa -traditional -in "${jwt_dir}/server.key.tmp" \
+                                -out "${jwt_dir}/server.key" 2>/dev/null; then
+        rm -f "${jwt_dir}/server.key.tmp"
+    else
+        # OpenSSL 1.x は genrsa が元から PKCS#1 を出力するため tmp をそのまま使用
+        mv "${jwt_dir}/server.key.tmp" "${jwt_dir}/server.key"
+    fi
     # // プレフィックス: Git Bash が -subj の /CN= を Windows パスに変換するのを防ぐ定番の回避策
     openssl req -new -x509 -days 3650 \
         -key "${jwt_dir}/server.key" \

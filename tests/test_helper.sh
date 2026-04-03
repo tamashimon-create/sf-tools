@@ -304,11 +304,12 @@ create_mock_openssl() {
 #!/bin/bash
 echo "openssl $*" >> "${MOCK_CALL_LOG:-/dev/null}"
 # -out <file> を探してダミーファイルを生成する
+# rsa -traditional でも同様に -out ファイルを生成（PKCS#1 変換ステップのモック）
 _prev=""
 for _arg in "$@"; do
     if [[ "$_prev" == "-out" ]]; then
         mkdir -p "$(dirname "$_arg")" 2>/dev/null || true
-        { echo "FAKE KEY/CERT"; echo "dummy openssl output"; } > "$_arg"
+        { echo "-----BEGIN RSA PRIVATE KEY-----"; echo "FAKE KEY"; echo "-----END RSA PRIVATE KEY-----"; } > "$_arg"
     fi
     _prev="$_arg"
 done

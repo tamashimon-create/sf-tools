@@ -77,7 +77,7 @@ jobs:
             --username     "${{ secrets.SF_USERNAME_PROD }}" \
             --instance-url "${{ secrets.SF_INSTANCE_URL_PROD }}" \
             --set-default \
-            --alias tama
+            --alias prod
           rm -f /tmp/server.key
 
       # --------------------------------------------------------------------------
