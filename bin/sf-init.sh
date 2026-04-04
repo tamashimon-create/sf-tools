@@ -34,9 +34,15 @@
 #   cd ~/home/{github-owner}/{company}
 #   ~/sf-tools/bin/sf-init.sh [--resume N] [--only N]
 #
+#   cd ~/home/{github-owner}/{company}/system/force-xxx
+#   ~/sf-tools/bin/sf-init.sh --add-tier staging   # staging tier を追加
+#   ~/sf-tools/bin/sf-init.sh --add-tier develop   # develop tier を追加
+#
 # 【オプション】
-#   --resume N : Phase N から再開（エラー後の再試行に使用）
-#   --only N   : Phase N のみ実行（デバッグ・単体テストに使用）
+#   --resume N            : Phase N から再開（エラー後の再試行に使用）
+#   --only N              : Phase N のみ実行（デバッグ・単体テストに使用）
+#   --add-tier staging    : 既存プロジェクトに staging tier を追加
+#   --add-tier develop    : 既存プロジェクトに develop tier を追加
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -74,6 +80,7 @@ trap '' INT  # Ctrl+C を無効化（子プロセスにも継承される）
 # ------------------------------------------------------------------------------
 ONLY_PHASE=""
 RESUME_PHASE=1
+ADD_TIER_MODE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -86,15 +93,31 @@ while [[ $# -gt 0 ]]; do
             RESUME_PHASE="$2"
             shift 2
             ;;
+        --add-tier)
+            ADD_TIER_MODE="$2"
+            shift 2
+            ;;
         *)
             die "不明なオプションです: $1
 使い方:
-  ~/sf-tools/bin/sf-init.sh              # Phase 1〜10 を順次実行
-  ~/sf-tools/bin/sf-init.sh --resume N   # Phase N から最後まで順次実行
-  ~/sf-tools/bin/sf-init.sh --only N     # Phase N のみ実行"
+  ~/sf-tools/bin/sf-init.sh                       # Phase 1〜10 を順次実行
+  ~/sf-tools/bin/sf-init.sh --resume N             # Phase N から最後まで順次実行
+  ~/sf-tools/bin/sf-init.sh --only N               # Phase N のみ実行
+  ~/sf-tools/bin/sf-init.sh --add-tier staging     # staging tier を追加
+  ~/sf-tools/bin/sf-init.sh --add-tier develop     # develop tier を追加"
             ;;
     esac
 done
+
+# --add-tier モードは通常のフェーズループとは別処理
+if [[ -n "$ADD_TIER_MODE" ]]; then
+    log "HEADER" "tier 追加モード: ${ADD_TIER_MODE} (${SCRIPT_NAME}.sh)"
+    export SF_TOOLS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+    export ADD_TIER="$ADD_TIER_MODE"
+    bash "${SCRIPT_DIR}/../phases/init/add_tier.sh" \
+        || die "--add-tier ${ADD_TIER_MODE} が失敗しました。"
+    exit $RET_OK
+fi
 
 # 実行範囲を決定する
 if [[ -n "$ONLY_PHASE" ]]; then
