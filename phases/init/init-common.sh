@@ -147,7 +147,6 @@ register_jwt_secret() {
         log "WARNING" "  JWT 接続テストに失敗しました。以下を確認してください:"
         log "WARNING" "  ・コンシューマーキーが正しいか（コピーミスに注意）"
         log "WARNING" "  ・ユーザー名が正しいか"
-        log "WARNING" "  ・「指名ユーザーの JWT ベースアクセストークンを発行」にチェックが入っているか"
         log "WARNING" "  ・プロファイルに接続ユーザーが割り当てられているか"
         log "WARNING" "  ・Connected App 保存後 2〜10 分経過しているか（反映待ち）"
         log "WARNING" "  ・Trailhead Playground / orgfarm-* 系は JWT Bearer Flow 非対応のため使用不可"

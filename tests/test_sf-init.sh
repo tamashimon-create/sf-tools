@@ -103,31 +103,34 @@ _stub_subscripts() {
 # 入力順（Phase 5: ブランチ構成）:
 #   ★ \n は read_key [1-3Qq] が無効として読み飛ばし
 #   3. 1                  (main/staging/develop 選択 - read_key [1-3Qq]。\n は buffer 残留)
+#   ★ 1\n の \n は drain（read -r _discard）が消費
+#   4. \n                 (管理者ユーザー入力 - read_input。空 Enter でループ終了・スキップ)
 # 入力順（Phase 6: PAT）:
-#   4. \n                 (press_enter - 1\n の \n を消費)
-#   5. ghp_faketoken      (PAT トークン - read_or_quit)
+#   5. \n                 (press_enter - PAT 取得案内)
+#   6. ghp_faketoken      (PAT トークン - read_or_quit)
 # 入力順（Phase 7: Slack）:
-#   6. \n                 (press_enter - Bot Token 取得案内)
-#   7. xoxb-faketoken     (Slack Bot Token - read_or_quit)
-#   8. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
-#   9. \n                 (press_enter - Bot 招待完了確認)
+#   7. \n                 (press_enter - Bot Token 取得案内)
+#   8. xoxb-faketoken     (Slack Bot Token - read_or_quit)
+#   9. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
+#  10. \n                 (press_enter - Bot 招待完了確認)
 # 入力順（Phase 10: JWT 認証）:
-#  10. \n                 (press_enter - Connected App 設定案内)
-#  11. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  11. \n                 (press_enter - Connected App 設定案内)
+#  12. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  12. fake_prod_key      (prod コンシューマーキー - read_or_quit)
-#  13. prod@example.com   (prod ユーザー名 - read_or_quit)
-#  14. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  13. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#  14. prod@example.com   (prod ユーザー名 - read_or_quit)
+#  15. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  15. fake_stg_key       (staging コンシューマーキー - read_or_quit)
-#  16. stg@example.com    (staging ユーザー名 - read_or_quit)
-#  17. Y                  (develop Sandbox? - ask_yn read_key)
-#  18. fake_dev_key       (develop コンシューマーキー - read_or_quit)
-#  19. dev@example.com    (develop ユーザー名 - read_or_quit)
-#  20. N                  (init フォルダ削除をスキップ)
+#  16. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#  17. stg@example.com    (staging ユーザー名 - read_or_quit)
+#  18. Y                  (develop Sandbox? - ask_yn read_key)
+#  19. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#  20. dev@example.com    (develop ユーザー名 - read_or_quit)
+#  21. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
+    # Phase 5 ブランチ選択後: drain が \n を消費 → admin 空 Enter でスキップ → press_enter
+    printf 'Y\n1\n1\n\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
 }
 
 # ==============================================================================
@@ -264,10 +267,10 @@ test_sf_login_failure() {
     # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
 
-    # Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
+    # Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択（drain+admin空Enter）→ PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
     # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
+    printf 'Y\n1\n1\n\n\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
@@ -667,6 +670,89 @@ test_unknown_option_fails() {
 }
 
 # ==============================================================================
+# テスト 16: --only 5 → 管理者ユーザーが admin-users.txt に登録される
+# ==============================================================================
+test_only_phase5_adds_admin_user() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --only 5 → admin-users.txt に管理者登録${CLR_RST}"
+
+    local mb mock_home init_base init_dir force_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/home/tamashimon/testproject"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+
+    # REPO_DIR（force-* ディレクトリ）を準備
+    force_dir="$init_dir/init/force-testproject"
+    mkdir -p "$force_dir/sf-tools/config"
+
+    # .sf-init.env を事前設定（REPO_DIR を絶対パスで指定）
+    mkdir -p "$init_dir/init"
+    printf 'GITHUB_OWNER="tamashimon"\nPROJECT_NAME="testproject"\nREPO_NAME="force-testproject"\nREPO_FULL_NAME="tamashimon/force-testproject"\nREPO_DIR="%s"\nBRANCH_COUNT=""\n' \
+        "$force_dir" > "$init_dir/init/.sf-init.env"
+
+    local exit_code
+    # ブランチ選択=1、drain用\nは自動消費、管理者=testadmin、空Enter でループ終了、N=init削除スキップ
+    printf '1\ntestadmin\n\nN\n' \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --only 5 ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_ok         "$exit_code"                                                     "--only 5 で正常終了する"
+    assert_file_exists     "$force_dir/sf-tools/config/admin-users.txt"                     "admin-users.txt が作成される"
+    assert_file_contains   "$force_dir/sf-tools/config/admin-users.txt" "testadmin"         "testadmin が登録される"
+    assert_file_contains   "$init_dir/init/.sf-init.env" "BRANCH_COUNT"                     ".sf-init.env に BRANCH_COUNT が書き出される"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
+# テスト 17: --only 5 → 重複ユーザーはスキップされる
+# ==============================================================================
+test_only_phase5_skips_duplicate_admin() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --only 5 → 重複ユーザーはスキップ${CLR_RST}"
+
+    local mb mock_home init_base init_dir force_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+    init_base=$(_setup_init_dir "tamashimon" "testproject")
+    init_dir="$init_base/home/tamashimon/testproject"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+
+    force_dir="$init_dir/init/force-testproject"
+    mkdir -p "$force_dir/sf-tools/config"
+    # admin-users.txt を事前に作成（testadmin がすでに登録済み）
+    printf 'testadmin\n' > "$force_dir/sf-tools/config/admin-users.txt"
+
+    mkdir -p "$init_dir/init"
+    printf 'GITHUB_OWNER="tamashimon"\nPROJECT_NAME="testproject"\nREPO_NAME="force-testproject"\nREPO_FULL_NAME="tamashimon/force-testproject"\nREPO_DIR="%s"\nBRANCH_COUNT=""\n' \
+        "$force_dir" > "$init_dir/init/.sf-init.env"
+
+    local exit_code
+    # 重複ユーザーを入力 → スキップされて正常終了することを確認、N=init削除スキップ
+    printf '1\ntestadmin\n\nN\n' \
+        | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --only 5 ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_ok "$exit_code" "重複登録でも正常終了する"
+    # ファイルに testadmin が1件のみ（重複なし）
+    local count
+    count=$(grep -c "^testadmin$" "$force_dir/sf-tools/config/admin-users.txt" 2>/dev/null || echo 0)
+    assert_equals "1" "$count" "testadmin の登録は1件のみ（重複なし）"
+
+    teardown "$mb" "$mock_home" "$init_base"
+}
+
+# ==============================================================================
 # テスト実行
 # ==============================================================================
 echo ""
@@ -689,5 +775,7 @@ test_add_tier_staging_happy
 test_add_tier_staging_already_exists
 test_add_tier_develop_without_staging
 test_unknown_option_fails
+test_only_phase5_adds_admin_user
+test_only_phase5_skips_duplicate_admin
 
 print_summary

@@ -29,8 +29,6 @@
 #   ・作成した Connected App を「外部クライアントアプリへの移行」または「削除」しないこと。
 #     OAuth 内部状態が破損し client_identifier_invalid エラーが発生する。
 #     問題が起きた場合は同じアプリを修正せず、別名で新規作成すること。
-#   ・Spring '26 以降の組織では Connected App 作成時に PKCE がデフォルト ON になる場合がある。
-#     JWT Bearer Flow には不要なため「PKCE 拡張を要求」のチェックを外すこと。
 #   ・Developer Edition 組織では pre-authorization の反映が遅延・失敗する場合がある。
 #     JWT Bearer Flow は Production / Sandbox 組織での使用を推奨。
 # ==============================================================================
@@ -102,10 +100,7 @@ log "INFO" "  4. 「選択した OAuth 範囲」に以下を追加"
 log "INFO" "     ・フルアクセス (full)"
 log "INFO" "     ・いつでも要求を実行 (refresh_token, offline_access)"
 log "INFO" "  5. 「デジタル署名を使用」にチェック → 上記の server.crt をアップロード"
-log "INFO" "  ★ 「Proof Key for Code Exchange (PKCE) 拡張を要求」が ON の場合は外してください"
-log "INFO" "     （Spring '26 以降の組織でデフォルト ON になっている場合があります）"
-log "INFO" "  6. 「指名ユーザーの JSON Web トークン (JWT) ベースのアクセストークンを発行」→ チェックを入れる"
-log "INFO" "  7. 保存 → 次へ → [コンシューマーの詳細管理] をクリック → 「コンシューマー鍵」をコピー"
+log "INFO" "  6. 保存 → 次へ → [コンシューマーの詳細管理] をクリック → 「コンシューマー鍵」をコピー"
 log "INFO" ""
 log "INFO" "  ★ 保存後 2〜10 分待ってから STEP B へ進んでください ★"
 log "INFO" ""
