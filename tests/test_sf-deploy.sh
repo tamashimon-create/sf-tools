@@ -90,10 +90,10 @@ test_outside_force_dir() {
     teardown "$rd" "$mb"
 }
 
-# 非管理者ユーザー → エラー終了
-test_non_admin_blocked() {
+# 一般ユーザー（非管理者）でも Sandbox へデプロイできる
+test_non_admin_can_deploy() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] 非管理者 → エラー終了${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] 一般ユーザー → Sandbox デプロイ可${CLR_RST}"
 
     local td mb mh
     setup_std_env td mb mh
@@ -101,15 +101,13 @@ test_non_admin_blocked() {
     setup_release_dir "$td" "feature/deploy-test"
 
     export MOCK_GIT_BRANCH="feature/deploy-test"
-    export MOCK_GH_API_USER="stranger123"
+    export MOCK_GH_API_USER="stranger123"  # admin-users.txt に未登録のユーザー
 
     local out; out=$( echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" --no-open ) 2>&1 )
     local ec=$?
 
-    assert_exit_fail $ec "非管理者 → エラー終了"
-    ! grep -q "project deploy" "$MOCK_CALL_LOG" 2>/dev/null \
-        && pass "非管理者 → デプロイは実行されない" \
-        || fail "非管理者 → デプロイは実行されない"
+    assert_exit_ok $ec "一般ユーザーでも正常終了する"
+    assert_file_contains "$MOCK_CALL_LOG" "project deploy" "一般ユーザーでもデプロイが実行される"
     unset MOCK_GIT_BRANCH MOCK_GH_API_USER
     teardown "$td" "$mb"
 }
@@ -119,6 +117,6 @@ test_main_branch_blocked
 test_staging_branch_blocked
 test_development_branch_blocked
 test_outside_force_dir
-test_non_admin_blocked
+test_non_admin_can_deploy
 
 print_summary
