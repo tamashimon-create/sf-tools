@@ -4,14 +4,21 @@
 # ==============================================================================
 #
 # 【テストケース】
-#   1. ハッピーパス（3ブランチ構成）- フルフロー正常終了
-#   2. 必要なツール不足（gh なし）  - 環境チェックで失敗
-#   3. リポジトリ作成失敗           - gh repo create が exit 1 を返す
-#   4. Salesforce ログイン失敗      - sf org login が exit 1 を返す
-#   5. 許可されていないユーザー     - check_authorized_user で失敗
-#   6. 無効なフォルダ構成           - GitHub オーナー名バリデーション失敗
-#   7. リポジトリ visibility (Public) - tama-create → --public
-#   8. リポジトリ visibility (Private) - 他オーナー → --private
+#   1.  ハッピーパス（3ブランチ構成）- フルフロー正常終了
+#   2.  必要なツール不足（gh なし）  - 環境チェックで失敗
+#   3.  リポジトリ作成失敗           - gh repo create が exit 1 を返す
+#   4.  Salesforce ログイン失敗      - sf org login が exit 1 を返す
+#   5.  許可されていないユーザー     - check_authorized_user で失敗
+#   6.  無効なフォルダ構成           - GitHub オーナー名バリデーション失敗
+#   7.  リポジトリ visibility (Public) - tama-create → --public
+#   8.  リポジトリ visibility (Private) - 他オーナー → --private
+#   9.  --only 1 → Phase 1 のみ実行
+#   10. --only 2 → .sf-init.env が生成される
+#   11. --only 9 → Phase 9 のみ実行
+#   12. --add-tier staging → 正常終了・Secrets/Variables 登録
+#   13. --add-tier staging → 既存ならエラー
+#   14. --add-tier develop → staging なしはエラー
+#   15. 不明なオプション → エラー終了
 # ==============================================================================
 
 source "$(dirname "${BASH_SOURCE[0]}")/test_helper.sh"
@@ -168,7 +175,7 @@ test_happy_path_3branches() {
     assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_CONSUMER_KEY_DEV"        "SF_CONSUMER_KEY_DEV が登録される"
     assert_file_contains "$MOCK_CALL_LOG" "gh secret set PAT_TOKEN"                  "PAT_TOKEN が登録される"
     assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_BOT_TOKEN"            "SLACK_BOT_TOKEN が登録される"
-    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SLACK_CHANNEL_ID"           "SLACK_CHANNEL_ID が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh variable set SLACK_CHANNEL_ID"          "SLACK_CHANNEL_ID が登録される"
     assert_file_contains "$MOCK_CALL_LOG" "git add"                                  "git add が呼ばれる"
 
     teardown "$mb" "$mock_home" "$init_base"
@@ -502,7 +509,146 @@ ENVEOF
 }
 
 # ==============================================================================
-# テスト 12: 不明なオプション → エラー終了
+# テスト 12: --add-tier staging → 正常終了・Secrets/Variables が登録される
+# ==============================================================================
+test_add_tier_staging_happy() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --add-tier staging → 正常終了${CLR_RST}"
+
+    local mb mock_home force_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+
+    # force-* ディレクトリを模擬（check_force_dir が force- プレフィックスを要求するため）
+    local base_dir
+    base_dir=$(mktemp -d "${TMPDIR:-/tmp}/test-add-tier-XXXX")
+    force_dir="$base_dir/force-testproject"
+    mkdir -p "$force_dir/sf-tools/config"
+    printf 'main\n' > "$force_dir/sf-tools/config/branches.txt"
+    # ~/.sf-jwt/<repo_name>/server.key を模擬
+    mkdir -p "$mock_home/.sf-jwt/force-testproject"
+    {
+        echo "-----BEGIN RSA PRIVATE KEY-----"
+        echo "FAKE"
+        echo "-----END RSA PRIVATE KEY-----"
+    } > "$mock_home/.sf-jwt/force-testproject/server.key"
+
+    create_all_mocks "$mb"
+    create_mock_gh_for_init "$mb"
+
+    # git remote を返す git モックを追加
+    cat > "$mb/git" << 'GITEOF'
+#!/bin/bash
+echo "git $*" >> "${MOCK_CALL_LOG:-/dev/null}"
+case "$1 $2" in
+    "remote get-url") echo "https://github.com/tamashimon/force-testproject.git" ;;
+    "ls-remote --exit-code") exit 1 ;;  # ブランチ未存在
+    *) exit 0 ;;
+esac
+GITEOF
+    chmod +x "$mb/git"
+
+    local exit_code
+    # staging Sandbox? → コンシューマーキー → ユーザー名 の順
+    printf 'Y\nfake_stg_key\nstg@example.com\n' \
+        | ( cd "$force_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+              bash "$mock_home/sf-tools/bin/sf-init.sh" --add-tier staging ) \
+          > /tmp/sf-init-add-tier.log 2>&1
+    exit_code=$?
+
+    assert_exit_ok   "$exit_code"                                                   "正常終了する"
+    assert_file_contains "$MOCK_CALL_LOG" "gh secret set SF_CONSUMER_KEY_STG"       "SF_CONSUMER_KEY_STG が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh variable set SF_USERNAME_STG"         "SF_USERNAME_STG が登録される"
+    assert_file_contains "$MOCK_CALL_LOG" "gh variable set SF_INSTANCE_URL_STG"     "SF_INSTANCE_URL_STG が登録される"
+    assert_file_contains "$force_dir/sf-tools/config/branches.txt" "staging"        "branches.txt に staging が追記される"
+
+    teardown "$mb" "$mock_home"
+    rm -rf "$base_dir" /tmp/sf-init-add-tier.log
+}
+
+# ==============================================================================
+# テスト 13: --add-tier staging → すでに存在する場合はエラー
+# ==============================================================================
+test_add_tier_staging_already_exists() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --add-tier staging → 既存ならエラー${CLR_RST}"
+
+    local mb mock_home force_dir base_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+
+    base_dir=$(mktemp -d "${TMPDIR:-/tmp}/test-add-tier-XXXX")
+    force_dir="$base_dir/force-testproject"
+    mkdir -p "$force_dir/sf-tools/config"
+    # staging がすでに存在する状態
+    printf 'main\nstaging\n' > "$force_dir/sf-tools/config/branches.txt"
+
+    create_all_mocks "$mb"
+
+    cat > "$mb/git" << 'GITEOF'
+#!/bin/bash
+case "$1 $2" in
+    "remote get-url") echo "https://github.com/tamashimon/force-testproject.git" ;;
+    *) exit 0 ;;
+esac
+GITEOF
+    chmod +x "$mb/git"
+
+    local exit_code
+    ( cd "$force_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+          bash "$mock_home/sf-tools/bin/sf-init.sh" --add-tier staging ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_fail "$exit_code" "既存 tier は失敗終了する"
+
+    teardown "$mb" "$mock_home"
+    rm -rf "$base_dir"
+}
+
+# ==============================================================================
+# テスト 14: --add-tier develop → staging がない場合はエラー
+# ==============================================================================
+test_add_tier_develop_without_staging() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --add-tier develop → staging なしはエラー${CLR_RST}"
+
+    local mb mock_home force_dir base_dir
+    mb=$(setup_mock_bin)
+    export MOCK_CALL_LOG="$mb/calls.log"
+    mock_home=$(setup_mock_home)
+
+    base_dir=$(mktemp -d "${TMPDIR:-/tmp}/test-add-tier-XXXX")
+    force_dir="$base_dir/force-testproject"
+    mkdir -p "$force_dir/sf-tools/config"
+    # main のみ（staging なし）
+    printf 'main\n' > "$force_dir/sf-tools/config/branches.txt"
+
+    create_all_mocks "$mb"
+
+    cat > "$mb/git" << 'GITEOF'
+#!/bin/bash
+case "$1 $2" in
+    "remote get-url") echo "https://github.com/tamashimon/force-testproject.git" ;;
+    *) exit 0 ;;
+esac
+GITEOF
+    chmod +x "$mb/git"
+
+    local exit_code
+    ( cd "$force_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
+          bash "$mock_home/sf-tools/bin/sf-init.sh" --add-tier develop ) > /dev/null 2>&1
+    exit_code=$?
+
+    assert_exit_fail "$exit_code" "staging なしで develop 追加は失敗終了する"
+
+    teardown "$mb" "$mock_home"
+    rm -rf "$base_dir"
+}
+
+# ==============================================================================
+# テスト 15: 不明なオプション → エラー終了
 # ==============================================================================
 test_unknown_option_fails() {
     echo ""
@@ -546,6 +692,9 @@ test_repo_visibility_private_for_other_owner
 test_only_option_runs_single_phase
 test_only_phase2_creates_env_file
 test_resume_runs_from_specified_phase
+test_add_tier_staging_happy
+test_add_tier_staging_already_exists
+test_add_tier_develop_without_staging
 test_unknown_option_fails
 
 print_summary

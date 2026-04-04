@@ -7,6 +7,8 @@
 #
 # 【必要な GitHub Secrets（このリポジトリに設定すること）】
 #   SLACK_BOT_TOKEN  : Slack API の Bot Token（順序未確認時の通知に使用）
+#
+# 【必要な GitHub Variables（このリポジトリに設定すること）】
 #   SLACK_CHANNEL_ID : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
@@ -138,7 +140,7 @@ jobs:
         if: steps.sequence_check.outputs.out_of_order == 'true'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_CHANNEL_ID: ${{ vars.SLACK_CHANNEL_ID }}
         run: |
           FEATURE="${{ steps.sequence_check.outputs.feature }}"
           PREV="${{ steps.sequence_check.outputs.prev }}"

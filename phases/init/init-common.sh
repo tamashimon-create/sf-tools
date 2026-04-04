@@ -92,10 +92,10 @@ generate_jwt_cert() {
 #   $3 - label            : 表示用ラベル（例: 本番組織）
 #   $4 - key_file         : 秘密鍵ファイルパス
 #   $5 - is_sandbox_override: "Y"/"N" で対話をスキップ（省略時は対話で確認）
-# 登録する Secrets:
-#   SF_CONSUMER_KEY_<suffix>
-#   SF_USERNAME_<suffix>
-#   SF_INSTANCE_URL_<suffix>
+# 登録する Secrets / Variables:
+#   SF_CONSUMER_KEY_<suffix>  （Secret）
+#   SF_USERNAME_<suffix>      （Variable）
+#   SF_INSTANCE_URL_<suffix>  （Variable）
 # ------------------------------------------------------------------------------
 register_jwt_secret() {
     local org_alias="$1"
@@ -140,7 +140,9 @@ register_jwt_secret() {
         --instance-url "$instance_url" \
         --alias        "$org_alias" 2>&1)
     local jwt_exit=$?
-    if [[ $jwt_exit -ne 0 ]]; then
+    # sf org login jwt は成功時でも非0終了コードを返す場合がある（stderr に成功メッセージを出力）
+    # そのため終了コードが非0でも "Successfully authorized" が含まれていれば成功とみなす
+    if [[ $jwt_exit -ne 0 ]] && ! echo "$jwt_err" | grep -q "Successfully authorized"; then
         log "ERROR" "  [jwt error] ${jwt_err}"
         log "WARNING" "  JWT 接続テストに失敗しました。以下を確認してください:"
         log "WARNING" "  ・コンシューマーキーが正しいか（コピーミスに注意）"
@@ -162,13 +164,14 @@ register_jwt_secret() {
         log "SUCCESS" "  JWT 接続テスト成功。"
     fi
 
-    # GitHub Secrets に登録
-    run gh secret set "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
+    # GitHub Secrets / Variables に登録
+    # SF_CONSUMER_KEY は機密情報のため Secret、SF_USERNAME と SF_INSTANCE_URL は Variable（平文で管理）
+    run gh secret   set      "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
         || die "SF_CONSUMER_KEY_${suffix} の登録に失敗しました。"
-    run gh secret set "SF_USERNAME_${suffix}"     --body "$username"     -R "$REPO_FULL_NAME" \
+    run gh variable set      "SF_USERNAME_${suffix}"     --body "$username"     -R "$REPO_FULL_NAME" \
         || die "SF_USERNAME_${suffix} の登録に失敗しました。"
-    run gh secret set "SF_INSTANCE_URL_${suffix}" --body "$instance_url" -R "$REPO_FULL_NAME" \
+    run gh variable set      "SF_INSTANCE_URL_${suffix}" --body "$instance_url" -R "$REPO_FULL_NAME" \
         || die "SF_INSTANCE_URL_${suffix} の登録に失敗しました。"
 
-    log "SUCCESS" "  SF_CONSUMER_KEY_${suffix} / SF_USERNAME_${suffix} / SF_INSTANCE_URL_${suffix} を登録しました。"
+    log "SUCCESS" "  SF_CONSUMER_KEY_${suffix}（Secret）/ SF_USERNAME_${suffix}（Variable）/ SF_INSTANCE_URL_${suffix}（Variable）を登録しました。"
 }

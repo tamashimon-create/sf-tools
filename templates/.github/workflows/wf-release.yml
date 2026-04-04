@@ -10,13 +10,15 @@
 #   SF_CONSUMER_KEY_PROD : 本番組織の Connected App コンシューマーキー
 #   SF_CONSUMER_KEY_STG  : ステージング組織の Connected App コンシューマーキー
 #   SF_CONSUMER_KEY_DEV  : 開発組織の Connected App コンシューマーキー
+#   SLACK_BOT_TOKEN      : Slack API の Bot Token
+#
+# 【必要な GitHub Variables（このリポジトリに設定すること）】
 #   SF_USERNAME_PROD     : 本番組織の接続ユーザー名
 #   SF_USERNAME_STG      : ステージング組織の接続ユーザー名
 #   SF_USERNAME_DEV      : 開発組織の接続ユーザー名
 #   SF_INSTANCE_URL_PROD : 本番組織の接続 URL（https://login.salesforce.com 等）
 #   SF_INSTANCE_URL_STG  : ステージング組織の接続 URL
 #   SF_INSTANCE_URL_DEV  : 開発組織の接続 URL
-#   SLACK_BOT_TOKEN      : Slack API の Bot Token
 #   SLACK_CHANNEL_ID     : 通知先 Slack チャンネル ID
 #
 # ==============================================================================
@@ -129,8 +131,8 @@ jobs:
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_PROD }}" \
             --jwt-key-file /tmp/server.key \
-            --username     "${{ secrets.SF_USERNAME_PROD }}" \
-            --instance-url "${{ secrets.SF_INSTANCE_URL_PROD }}" \
+            --username     "${{ vars.SF_USERNAME_PROD }}" \
+            --instance-url "${{ vars.SF_INSTANCE_URL_PROD }}" \
             --set-default --alias prod
           rm -f /tmp/server.key
 
@@ -141,8 +143,8 @@ jobs:
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_STG }}" \
             --jwt-key-file /tmp/server.key \
-            --username     "${{ secrets.SF_USERNAME_STG }}" \
-            --instance-url "${{ secrets.SF_INSTANCE_URL_STG }}" \
+            --username     "${{ vars.SF_USERNAME_STG }}" \
+            --instance-url "${{ vars.SF_INSTANCE_URL_STG }}" \
             --set-default --alias staging
           rm -f /tmp/server.key
 
@@ -153,8 +155,8 @@ jobs:
           sf org login jwt \
             --client-id    "${{ secrets.SF_CONSUMER_KEY_DEV }}" \
             --jwt-key-file /tmp/server.key \
-            --username     "${{ secrets.SF_USERNAME_DEV }}" \
-            --instance-url "${{ secrets.SF_INSTANCE_URL_DEV }}" \
+            --username     "${{ vars.SF_USERNAME_DEV }}" \
+            --instance-url "${{ vars.SF_INSTANCE_URL_DEV }}" \
             --set-default --alias develop
           rm -f /tmp/server.key
 
@@ -190,7 +192,7 @@ jobs:
         if: always()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_CHANNEL_ID: ${{ vars.SLACK_CHANNEL_ID }}
         run: |
           BRANCH="${{ github.event.pull_request.base.ref || github.ref_name }}"
           if [ "$BRANCH" = "main" ]; then
