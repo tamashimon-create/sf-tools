@@ -36,7 +36,7 @@ test_release_option_forwarded() {
     export MOCK_GIT_BRANCH="feature/dryrun-test"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-dryrun.sh" --release --no-open 2>&1 >/dev/null
+    echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-dryrun.sh" --release --no-open ) 2>&1 >/dev/null
 
     grep "project deploy" "$MOCK_CALL_LOG" | grep -qv "\-\-dry-run" \
         && pass "--release 転送 → dry-run なし" || fail "--release 転送 → dry-run なし"

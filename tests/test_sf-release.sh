@@ -30,7 +30,7 @@ test_release_mode() {
     setup_release_dir "$td"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --release --no-open 2>&1 >/dev/null
+    echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --release --no-open ) 2>&1 >/dev/null
 
     grep "project deploy" "$MOCK_CALL_LOG" | grep -qv "\-\-dry-run" \
         && pass "--release → --dry-run なし" || fail "--release → --dry-run なし"
@@ -177,6 +177,30 @@ test_protected_org_staging_blocked() {
     teardown "$td" "$mb"
 }
 
+# --release + 非管理者ユーザー → エラー終了
+test_release_non_admin_blocked() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] --release + 非管理者 → エラー終了${CLR_RST}"
+
+    local td mb mh
+    setup_std_env td mb mh
+    create_all_mocks "$mb"
+    setup_release_dir "$td"
+    export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
+    export MOCK_GH_API_USER="stranger123"
+    unset GITHUB_ACTIONS
+
+    local out; out=$( echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-release.sh" --release --no-open ) 2>&1 )
+    local ec=$?
+
+    assert_exit_fail $ec "--release + 非管理者 → エラー終了"
+    ! grep -q "project deploy" "$MOCK_CALL_LOG" 2>/dev/null \
+        && pass "非管理者 → デプロイは実行されない" \
+        || fail "非管理者 → デプロイは実行されない"
+    unset MOCK_SF_ORG_JSON MOCK_GH_API_USER
+    teardown "$td" "$mb"
+}
+
 test_dry_run_default
 test_release_mode
 test_force_flag
@@ -188,5 +212,6 @@ test_protected_org_local_blocked
 test_protected_org_github_actions_allowed
 test_unprotected_org_local_allowed
 test_protected_org_staging_blocked
+test_release_non_admin_blocked
 
 print_summary

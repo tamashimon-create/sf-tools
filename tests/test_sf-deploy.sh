@@ -15,7 +15,7 @@ test_feature_branch() {
     export MOCK_GIT_BRANCH="feature/deploy-test"
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" --no-open 2>&1)
+    local out; out=$( echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" --no-open ) 2>&1 )
     local ec=$?
 
     assert_exit_ok $ec "機能ブランチ → 終了コード 0"
@@ -90,10 +90,35 @@ test_outside_force_dir() {
     teardown "$rd" "$mb"
 }
 
+# 非管理者ユーザー → エラー終了
+test_non_admin_blocked() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 非管理者 → エラー終了${CLR_RST}"
+
+    local td mb mh
+    setup_std_env td mb mh
+    create_all_mocks "$mb"
+    setup_release_dir "$td" "feature/deploy-test"
+
+    export MOCK_GIT_BRANCH="feature/deploy-test"
+    export MOCK_GH_API_USER="stranger123"
+
+    local out; out=$( echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-deploy.sh" --no-open ) 2>&1 )
+    local ec=$?
+
+    assert_exit_fail $ec "非管理者 → エラー終了"
+    ! grep -q "project deploy" "$MOCK_CALL_LOG" 2>/dev/null \
+        && pass "非管理者 → デプロイは実行されない" \
+        || fail "非管理者 → デプロイは実行されない"
+    unset MOCK_GIT_BRANCH MOCK_GH_API_USER
+    teardown "$td" "$mb"
+}
+
 test_feature_branch
 test_main_branch_blocked
 test_staging_branch_blocked
 test_development_branch_blocked
 test_outside_force_dir
+test_non_admin_blocked
 
 print_summary

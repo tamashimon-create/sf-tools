@@ -52,9 +52,9 @@ test_update_all_success() {
     local ec=$?
 
     assert_exit_ok $ec "全更新 → 終了コード 0"
-    assert_file_contains "$mb/calls.log" "gh secret set SF_CONSUMER_KEY_PROD" "SF_CONSUMER_KEY_PROD が更新される"
-    assert_file_contains "$mb/calls.log" "gh secret set SF_USERNAME_PROD"     "SF_USERNAME_PROD が更新される"
-    assert_file_contains "$mb/calls.log" "gh secret set SF_INSTANCE_URL_PROD" "SF_INSTANCE_URL_PROD が更新される"
+    assert_file_contains "$mb/calls.log" "gh secret set SF_CONSUMER_KEY_PROD"   "SF_CONSUMER_KEY_PROD が更新される"
+    assert_file_contains "$mb/calls.log" "gh variable set SF_USERNAME_PROD"     "SF_USERNAME_PROD が更新される"
+    assert_file_contains "$mb/calls.log" "gh variable set SF_INSTANCE_URL_PROD" "SF_INSTANCE_URL_PROD が更新される"
 
     teardown "$td" "$mb"
     rm -f /tmp/update-secret-test.log
@@ -151,10 +151,38 @@ test_update_private_key() {
     teardown "$td" "$mb"
 }
 
+# --- 非管理者ユーザー → エラー中止 ---
+test_update_non_admin_blocked() {
+    echo ""
+    echo -e "${CLR_HEAD}[TEST] 非管理者 → エラー中止${CLR_RST}"
+
+    local td mb mh
+    setup_std_env td mb mh
+    _create_mocks_update_secret "$mb" "$td"
+    _prepare_update_all_env "$td" "$td"
+
+    export MOCK_GH_API_USER="stranger123"
+    unset GITHUB_ACTIONS
+
+    printf '4\n' \
+        | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" \
+              bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
+    local ec=$?
+
+    assert_exit_fail $ec "非管理者 → エラー中止"
+    ! grep -q "gh secret set" "$mb/calls.log" 2>/dev/null \
+        && pass "非管理者 → Secrets は更新されない" \
+        || fail "非管理者 → Secrets は更新されない"
+
+    unset MOCK_GH_API_USER
+    teardown "$td" "$mb"
+}
+
 test_update_all_success
 test_update_jwt_login_fail
 test_update_gh_fail
 test_update_not_force_dir
 test_update_private_key
+test_update_non_admin_blocked
 
 echo ""

@@ -45,6 +45,8 @@ setup_force_dir() {
              "$dir/sf-tools/config" "$dir/sf-tools/release" "$dir/sf-tools/logs"
     echo "ApexClass" > "$dir/sf-tools/config/metadata.txt"
     printf 'main\nstaging\ndevelop\n' > "$dir/sf-tools/config/branches.txt"
+    # 管理者ユーザー設定（check_admin_user が参照するプロジェクトローカルファイル）
+    printf '# admin-users.txt\ntamashimon\n' > "$dir/sf-tools/config/admin-users.txt"
     echo "$dir"
 }
 
@@ -262,7 +264,8 @@ case "$1 $2" in
     "auth status") exit "${MOCK_GH_AUTH_STATUS_EXIT:-0}" ;;
     "auth login")  exit "${MOCK_GH_AUTH_LOGIN_EXIT:-0}" ;;
     "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
-    "secret set")  exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
+    "secret set")   exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
+    "variable set") exit "${MOCK_GH_VARIABLE_SET_EXIT:-0}" ;;
     "api user")    echo "${MOCK_GH_API_USER:-tama-create}" ;;
     *) exit 0 ;;
 esac
