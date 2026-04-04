@@ -3,18 +3,20 @@
 # 10_sf_auth.sh - Phase 10: JWT 認証情報の設定
 # ==============================================================================
 # JWT（OAuth 2.0 JWT Bearer Flow）方式で Salesforce 組織への認証情報を
-# GitHub Secrets に登録する。
+# GitHub Secrets / Variables に登録する。
 #
 # 【処理フロー】
 #   1. openssl で秘密鍵・証明書を生成（~/.sf-jwt/<REPO_NAME>/）
 #   2. Connected App 設定手順を案内（証明書をアップロードするまで待機）
 #   3. 秘密鍵を SF_PRIVATE_KEY として GitHub Secrets に登録
 #   4. 組織ごとに本番 or Sandbox を選択・コンシューマーキー・ユーザー名を入力して JWT 接続テスト
-#   5. SF_CONSUMER_KEY_xxx / SF_USERNAME_xxx / SF_INSTANCE_URL_xxx を登録
+#   5. SF_CONSUMER_KEY_xxx を Secret / SF_USERNAME_xxx・SF_INSTANCE_URL_xxx を Variable に登録
 #
-# 【登録する GitHub Secrets】
+# 【登録する GitHub Secrets（機密）】
 #   SF_PRIVATE_KEY              （全組織共通・秘密鍵 PEM）
 #   SF_CONSUMER_KEY_PROD / _STG / _DEV
+#
+# 【登録する GitHub Variables（平文）】
 #   SF_USERNAME_PROD     / _STG / _DEV
 #   SF_INSTANCE_URL_PROD / _STG / _DEV
 #

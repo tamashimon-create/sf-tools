@@ -66,7 +66,7 @@ run git push --no-verify origin main \
     || { run git remote set-url origin "$origin_url"; die "git push に失敗しました。"; }
 
 # main 以外のブランチを作成・プッシュ
-# sf-branch.sh は初回コミット前のため push をスキップ済み。ここで PAT URL のまま作成する
+# Phase 5 では branches.txt の更新のみ行い、リモートブランチ作成はここで実施する
 branches_file="${REPO_DIR}/sf-tools/config/branches.txt"
 if [[ -f "$branches_file" ]]; then
     while IFS= read -r branch || [[ -n "$branch" ]]; do

@@ -54,7 +54,6 @@ TEST_FILES=(
     test_sf-dryrun.sh
     test_sf-job.sh
     test_sf-next.sh
-    test_sf-branch.sh
     test_sf-check.sh
     test_sf-prepush.sh
     test_sf-push.sh

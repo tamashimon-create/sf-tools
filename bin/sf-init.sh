@@ -17,7 +17,7 @@
 #   Phase 2:  プロジェクト情報の確認（フォルダ構成からOWNERとプロジェクト名を自動導出）
 #   Phase 3:  リポジトリ作成（gh repo create + git clone）
 #   Phase 4:  ファイル生成（sf-install.sh / sf-hook.sh）
-#   Phase 5:  ブランチ構成（sf-branch.sh）
+#   Phase 5:  ブランチ構成（対話選択 → branches.txt 更新）
 #   Phase 6:  PAT_TOKEN の設定
 #   Phase 7:  Slack 連携の設定
 #   Phase 8:  初回コミット＆プッシュ
