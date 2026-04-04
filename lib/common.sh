@@ -490,7 +490,7 @@ check_authorized_user() {
 # 本番デプロイ・force操作・Secrets更新などの危険な操作は管理者のみ実行可能。
 # GITHUB_ACTIONS=true の場合はスキップ（WF実行時は常に許可）。
 # マスターユーザー（tama-create）は常に許可。
-# 追加管理者は ~/sf-tools/config/admin-users.txt で管理する。
+# 追加管理者はプロジェクトローカルの ./sf-tools/config/admin-users.txt で管理する（force-* 内）。
 #
 # 【使い方】
 #   check_admin_user
@@ -524,7 +524,7 @@ check_admin_user() {
         fi
     fi
 
-    die "この操作は管理者権限が必要です（現在のユーザー: ${current_user}）。~/sf-tools/config/admin-users.txt に追加してください。"
+    die "この操作は管理者権限が必要です（現在のユーザー: ${current_user}）。./sf-tools/config/admin-users.txt に追加してください。"
 }
 
 # read_input - readline 対応インタラクティブ入力（矢印キー・BS 等が正常に動作する）

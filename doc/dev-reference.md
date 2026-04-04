@@ -134,14 +134,17 @@
 
 危険な操作（本番デプロイ・force操作・Secrets更新等）は管理者のみ実行可能にするパターン。
 
-**ユーザー管理ファイル:**
+**2層の権限モデル:**
 
-| ファイル | 用途 |
-|---|---|
-| `~/sf-tools/config/allowed-users.txt` | sf-tools 全般の実行許可ユーザー（`check_authorized_user`） |
-| `~/sf-tools/config/admin-users.txt` | 危険操作の実行許可ユーザー（`check_admin_user`） |
+| 関数 | 参照ファイル | 配置場所 | 用途 |
+|---|---|---|---|
+| `check_authorized_user` | `~/sf-tools/config/allowed-users.txt` | sf-tools インストール先（グローバル・マシン単位） | sf-tools 全体の実行許可 |
+| `check_admin_user` | `./sf-tools/config/admin-users.txt` | force-* プロジェクト内（プロジェクトローカル） | 危険操作の実行許可 |
 
 `tama-create`（マスターユーザー）はどちらのファイルにも記載不要で常に許可される。
+
+- `allowed-users.txt` はマシン全体で1つ。`sf-tools` の実行そのものを制限する。
+- `admin-users.txt` はプロジェクトごとに存在し、`sf-init.sh` が `templates/` から配布する。プロジェクト単位で管理者を変えられる。
 
 **使用ルール:**
 
@@ -162,6 +165,9 @@ fi
 **スキップ条件:**
 - `GITHUB_ACTIONS=true` → 全スキップ（WF 実行時）
 - `SF_DEPLOY_CONFIRMED=1` → 被呼び出し側スキップ（ラッパー経由時）
+
+**管理者の追加方法:**
+`{force-*}/sf-tools/config/admin-users.txt` に GitHub ユーザー名（ログイン名）を1行ずつ追加する。`#` 行はコメント、空行は無視される。
 
 ---
 
