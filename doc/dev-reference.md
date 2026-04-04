@@ -54,7 +54,6 @@
 | `test_sf-dryrun.sh` | sf-dryrun.sh |
 | `test_sf-job.sh` | sf-job.sh |
 | `test_sf-next.sh` | sf-next.sh |
-| `test_sf-branch.sh` | sf-branch.sh |
 | `test_sf-check.sh` | sf-check.sh |
 | `test_sf-prepush.sh` | hooks/pre-push |
 | `test_sf-push.sh` | sf-push.sh |
@@ -111,6 +110,7 @@
 | `check_force_dir` | `check_force_dir` | `force-*` ディレクトリか検証 |
 | `check_home_dir` | `check_home_dir` | `~/home/{owner}/{company}/` の階層を検証し `GITHUB_OWNER` / `COMPANY_NAME` をセット |
 | `check_authorized_user` | `check_authorized_user` | 実行許可ユーザーか確認（マスター固定 + 外部ファイル） |
+| `check_admin_user` | `check_admin_user` | 管理者権限ユーザーか確認（`GITHUB_ACTIONS=true` 時はスキップ） |
 | `open_browser` | `open_browser URL` | OS 判定してブラウザを開く（WSL/GitBash/macOS/Linux 対応） |
 | `read_input` | `read_input VAR [PROMPT]` | readline 対応テキスト入力（矢印キー・BS 有効） |
 | `read_key` | `read_key VAR [PROMPT] [VALID]` | 1文字即時入力（Enter 不要・空 Enter 無視・EOF 対応） |
@@ -129,6 +129,39 @@
 | `RET_OK` | 0 | 成功 |
 | `RET_NG` | 1 | 失敗（`logs/error.log` にも記録） |
 | `RET_NO_CHANGE` | 2 | `NothingToDeploy` など変更なし |
+
+### 3.4 安全ガードパターン
+
+危険な操作（本番デプロイ・force操作・Secrets更新等）は管理者のみ実行可能にするパターン。
+
+**ユーザー管理ファイル:**
+
+| ファイル | 用途 |
+|---|---|
+| `~/sf-tools/config/allowed-users.txt` | sf-tools 全般の実行許可ユーザー（`check_authorized_user`） |
+| `~/sf-tools/config/admin-users.txt` | 危険操作の実行許可ユーザー（`check_admin_user`） |
+
+`tama-create`（マスターユーザー）はどちらのファイルにも記載不要で常に許可される。
+
+**使用ルール:**
+
+```bash
+# 危険スクリプトの先頭パターン（sf-deploy / sf-metasync / sf-update-secret）
+check_admin_user                          # 非管理者は die で即終了
+ask_yn "本番操作を実行します。続行しますか？"  # ローカル実行時の確認
+
+# ラッパー → 被呼び出しスクリプトで二重確認を防ぐパターン（sf-deploy → sf-release）
+export SF_DEPLOY_CONFIRMED=1              # ラッパー側でエクスポート
+# 被呼び出し側では:
+if [[ "${GITHUB_ACTIONS:-false}" != "true" && "$IS_VALIDATE_MODE" -eq 0 && "${SF_DEPLOY_CONFIRMED:-0}" != "1" ]]; then
+    check_admin_user
+    ask_yn "..."
+fi
+```
+
+**スキップ条件:**
+- `GITHUB_ACTIONS=true` → 全スキップ（WF 実行時）
+- `SF_DEPLOY_CONFIRMED=1` → 被呼び出し側スキップ（ラッパー経由時）
 
 ---
 
@@ -151,6 +184,9 @@
 
 主なオプション: `--release` / `--no-open` / `--force` / `--target`
 
+**安全ガード（セクション 5.2）:**
+ローカル実行 + `--release` + `SF_DEPLOY_CONFIRMED!=1` の条件をすべて満たす場合のみ `check_admin_user` + `ask_yn` を実行する。`GITHUB_ACTIONS=true` / validate モード / `SF_DEPLOY_CONFIRMED=1`（sf-deploy.sh 経由）の場合はスキップ。
+
 `@isTest` 自動検出フロー:
 1. `phase_generate_manifest` 内で `deploy_args` を走査し、`--source-dir` に続く `.cls` ファイルを `grep -qi "@isTest"` で検査
 2. 検出されたクラス名をスクリプトレベル変数 `RUN_TESTS=()` に追加
@@ -164,6 +200,10 @@
 - `sf sgd source delta` で変更差分を算出
 - 差分対象メタデータを retrieve
 - 変更があれば commit / push / PR 作成まで進める
+
+**安全ガード:**
+- メインフロー先頭で `check_admin_user`（非管理者は即終了）
+- `phase_git_sync` のコミット直前: `GITHUB_ACTIONS=true` でなければ `git status --short` を表示し `ask_yn` で確認
 
 ### 4.4 sf-install.sh
 
@@ -215,6 +255,7 @@
 
 - `sf-release.sh` のラッパー（オプションなし = dry-run がデフォルト）
 - ランチャーから呼ばれる dry-run 専用コマンド
+- `--release` を転送した場合は sf-release.sh の安全ガード（セクション 5.2）が働く
 
 ### 4.7 sf-launcher.sh
 
@@ -229,6 +270,8 @@
 - `sf-release.sh --release --force` のラッパー
 - `force-*` 以外では実行禁止
 - `main` / `staging` / `develop` ブランチでは実行禁止
+- **安全ガード:** `check_admin_user` + `--force` WARNING + `ask_yn` を実行してから `exec`
+- `export SF_DEPLOY_CONFIRMED=1` で sf-release.sh 側の二重確認を抑制
 
 ### 4.9 sf-upgrade.sh
 
@@ -251,14 +294,17 @@
 
 ### 4.11 sf-update-secret.sh
 
-GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序は変更禁止）:
+GitHub Secrets / Variables の JWT 認証情報を再登録する。実行フロー（順序は変更禁止）:
 
-1. `force-*` ディレクトリかチェック
+1. `force-*` ディレクトリかチェック + `check_admin_user`（管理者のみ実行可）
 2. git remote から対象リポジトリ（OWNER/REPO）を自動取得
-3. 更新する Secret 一覧・組織情報を表示して確認（y/n）
-4. `gh secret set` で JWT 関連 Secret を更新
-   （`SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*` / `SF_USERNAME_*` / `SF_INSTANCE_URL_*`）
+3. 更新する Secret / Variable 一覧・組織情報を表示して確認（y/n）
+4. `gh secret set` で機密情報を更新 / `gh variable set` で平文設定値を更新
+   - **Secret（機密）**: `SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*`
+   - **Variable（平文）**: `SF_USERNAME_*` / `SF_INSTANCE_URL_*`
 5. SUCCESS
+
+> GitHub の Secrets と Variables の使い分け: 秘密鍵・コンシューマキーなど漏洩リスクのある値は Secret に、ユーザー名・インスタンス URL など参照用の設定値は Variable に登録する。Slack の `SLACK_CHANNEL_ID` も Variable。
 
 ### 4.12 sf-hook.sh / sf-unhook.sh
 
@@ -273,17 +319,46 @@ GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序
 1. 環境チェック（ツール確認・GitHub CLI 認証確認）
 2. プロジェクト情報の確認（フォルダ構成から自動導出）→ `.sf-init.env` に書き出し
 3. リポジトリ作成（gh repo create + git clone）
-4. ファイル生成（sf-install.sh）
-5. ブランチ構成（sf-branch.sh）
+4. ファイル生成（sf-install.sh / sf-hook.sh）
+5. ブランチ構成（対話選択 → branches.txt 更新）
 6. PAT_TOKEN の設定
-7. Slack 連携の設定
+7. Slack 連携の設定（SLACK_BOT_TOKEN を Secret / SLACK_CHANNEL_ID を Variable に登録）
 8. 初回コミット＆プッシュ
 9. GitHub リポジトリ設定・Ruleset の適用
-10. JWT 認証情報の設定（Salesforce GitHub Secrets 登録）
+10. JWT 認証情報の設定（SF_PRIVATE_KEY / SF_CONSUMER_KEY_* を Secret / SF_USERNAME_* / SF_INSTANCE_URL_* を Variable に登録）
 
 オプション:
 - `--resume N`: Phase N から再開（エラー後の再試行）
 - `--only N`: Phase N のみ実行（デバッグ用）
+- `--add-tier staging|develop`: 既存プロジェクトへの tier 追加（後述）
+
+#### 4.13.1 `--add-tier` による tier 追加
+
+既存 `force-*` プロジェクトに staging または develop 階層を追加する。`phases/init/add_tier.sh` を呼び出す。
+
+実行場所: **`force-*` ディレクトリ内**（`sf-init.sh` の通常実行とは異なる点に注意）
+
+```bash
+cd ~/home/{owner}/{company}/system/force-xxx
+sf-init.sh --add-tier staging    # main → main+staging
+sf-init.sh --add-tier develop    # main+staging → main+staging+develop
+```
+
+`add_tier.sh` の処理フロー:
+1. `check_force_dir` で `force-*` ディレクトリか確認
+2. `.sf-init.env` を読み込み（なければ git remote から `REPO_FULL_NAME` を導出）
+3. バリデーション:
+   - 対象 tier がすでに `branches.txt` に存在する場合はエラー
+   - `develop` を追加しようとしたとき `staging` が未登録の場合はエラー（`main → develop` のスキップは禁止）
+4. `branches.txt` に tier を追記
+5. `git push` でリモートにブランチを作成（既存ならスキップ）
+6. JWT 認証情報（`SF_CONSUMER_KEY_*` を Secret / `SF_USERNAME_*` / `SF_INSTANCE_URL_*` を Variable）を登録
+7. `branches.txt` をコミット＆プッシュ（main ブランチに）
+
+スケールアップのみ対応・スケールダウンは対象外:
+- tier の削除（スケールダウン）は自動化していない
+- スケールダウンは影響範囲が大きく（ブランチ削除・WF 停止・Secrets 削除・Ruleset 更新）、誤操作リスクが高いため**手動運用とする**
+- 必要な場合は GitHub リポジトリ設定・`branches.txt` 編集・ローカルブランチ削除を手動で実施すること
 
 ### 4.14 sf-check.sh
 
@@ -336,6 +411,7 @@ GitHub Secrets の JWT 認証情報を再登録する。実行フロー（順序
 | `sf-deploy.sh` | `sf-release.sh` | `--release --force` 付きで呼ぶ |
 | `sf-push.sh` | `sf-check.sh` | コミット前にターゲットファイル検証 |
 | `sf-init.sh` | `phases/init/02〜10_*.sh` | フェーズ順に実行 |
+| `sf-init.sh --add-tier` | `phases/init/add_tier.sh` | tier 追加モード |
 | `hooks/pre-push` | `sf-release.sh` | push 時に dry-run 実行 |
 
 ---

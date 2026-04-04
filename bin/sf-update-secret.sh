@@ -8,14 +8,16 @@
 #   1. force-* ディレクトリかチェック
 #   2. git remote から対象リポジトリを自動取得
 #   3. 更新する項目を選択（秘密鍵 / コンシューマーキー / ユーザー名 / すべて）
-#   4. 入力値で JWT 接続テストを実施（テスト成功後のみ Secret を更新）
-#   5. gh secret set で GitHub Secrets を更新
+#   4. 入力値で JWT 接続テストを実施（テスト成功後のみ登録）
+#   5. gh secret set / gh variable set で GitHub Secrets / Variables を更新
 #
-# 【更新対象の GitHub Secrets】
-#   SF_PRIVATE_KEY                      （全組織共通）
-#   SF_CONSUMER_KEY_PROD / _STG / _DEV  （組織別）
-#   SF_USERNAME_PROD     / _STG / _DEV  （組織別）
-#   SF_INSTANCE_URL_PROD / _STG / _DEV  （組織別・変更は稀）
+# 【更新対象】
+#   GitHub Secrets（機密）:
+#     SF_PRIVATE_KEY                      （全組織共通）
+#     SF_CONSUMER_KEY_PROD / _STG / _DEV  （組織別）
+#   GitHub Variables（平文）:
+#     SF_USERNAME_PROD     / _STG / _DEV  （組織別）
+#     SF_INSTANCE_URL_PROD / _STG / _DEV  （組織別・変更は稀）
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -50,9 +52,10 @@ command -v git     >/dev/null 2>&1 || die "コマンドが見つかりません:
 command -v openssl >/dev/null 2>&1 || die "コマンドが見つかりません: openssl"
 
 # ------------------------------------------------------------------------------
-# 4. force-* ディレクトリかチェック
+# 4. force-* ディレクトリかチェック + 管理者権限確認
 # ------------------------------------------------------------------------------
 check_force_dir
+check_admin_user
 
 # ------------------------------------------------------------------------------
 # 5. git remote からリポジトリ名を取得
@@ -194,7 +197,7 @@ _update_username() {
 
     _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
-    run gh secret set "SF_USERNAME_${suffix}" --body "$username" -R "$REPO_FULL_NAME" \
+    run gh variable set "SF_USERNAME_${suffix}" --body "$username" -R "$REPO_FULL_NAME" \
         || die "SF_USERNAME_${suffix} の更新に失敗しました。"
     log "SUCCESS" "SF_USERNAME_${suffix} を更新しました。"
 }
@@ -225,7 +228,8 @@ _update_all() {
     local suffixes=("PROD") aliases=("prod") labels=("本番組織")
     local branch_count_file="./sf-tools/config/branches.txt"
     if [[ -f "$branch_count_file" ]]; then
-        local bc; bc=$(wc -l < "$branch_count_file" | tr -d ' ')
+        # コメント行・空行を除いた有効行数でブランチ数を判定する
+        local bc; bc=$(grep -v '^[[:space:]]*#' "$branch_count_file" | grep -v '^[[:space:]]*$' | wc -l | tr -d ' ')
         [[ $bc -ge 2 ]] && { suffixes+=("STG");  aliases+=("staging"); labels+=("ステージング組織"); }
         [[ $bc -ge 3 ]] && { suffixes+=("DEV");  aliases+=("develop"); labels+=("開発組織"); }
     fi
@@ -248,13 +252,13 @@ _update_all() {
 
         _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
-        run gh secret set "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
+        run gh secret set   "SF_CONSUMER_KEY_${suffix}" --body "$consumer_key" -R "$REPO_FULL_NAME" \
             || die "SF_CONSUMER_KEY_${suffix} の更新に失敗しました。"
-        run gh secret set "SF_USERNAME_${suffix}"     --body "$username"     -R "$REPO_FULL_NAME" \
+        run gh variable set "SF_USERNAME_${suffix}"     --body "$username"     -R "$REPO_FULL_NAME" \
             || die "SF_USERNAME_${suffix} の更新に失敗しました。"
-        run gh secret set "SF_INSTANCE_URL_${suffix}" --body "$instance_url" -R "$REPO_FULL_NAME" \
+        run gh variable set "SF_INSTANCE_URL_${suffix}" --body "$instance_url" -R "$REPO_FULL_NAME" \
             || die "SF_INSTANCE_URL_${suffix} の更新に失敗しました。"
-        log "SUCCESS" "  ${label}の Secrets を更新しました。"
+        log "SUCCESS" "  ${label}の Secret / Variables を更新しました。"
     done
 }
 

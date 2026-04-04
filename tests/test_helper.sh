@@ -45,6 +45,8 @@ setup_force_dir() {
              "$dir/sf-tools/config" "$dir/sf-tools/release" "$dir/sf-tools/logs"
     echo "ApexClass" > "$dir/sf-tools/config/metadata.txt"
     printf 'main\nstaging\ndevelop\n' > "$dir/sf-tools/config/branches.txt"
+    # 管理者ユーザー設定（check_admin_user が参照するプロジェクトローカルファイル）
+    printf '# admin-users.txt\ntamashimon\n' > "$dir/sf-tools/config/admin-users.txt"
     echo "$dir"
 }
 

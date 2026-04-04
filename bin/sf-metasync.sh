@@ -181,6 +181,12 @@ phase_git_sync() {
         return $RET_NO_CHANGE
     fi
 
+    # ローカル実行時はコミット前に変更内容を表示して確認する
+    if [[ "${GITHUB_ACTIONS:-false}" != "true" ]]; then
+        git status --short >&2  # run 不使用: 確認表示のため
+        ask_yn "上記の変更を main にコミット&プッシュします。よろしいですか？"
+    fi
+
     run git commit -m "$COMMIT_MSG" || return $RET_NG
     run git push origin "$BRANCH_NAME" || return $RET_NG
 }
@@ -233,6 +239,7 @@ phase_propagate_downstream() {
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
+check_admin_user
 phase_switch_to_main    || die "main ブランチへの切替に失敗しました。"
 log "SUCCESS" "main ブランチへの切替完了"
 

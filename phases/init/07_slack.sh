@@ -4,9 +4,9 @@
 # ==============================================================================
 # Slack App を作成して Bot Token と チャンネル ID を GitHub に登録する。
 #
-#   8-1. Slack App 作成・Bot Token 取得・SLACK_BOT_TOKEN 登録（Secret）
-#   8-2. SLACK_CHANNEL_ID 登録（Variable）
-#   8-3. Bot をチャンネルに招待
+#   7-1. Slack App 作成・Bot Token 取得・SLACK_BOT_TOKEN 登録（Secret）
+#   7-2. SLACK_CHANNEL_ID 登録（Variable）
+#   7-3. Bot をチャンネルに招待
 # ==============================================================================
 
 # SF_TOOLS_DIR は sf-init.sh（司令塔）から export される

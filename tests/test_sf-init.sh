@@ -91,16 +91,6 @@ _stub_subscripts() {
     printf '#!/bin/bash\nexit 0\n' > "$mock_home/sf-tools/bin/sf-hook.sh"
     chmod +x "$mock_home/sf-tools/bin/sf-hook.sh"
 
-    # sf-branch.sh スタブ（pwd 配下に 3ブランチ構成の branches.txt を生成）
-    # sf-init.sh は実行前に cd "$REPO_DIR" しているため pwd = $REPO_DIR になる
-    cat > "$mock_home/sf-tools/bin/sf-branch.sh" << 'STUB'
-#!/bin/bash
-mkdir -p "sf-tools/config"
-printf 'main\nstaging\ndevelop\n' > "sf-tools/config/branches.txt"
-exit 0
-STUB
-    chmod +x "$mock_home/sf-tools/bin/sf-branch.sh"
-
 }
 
 # ==============================================================================
@@ -110,31 +100,34 @@ STUB
 #   1. Y                  (ask_yn "よろしいですか？" - read_key 1文字読み。\n は buffer 残留)
 #   ★ \n は read_key [12qQ] が無効として読み飛ばし
 #   2. 1                  (ENV_TYPE 選択 "本番環境" - read_key [12qQ]。\n は buffer 残留)
+# 入力順（Phase 5: ブランチ構成）:
+#   ★ \n は read_key [1-3Qq] が無効として読み飛ばし
+#   3. 1                  (main/staging/develop 選択 - read_key [1-3Qq]。\n は buffer 残留)
 # 入力順（Phase 6: PAT）:
-#   3. \n                 (press_enter - 1\n の \n を消費)
-#   4. ghp_faketoken      (PAT トークン - read_or_quit)
+#   4. \n                 (press_enter - 1\n の \n を消費)
+#   5. ghp_faketoken      (PAT トークン - read_or_quit)
 # 入力順（Phase 7: Slack）:
-#   5. \n                 (press_enter - Bot Token 取得案内)
-#   6. xoxb-faketoken     (Slack Bot Token - read_or_quit)
-#   7. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
-#   8. \n                 (press_enter - Bot 招待完了確認)
+#   6. \n                 (press_enter - Bot Token 取得案内)
+#   7. xoxb-faketoken     (Slack Bot Token - read_or_quit)
+#   8. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
+#   9. \n                 (press_enter - Bot 招待完了確認)
 # 入力順（Phase 10: JWT 認証）:
-#   9. \n                 (press_enter - Connected App 設定案内)
-#  10. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  10. \n                 (press_enter - Connected App 設定案内)
+#  11. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  11. fake_prod_key      (prod コンシューマーキー - read_or_quit)
-#  12. prod@example.com   (prod ユーザー名 - read_or_quit)
-#  13. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  12. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#  13. prod@example.com   (prod ユーザー名 - read_or_quit)
+#  14. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  14. fake_stg_key       (staging コンシューマーキー - read_or_quit)
-#  15. stg@example.com    (staging ユーザー名 - read_or_quit)
-#  16. Y                  (develop Sandbox? - ask_yn read_key)
-#  17. fake_dev_key       (develop コンシューマーキー - read_or_quit)
-#  18. dev@example.com    (develop ユーザー名 - read_or_quit)
-#  19. N                  (init フォルダ削除をスキップ)
+#  15. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#  16. stg@example.com    (staging ユーザー名 - read_or_quit)
+#  17. Y                  (develop Sandbox? - ask_yn read_key)
+#  18. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#  19. dev@example.com    (develop ユーザー名 - read_or_quit)
+#  20. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
+    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
 }
 
 # ==============================================================================
@@ -271,10 +264,10 @@ test_sf_login_failure() {
     # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
 
-    # Phase2 confirm → ENV_TYPE選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
+    # Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
     # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
+    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
