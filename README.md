@@ -215,6 +215,21 @@ sfl
 
 ## 4. スクリプトリファレンス
 
+### 4.0 管理者制限について
+
+sf-tools には2層の権限モデルがあります。
+
+| 権限 | 設定ファイル | 配置場所 | 対象 |
+|---|---|---|---|
+| **sf-tools 実行許可** | `~/sf-tools/config/allowed-users.txt` | sf-tools インストール先（マシン共通） | sf-tools 全体の実行 |
+| **危険操作の管理者権限** | `{force-*}/sf-tools/config/admin-users.txt` | force-* プロジェクトごと | デプロイ・Secrets更新など危険な操作 |
+
+- `tama-create`（マスターユーザー）はどちらも常に許可されます（ファイルへの記載不要）
+- `admin-users.txt` は `sf-init.sh` 実行時に `sf-tools/config/` 配下に自動生成されます。プロジェクトごとに管理者を設定できます
+- `GITHUB_ACTIONS=true` の環境変数が設定されている場合（GitHub Actions 上）は管理者チェックをスキップします
+
+⚠️ のついたスクリプトは管理者権限が必要です。一般の開発者が実行するとエラーになります。
+
 ### 4.1 一覧
 
 | 対象者 | スクリプト | 用途 | 種別 |
@@ -222,20 +237,20 @@ sfl
 | 開発者 | `sf-job.sh` | 新規作業開始（ブランチ作成〜VS Code）| ランチャー外 |
 | 開発者 | `sf-launcher.sh` | ランチャー本体（`sfl`）| ランチャー外 |
 | 開発者 | `sf-dryrun.sh` | dry-run 検証 | ランチャー |
-| 開発者 | `sf-deploy.sh` | デプロイ実行 | ランチャー |
 | 開発者 | `sf-check.sh` | ターゲットファイルの構文確認 | ランチャー |
 | 開発者 | `sf-next.sh` | 次の PR 先確認・PR 作成 | ランチャー |
 | 開発者 | `sf-push.sh` | カレント配下をコミット＆プッシュ | ランチャー |
 | 開発者 | `sf-start.sh` | 開発環境を起動 | ランチャー |
 | 開発者 | `sf-restart.sh` | 接続先 Sandbox の切り替え | ランチャー |
+| **管理者** | `sf-deploy.sh` | ⚠️ デプロイ実行（管理者のみ・確認あり） | ランチャー |
 | 管理者 | `sf-init.sh` | 新規プロジェクト初期セットアップ | ランチャー外 |
 | 管理者 | `sf-hook.sh` / `sf-unhook.sh` | フックの有効化 / 削除 | ランチャー外 |
-| 管理者 | `sf-update-secret.sh` | GitHub Secrets の再登録 | ランチャー外 |
+| 管理者 | `sf-update-secret.sh` | ⚠️ GitHub Secrets の再登録（管理者のみ） | ランチャー外 |
 | — | `sf-install.sh` | sf-start から自動実行 | 自動実行 |
 | — | `sf-upgrade.sh` | sf-install から自動実行 | 自動実行 |
 | — | `sf-prepush.sh` | git pre-push フックから自動実行 | 自動実行 |
 | — | `sf-precommit.sh` | git pre-commit フックから自動実行 | 自動実行 |
-| — | `sf-metasync.sh` | GitHub Actions から自動実行 | 自動実行 |
+| — | `sf-metasync.sh` | ⚠️ GitHub Actions から自動実行（ローカル実行時は管理者のみ） | 自動実行 |
 
 ### 4.2 `sf-job.sh`
 
@@ -414,6 +429,7 @@ sf-release.sh [オプション]
 - `--json`, `-j` で `sf` コマンド出力を JSON 形式で表示できます
 - `--verbose`, `-v` でコマンド出力をコンソールにも表示できます
 - `deploy-target.txt` に記述した `.cls` ファイルに `@isTest` アノテーションがあれば自動検出し、`--test-level RunSpecifiedTests --run-tests` を自動設定します（ユーザーが手動で指定する必要はありません）
+- `--release` をつけて**直接実行する場合は管理者権限が必要**です（`sf-deploy.sh` 経由の場合は `sf-deploy.sh` 側で管理者チェック済みのため不要）
 
 ### 4.7 `sf-deploy.sh`
 
@@ -422,6 +438,8 @@ sf-deploy.sh [オプション]
 ```
 
 `sf-release.sh --release --force` を簡単に呼ぶラッパーです。
+
+> ⚠️ **管理者専用**: 実行には `./sf-tools/config/admin-users.txt` への登録が必要です。実行前に確認プロンプトが表示されます。
 
 追加で使えるオプション:
 - `--no-open`, `-n`
@@ -488,6 +506,8 @@ sf-metasync.sh
 - 変更がある場合のみ commit / push
 
 主に GitHub Actions からの定期実行を想定しています。
+
+> ⚠️ **管理者専用**: ローカル実行時は `./sf-tools/config/admin-users.txt` への登録が必要です。コミット前に確認プロンプトが表示されます。`GITHUB_ACTIONS=true` の場合はチェックをスキップします。
 
 ### 4.12 `sf-restart.sh`
 
@@ -588,6 +608,8 @@ sf-update-secret.sh
 
 GitHub の JWT 認証情報を一括再登録します。JWT 秘密鍵の更新時などに使用します。
 
+> ⚠️ **管理者専用**: 実行には `./sf-tools/config/admin-users.txt` への登録が必要です。
+
 機密情報（Secret）と平文設定値（Variable）をそれぞれ適切な方法で登録します:
 - **Secret**: `SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*`（`gh secret set`）
 - **Variable**: `SF_USERNAME_*` / `SF_INSTANCE_URL_*`（`gh variable set`）
@@ -679,7 +701,8 @@ force-xxx/
 └── sf-tools/                            ★ sf-tools 追加
     ├── config/
     │   ├── branches.txt                 ★   ブランチ↔組織エイリアスのマッピング
-    │   └── metadata.txt                 ★   メタデータ同期対象の定義
+    │   ├── metadata.txt                 ★   メタデータ同期対象の定義
+    │   └── admin-users.txt              ★   管理者ユーザー設定（危険操作の実行許可）
     └── release/<branch>/
         ├── deploy-target.txt            ★   デプロイ対象メタデータ一覧
         └── remove-target.txt            ★   削除対象メタデータ一覧
@@ -743,7 +766,7 @@ sf-tools/
 │   ├── sfdx-project.json       ← __REPO_NAME__ プレースホルダーあり
 │   ├── sf-start.sh / sf-restart.sh
 │   └── sf-tools/
-│       ├── config/             ← metadata.txt / branches.txt 雛形
+│       ├── config/             ← metadata.txt / branches.txt / admin-users.txt 雛形
 │       └── release/__BRANCH__/ ← deploy-target.txt / remove-target.txt 雛形
 ├── doc/
 │   ├── setup-guide.md
