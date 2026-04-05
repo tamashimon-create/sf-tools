@@ -45,8 +45,8 @@ test_update_all_success() {
     _create_mocks_update_secret "$mb" "$td"
     _prepare_update_all_env "$td" "$td"
 
-    # 入力: 4=全更新 Y=SF_PRIVATE_KEY更新 consumer_key username（PROD のみ）
-    printf '4Yfake_consumer_key\nfake@example.com\n' \
+    # 入力: Y=管理者警告確認 4=全更新 Y=SF_PRIVATE_KEY更新 consumer_key username（PROD のみ）
+    printf 'Y4Yfake_consumer_key\nfake@example.com\n' \
         | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
               bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /tmp/update-secret-test.log 2>&1
     local ec=$?
@@ -72,7 +72,7 @@ test_update_jwt_login_fail() {
 
     export MOCK_SF_LOGIN_EXIT=1
 
-    printf '4Yfake_consumer_key\nfake@example.com\n' \
+    printf 'Y4Yfake_consumer_key\nfake@example.com\n' \
         | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
               bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
@@ -95,7 +95,7 @@ test_update_gh_fail() {
 
     export MOCK_GH_SECRET_SET_EXIT=1
 
-    printf '4Yfake_consumer_key\nfake@example.com\n' \
+    printf 'Y4Yfake_consumer_key\nfake@example.com\n' \
         | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
               bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
@@ -138,8 +138,8 @@ test_update_private_key() {
     local dummy_key="/tmp/test-server-$$.key"
     echo "DUMMY KEY" > "$dummy_key"
 
-    # 入力: 1=秘密鍵更新 key_file_path Y=確認
-    printf "1${dummy_key}\nY" \
+    # 入力: Y=管理者警告確認 1=秘密鍵更新 key_file_path Y=確認
+    printf "Y1${dummy_key}\nY" \
         | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
               bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
@@ -151,30 +151,29 @@ test_update_private_key() {
     teardown "$td" "$mb"
 }
 
-# --- 非管理者ユーザー → エラー中止 ---
-test_update_non_admin_blocked() {
+# --- 警告 N で中断 ---
+test_update_warning_cancel() {
     echo ""
-    echo -e "${CLR_HEAD}[TEST] 非管理者 → エラー中止${CLR_RST}"
+    echo -e "${CLR_HEAD}[TEST] 警告で N → 中断${CLR_RST}"
 
     local td mb mh
     setup_std_env td mb mh
     _create_mocks_update_secret "$mb" "$td"
     _prepare_update_all_env "$td" "$td"
 
-    export MOCK_GH_API_USER="stranger123"
     unset GITHUB_ACTIONS
 
-    printf '4\n' \
-        | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" \
+    # N=警告で中断
+    printf 'N\n' \
+        | ( cd "$td" && HOME="$td" PATH="$mb:$PATH" \
               bash "$SF_TOOLS_DIR/bin/sf-update-secret.sh" ) > /dev/null 2>&1
     local ec=$?
 
-    assert_exit_fail $ec "非管理者 → エラー中止"
+    assert_exit_fail $ec "警告で N → 中断"
     ! grep -q "gh secret set" "$mb/calls.log" 2>/dev/null \
-        && pass "非管理者 → Secrets は更新されない" \
-        || fail "非管理者 → Secrets は更新されない"
+        && pass "N → Secrets は更新されない" \
+        || fail "N → Secrets は更新されない"
 
-    unset MOCK_GH_API_USER
     teardown "$td" "$mb"
 }
 
@@ -183,6 +182,6 @@ test_update_jwt_login_fail
 test_update_gh_fail
 test_update_not_force_dir
 test_update_private_key
-test_update_non_admin_blocked
+test_update_warning_cancel
 
 echo ""

@@ -59,7 +59,5 @@ if ! run gh auth status; then
     run gh auth login || die "GitHub 認証に失敗しました。"
 fi
 
-check_authorized_user
-
 log "SUCCESS" "Phase 1 完了: 環境チェック OK。"
 exit $RET_OK

@@ -239,7 +239,17 @@ phase_propagate_downstream() {
 # ------------------------------------------------------------------------------
 # 6. メインフロー
 # ------------------------------------------------------------------------------
-check_admin_user
+if [[ "${GITHUB_ACTIONS:-false}" != "true" ]]; then
+    echo -e "${CLR_ERR}╔══════════════════════════════════════════════════════╗${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║  !!  このコマンドは管理者専用です                    ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║      管理者以外は絶対に実行しないでください          ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║                                                      ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║  本番 Salesforce 組織からメタデータを取得し          ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║  main ブランチへ push します。                       ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}╚══════════════════════════════════════════════════════╝${CLR_RESET}" >&2
+    ask_yn "続行しますか？" || die "中断しました。"
+fi
+
 phase_switch_to_main    || die "main ブランチへの切替に失敗しました。"
 log "SUCCESS" "main ブランチへの切替完了"
 

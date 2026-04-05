@@ -1,10 +1,9 @@
 #!/bin/bash
 # ==============================================================================
-# 05_setup_branches.sh - Phase 5: ブランチ構成・管理者設定
+# 05_setup_branches.sh - Phase 5: ブランチ構成
 # ==============================================================================
 # ブランチ構成パターンを対話式で選択し、branches.txt を更新する。
 # リモートブランチの作成は Phase 8 (08_initial_commit.sh) で実施する。
-# 管理操作を許可するユーザーを admin-users.txt に登録する。
 #
 # 【選択肢】
 #   [1] main / staging / develop  : 標準構成。3段階リリース
@@ -65,8 +64,6 @@ case "$choice" in
     3) BRANCHES=("main") ;;
     [Qq]) die "中断しました。" ;;
 esac
-# read_key の残留 \n を消費（そのままにすると管理者入力の最初の read_input が空行を読んでしまう）
-read -r _discard 2>/dev/null || true  # run 不使用: 意図的エラー無視（EOF 時は正常）
 
 # branches.txt を更新（既存のコメントヘッダーを保持し、ブランチ行だけ差し替える）
 run mkdir -p "sf-tools/config"
@@ -92,36 +89,6 @@ log "SUCCESS" "branches.txt を更新しました: ${BRANCHES[*]}"
 # BRANCH_COUNT を .sf-init.env に追記
 BRANCH_COUNT="${#BRANCHES[@]}"
 printf 'BRANCH_COUNT="%s"\n' "$BRANCH_COUNT" >> "$SF_INIT_ENV_FILE"
-
-# ------------------------------------------------------------------------------
-# 管理者ユーザーの設定
-# ------------------------------------------------------------------------------
-ADMIN_FILE="sf-tools/config/admin-users.txt"
-log "INFO" ""
-log "INFO" "管理操作（本番デプロイ・Secrets更新など）を許可するユーザーを設定します。"
-log "INFO" "GitHub ユーザー名を1件ずつ入力してください（空 Enter で完了）:"
-
-admin_count=0
-while true; do
-    admin_name=""  # run 不使用: インタラクティブ入力のため
-    read_input admin_name "  ユーザー名（空 Enter で完了）"
-    admin_name="${admin_name// /}"  # 空白除去
-    [[ -z "$admin_name" ]] && break
-    # 重複チェック（すでに登録済みならスキップ）
-    if [[ -f "$ADMIN_FILE" ]] && grep -qx "$admin_name" "$ADMIN_FILE" 2>/dev/null; then
-        log "WARNING" "  ${admin_name} はすでに登録済みです。スキップします。"
-        continue
-    fi
-    echo "$admin_name" >> "$ADMIN_FILE"
-    (( admin_count++ )) || true
-done
-
-if [[ $admin_count -gt 0 ]]; then
-    log "SUCCESS" "admin-users.txt に ${admin_count} 件登録しました。"
-else
-    log "INFO" "管理者ユーザーの登録をスキップしました。"
-    log "INFO" "後から追加する場合は force-* ディレクトリで sf-init.sh --only 5 を実行してください。"
-fi
 
 log "SUCCESS" "Phase 5 完了: ブランチ構成 OK（${BRANCH_COUNT} 階層）。"
 exit $RET_OK

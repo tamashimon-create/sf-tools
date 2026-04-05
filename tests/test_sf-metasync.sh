@@ -18,7 +18,7 @@ test_changes_are_committed() {
     export MOCK_GIT_DIFF_EXIT_2ND=1
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$( echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 )
+    local out; out=$( printf 'Y\nY\n' | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 )
     local ec=$?
 
     assert_file_contains "$MOCK_CALL_LOG" "git commit" "変更あり → commit が実行された"
@@ -37,7 +37,7 @@ test_no_changes() {
     export MOCK_GIT_DIFF_EXIT=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
+    local out; out=$( echo "Y" | ( cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 )
     local ec=$?
 
     assert_exit_ok $ec "変更なし → 正常終了"
@@ -58,7 +58,7 @@ test_non_main_branch_switches() {
     export MOCK_GIT_DIFF_EXIT=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    local out; out=$(cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1)
+    local out; out=$( echo "Y" | ( cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 )
     local ec=$?
 
     assert_exit_ok $ec "main 以外のブランチ → 正常終了（main へ自動切替）"
@@ -82,7 +82,7 @@ test_staging_fail_dev_merges_main() {
     export MOCK_GIT_DIFF_EXIT_2ND=1  # phase_git_sync で変更あり → commit → propagate 実行
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    echo "Y" | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 >/dev/null
+    printf 'Y\nY\n' | ( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 >/dev/null
 
     # develop のマージ元が "main" であることを確認（staging ではない）
     assert_file_contains "$MOCK_CALL_LOG" "git-merge-arg: main" "staging 失敗後、develop は main からマージした"
@@ -119,37 +119,11 @@ test_stash_pop_on_exit() {
     export MOCK_GIT_DIFF_EXIT_2ND=0
     export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
 
-    cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1 >/dev/null
+    echo "Y" | ( cd "$td" && PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" ) 2>&1 >/dev/null
 
     assert_file_contains "$MOCK_CALL_LOG" "git stash" "ローカル変更あり → stash が実行された"
     assert_file_contains "$MOCK_CALL_LOG" "git stash pop" "終了時に stash pop が実行された"
     unset MOCK_GIT_BRANCH MOCK_GIT_DIFF_EXIT MOCK_GIT_DIFF_EXIT_2ND MOCK_SF_ORG_JSON
-    teardown "$td" "$mb"
-}
-
-# 非管理者ユーザー → エラー終了
-test_non_admin_blocked() {
-    echo ""
-    echo -e "${CLR_HEAD}[TEST] 非管理者 → エラー終了${CLR_RST}"
-
-    local td mb mh
-    setup_std_env td mb mh
-    create_all_mocks "$mb"
-
-    export MOCK_GIT_BRANCH="main"
-    export MOCK_GIT_DIFF_EXIT=0
-    export MOCK_SF_ORG_JSON='{"result":{"alias":"testorg","id":"00D000000000001AAA"}}'
-    export MOCK_GH_API_USER="stranger123"
-    unset GITHUB_ACTIONS
-
-    local out; out=$( cd "$td" && HOME="$mh" PATH="$mb:$PATH" bash "$SF_TOOLS_DIR/bin/sf-metasync.sh" 2>&1 )
-    local ec=$?
-
-    assert_exit_fail $ec "非管理者 → エラー終了"
-    ! grep -q "git commit" "$MOCK_CALL_LOG" 2>/dev/null \
-        && pass "非管理者 → commit は実行されない" \
-        || fail "非管理者 → commit は実行されない"
-    unset MOCK_GIT_BRANCH MOCK_GIT_DIFF_EXIT MOCK_SF_ORG_JSON MOCK_GH_API_USER
     teardown "$td" "$mb"
 }
 
@@ -159,6 +133,5 @@ test_non_main_branch_switches
 test_staging_fail_dev_merges_main
 test_outside_force_dir
 test_stash_pop_on_exit
-test_non_admin_blocked
 
 print_summary
