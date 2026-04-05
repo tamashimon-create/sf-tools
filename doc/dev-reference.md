@@ -109,8 +109,7 @@
 | `get_target_org` | `get_target_org [ALIAS]` | 対象組織エイリアスを解決して出力 |
 | `check_force_dir` | `check_force_dir` | `force-*` ディレクトリか検証 |
 | `check_home_dir` | `check_home_dir` | `~/home/{owner}/{company}/` の階層を検証し `GITHUB_OWNER` / `COMPANY_NAME` をセット |
-| `check_authorized_user` | `check_authorized_user` | 実行許可ユーザーか確認（マスター固定 + 外部ファイル） |
-| `check_admin_user` | `check_admin_user` | 管理者権限ユーザーか確認（`GITHUB_ACTIONS=true` 時はスキップ） |
+| `check_gh_owner` | `check_gh_owner OWNER` | gh 認証ユーザーがリポジトリオーナーと一致するか確認（不一致は die、gh が空を返す場合はスキップ） |
 | `open_browser` | `open_browser URL` | OS 判定してブラウザを開く（WSL/GitBash/macOS/Linux 対応） |
 | `read_input` | `read_input VAR [PROMPT]` | readline 対応テキスト入力（矢印キー・BS 有効） |
 | `read_key` | `read_key VAR [PROMPT] [VALID]` | 1文字即時入力（Enter 不要・空 Enter 無視・EOF 対応） |
@@ -132,42 +131,60 @@
 
 ### 3.4 安全ガードパターン
 
-危険な操作（本番デプロイ・force操作・Secrets更新等）は管理者のみ実行可能にするパターン。
+管理者向けコマンドには2種類の安全ガードを組み合わせて使う。
 
-**2層の権限モデル:**
+#### 3.4.1 警告ボックス + `ask_yn || die`（管理者向けコマンドの冒頭）
 
-| 関数 | 参照ファイル | 配置場所 | 用途 |
-|---|---|---|---|
-| `check_authorized_user` | `~/sf-tools/config/allowed-users.txt` | sf-tools インストール先（グローバル・マシン単位） | sf-tools 全体の実行許可 |
-| `check_admin_user` | `./sf-tools/config/admin-users.txt` | force-* プロジェクト内（プロジェクトローカル） | 危険操作の実行許可 |
-
-`tama-create`（マスターユーザー）はどちらのファイルにも記載不要で常に許可される。
-
-- `allowed-users.txt` はマシン全体で1つ。`sf-tools` の実行そのものを制限する。
-- `admin-users.txt` はプロジェクトごとに存在し、`sf-init.sh` が `templates/` から配布する。プロジェクト単位で管理者を変えられる。
-
-**使用ルール:**
+意図しない実行を防ぐための視覚的警告と確認プロンプト。`GITHUB_ACTIONS=true` の場合はスキップして自動続行する。
 
 ```bash
-# 危険スクリプトの先頭パターン（sf-deploy / sf-metasync / sf-update-secret）
-check_admin_user                          # 非管理者は die で即終了
-ask_yn "本番操作を実行します。続行しますか？"  # ローカル実行時の確認
-
-# ラッパー → 被呼び出しスクリプトで二重確認を防ぐパターン（sf-deploy → sf-release）
-export SF_DEPLOY_CONFIRMED=1              # ラッパー側でエクスポート
-# 被呼び出し側では:
-if [[ "${GITHUB_ACTIONS:-false}" != "true" && "$IS_VALIDATE_MODE" -eq 0 && "${SF_DEPLOY_CONFIRMED:-0}" != "1" ]]; then
-    check_admin_user
-    ask_yn "..."
+# 管理者向けコマンドの冒頭パターン（sf-init / sf-metasync / sf-update-secret 等）
+if [[ "${GITHUB_ACTIONS:-false}" != "true" ]]; then
+    echo -e "${CLR_ERR}╔══════════════════════════════════════════════════════╗${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║  !!  このコマンドは管理者専用です                    ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}║      管理者以外は絶対に実行しないでください          ║${CLR_RESET}" >&2
+    echo -e "${CLR_ERR}╚══════════════════════════════════════════════════════╝${CLR_RESET}" >&2
+    ask_yn "続行しますか？" || die "中断しました。"
 fi
 ```
 
-**スキップ条件:**
-- `GITHUB_ACTIONS=true` → 全スキップ（WF 実行時）
-- `SF_DEPLOY_CONFIRMED=1` → 被呼び出し側スキップ（ラッパー経由時）
+> `CLR_ERR` は赤色（`\033[0;31m`）。ボックス罫線は `╔ ═ ╗ ║ ╚ ╝`（U+2554 等）を使用。
 
-**管理者の追加方法:**
-`{force-*}/sf-tools/config/admin-users.txt` に GitHub ユーザー名（ログイン名）を1行ずつ追加する。`#` 行はコメント、空行は無視される。
+#### 3.4.2 二重確認の防止パターン
+
+ラッパースクリプト（`sf-deploy.sh`）から被呼び出しスクリプト（`sf-release.sh`）を呼ぶ場合、警告・確認が二重に表示されるのを防ぐ。
+
+```bash
+# ラッパー側（sf-deploy.sh）
+export SF_DEPLOY_CONFIRMED=1
+exec bash "$SCRIPT_DIR/sf-release.sh" --release --force "$@"
+
+# 被呼び出し側（sf-release.sh）
+if [[ "${GITHUB_ACTIONS:-false}" != "true" \
+    && "$IS_VALIDATE_MODE" -eq 0 \
+    && "${SF_DEPLOY_CONFIRMED:-0}" != "1" ]]; then
+    # 警告ボックス + ask_yn
+fi
+```
+
+**スキップ条件まとめ:**
+
+| 条件 | 意味 |
+|---|---|
+| `GITHUB_ACTIONS=true` | GitHub Actions WF 実行中 → 全スキップ |
+| `SF_DEPLOY_CONFIRMED=1` | ラッパー経由の呼び出し → 被呼び出し側スキップ |
+
+#### 3.4.3 `check_gh_owner`（gh 認証ユーザー確認）
+
+`gh` コマンドを使うすべての管理者向けスクリプトは、リポジトリオーナーが確定した直後に `check_gh_owner` を呼び出す。認証ユーザーが一致しない場合は `die` で即終了し、正しいアカウントへの切り替えを案内する。
+
+```bash
+check_home_dir               # GITHUB_OWNER / COMPANY_NAME をセット
+check_gh_owner "$GITHUB_OWNER"   # 認証ユーザーの一致確認
+```
+
+- gh が空を返す場合（ネットワーク障害・未認証）はチェックをスキップして続行する
+- `sf-init.sh` / `sf-job.sh` のフェーズサブスクリプトは、メインスクリプトで確認済みのため個別呼び出し不要
 
 ---
 
@@ -190,8 +207,8 @@ fi
 
 主なオプション: `--release` / `--no-open` / `--force` / `--target`
 
-**安全ガード（セクション 5.2）:**
-ローカル実行 + `--release` + `SF_DEPLOY_CONFIRMED!=1` の条件をすべて満たす場合のみ `check_admin_user` + `ask_yn` を実行する。`GITHUB_ACTIONS=true` / validate モード / `SF_DEPLOY_CONFIRMED=1`（sf-deploy.sh 経由）の場合はスキップ。
+**安全ガード（セクション 3.4）:**
+ローカル実行 + `--release` + `SF_DEPLOY_CONFIRMED!=1` の条件をすべて満たす場合のみ警告ボックス + `ask_yn` を実行する。`GITHUB_ACTIONS=true` / validate モード / `SF_DEPLOY_CONFIRMED=1`（sf-deploy.sh 経由）の場合はスキップ。
 
 `@isTest` 自動検出フロー:
 1. `phase_generate_manifest` 内で `deploy_args` を走査し、`--source-dir` に続く `.cls` ファイルを `grep -qi "@isTest"` で検査
@@ -207,8 +224,8 @@ fi
 - 差分対象メタデータを retrieve
 - 変更があれば commit / push / PR 作成まで進める
 
-**安全ガード:**
-- メインフロー先頭で `check_admin_user`（非管理者は即終了）
+**安全ガード（セクション 3.4）:**
+- メインフロー先頭で赤い警告ボックス + `ask_yn || die`（`GITHUB_ACTIONS=true` 時はスキップ）
 - `phase_git_sync` のコミット直前: `GITHUB_ACTIONS=true` でなければ `git status --short` を表示し `ask_yn` で確認
 
 ### 4.4 sf-install.sh
@@ -276,7 +293,7 @@ fi
 - `sf-release.sh --release --force` のラッパー
 - `force-*` 以外では実行禁止
 - `main` / `staging` / `develop` ブランチでは実行禁止
-- **安全ガード:** `check_admin_user` + `--force` WARNING + `ask_yn` を実行してから `exec`
+- **安全ガード:** 赤い警告ボックス + `--force` WARNING + `ask_yn || die` を実行してから `exec`（セクション 3.4 参照）
 - `export SF_DEPLOY_CONFIRMED=1` で sf-release.sh 側の二重確認を抑制
 
 ### 4.9 sf-upgrade.sh
@@ -302,15 +319,34 @@ fi
 
 GitHub Secrets / Variables の JWT 認証情報を再登録する。実行フロー（順序は変更禁止）:
 
-1. `force-*` ディレクトリかチェック + `check_admin_user`（管理者のみ実行可）
+1. `force-*` ディレクトリかチェック
 2. git remote から対象リポジトリ（OWNER/REPO）を自動取得
-3. 更新する Secret / Variable 一覧・組織情報を表示して確認（y/n）
-4. `gh secret set` で機密情報を更新 / `gh variable set` で平文設定値を更新
-   - **Secret（機密）**: `SF_PRIVATE_KEY` / `SF_CONSUMER_KEY_*`
-   - **Variable（平文）**: `SF_USERNAME_*` / `SF_INSTANCE_URL_*`
-5. SUCCESS
+3. `check_gh_owner` で gh 認証ユーザーを確認（不一致は die）
+4. 赤い警告ボックス + `ask_yn || die`（管理者向け確認）
+5. メインメニューで操作を選択 `[1-4/q]`（1文字即時選択）:
+   - 1: 秘密鍵（`SF_PRIVATE_KEY` Secret）を更新
+   - 2: コンシューマキー（`SF_CONSUMER_KEY_*` Secret）+ ユーザー名（`SF_USERNAME_*` Variable）+ インスタンス URL（`SF_INSTANCE_URL_*` Variable）を組織ごとに更新
+   - 3: ユーザー名（`SF_USERNAME_*` Variable）を組織ごとに更新（現在値を `gh variable get` で自動取得して表示）
+   - 4: JWT 接続テスト
+6. 組織選択は `branches.txt` の有効行数（1〜3）に応じて動的に変化:
+   - 1行: PROD のみ `[1/q]`
+   - 2行: PROD + STG `[1-2/q]`
+   - 3行: PROD + STG + DEV `[1-3/q]`
 
-> GitHub の Secrets と Variables の使い分け: 秘密鍵・コンシューマキーなど漏洩リスクのある値は Secret に、ユーザー名・インスタンス URL など参照用の設定値は Variable に登録する。Slack の `SLACK_CHANNEL_ID` も Variable。
+**Secret と Variable の使い分け:**
+
+| 種別 | キー名 | 登録先 | 理由 |
+|---|---|---|---|
+| 秘密鍵 | `SF_PRIVATE_KEY` | Secret | 漏洩リスクあり |
+| コンシューマキー | `SF_CONSUMER_KEY_PROD` 等 | Secret | 漏洩リスクあり |
+| ユーザー名 | `SF_USERNAME_PROD` 等 | Variable | 参照用・読み取り可 |
+| インスタンス URL | `SF_INSTANCE_URL_PROD` 等 | Variable | 参照用・読み取り可 |
+| Slack チャンネル | `SLACK_CHANNEL_ID` | Variable | 参照用・読み取り可 |
+
+> Secret は暗号化されており `gh secret get` で値を読み取れないが、Variable は `gh variable get` で取得できる。ユーザー名はメニュー表示時に現在値を自動取得して表示する。
+
+**JWT 接続テスト:**
+`sf org login jwt` は終了コードが不安定なため、終了コードではなく stdout の `Successfully authorized` 文字列で成功を判定する。実行コマンドと出力はログに記録する。
 
 ### 4.12 sf-hook.sh / sf-unhook.sh
 
