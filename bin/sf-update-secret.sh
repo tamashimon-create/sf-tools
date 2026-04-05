@@ -237,6 +237,12 @@ _update_username() {
     fi
 
     local consumer_key username instance_url
+
+    # 現在のユーザー名を GitHub Variables から取得して表示
+    local current_username
+    current_username=$(gh variable get "SF_USERNAME_${suffix}" -R "$REPO_FULL_NAME" 2>/dev/null || true)  # VAR=$(cmd) のため run 不使用
+    [[ -n "$current_username" ]] && log "INFO" "  現在の接続ユーザー名: ${current_username}"
+
     read_or_quit consumer_key  "  ${label}のコンシューマーキーを入力してください（接続テスト用）："
     read_or_quit username      "  ${label}の新しい接続ユーザー名を入力してください："
 
