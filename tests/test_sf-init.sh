@@ -96,39 +96,42 @@ _stub_subscripts() {
 # ==============================================================================
 # ヘルパー：3ブランチ構成用の stdin 入力シーケンス
 #
+# 入力順（sf-init.sh 冒頭の管理者警告）:
+#   1. Y                  (ask_yn "続行しますか？" - read_key 1文字読み。\n は buffer 残留)
+#   ★ \n は read_key [YyNnQq] が無効として読み飛ばし
 # 入力順（Phase 2: プロジェクト情報確認）:
-#   1. Y                  (ask_yn "よろしいですか？" - read_key 1文字読み。\n は buffer 残留)
+#   2. Y                  (ask_yn "よろしいですか？" - read_key 1文字読み。\n は buffer 残留)
 #   ★ \n は read_key [12qQ] が無効として読み飛ばし
-#   2. 1                  (ENV_TYPE 選択 "本番環境" - read_key [12qQ]。\n は buffer 残留)
+#   3. 1                  (ENV_TYPE 選択 "本番環境" - read_key [12qQ]。\n は buffer 残留)
 # 入力順（Phase 5: ブランチ構成）:
 #   ★ \n は read_key [1-3Qq] が無効として読み飛ばし
-#   3. 1                  (main/staging/develop 選択 - read_key [1-3Qq]。\n は buffer 残留)
+#   4. 1                  (main/staging/develop 選択 - read_key [1-3Qq]。\n は buffer 残留)
 #   ★ 1\n の \n は次の press_enter が消費
 # 入力順（Phase 6: PAT）:
-#   4. \n                 (press_enter - PAT 取得案内。Phase 5 ブランチ選択残留 \n を消費)
-#   5. ghp_faketoken      (PAT トークン - read_or_quit)
+#   5. \n                 (press_enter - PAT 取得案内。Phase 5 ブランチ選択残留 \n を消費)
+#   6. ghp_faketoken      (PAT トークン - read_or_quit)
 # 入力順（Phase 7: Slack）:
-#   6. \n                 (press_enter - Bot Token 取得案内)
-#   7. xoxb-faketoken     (Slack Bot Token - read_or_quit)
-#   8. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
-#   9. \n                 (press_enter - Bot 招待完了確認)
+#   7. \n                 (press_enter - Bot Token 取得案内)
+#   8. xoxb-faketoken     (Slack Bot Token - read_or_quit)
+#   9. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
+#  10. \n                 (press_enter - Bot 招待完了確認)
 # 入力順（Phase 10: JWT 認証）:
-#  10. \n                 (press_enter - Connected App 設定案内)
-#  11. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  11. \n                 (press_enter - Connected App 設定案内)
+#  12. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  12. fake_prod_key      (prod コンシューマーキー - read_or_quit)
-#  13. prod@example.com   (prod ユーザー名 - read_or_quit)
-#  14. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  13. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#  14. prod@example.com   (prod ユーザー名 - read_or_quit)
+#  15. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  15. fake_stg_key       (staging コンシューマーキー - read_or_quit)
-#  16. stg@example.com    (staging ユーザー名 - read_or_quit)
-#  17. Y                  (develop Sandbox? - ask_yn read_key)
-#  18. fake_dev_key       (develop コンシューマーキー - read_or_quit)
-#  19. dev@example.com    (develop ユーザー名 - read_or_quit)
-#  20. N                  (init フォルダ削除をスキップ)
+#  16. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#  17. stg@example.com    (staging ユーザー名 - read_or_quit)
+#  18. Y                  (develop Sandbox? - ask_yn read_key)
+#  19. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#  20. dev@example.com    (develop ユーザー名 - read_or_quit)
+#  21. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
+    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
 }
 
 # ==============================================================================
@@ -231,8 +234,8 @@ test_repo_create_failure() {
     export MOCK_GH_REPO_CREATE_EXIT=1
 
     local exit_code
-    # confirm + ENV_TYPE選択 のみ入力（リポジトリ作成で失敗するため以降は不要）
-    printf 'Y\n1\n' \
+    # 警告確認 + confirm + ENV_TYPE選択 のみ入力（リポジトリ作成で失敗するため以降は不要）
+    printf 'Y\nY\n1\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
@@ -265,10 +268,10 @@ test_sf_login_failure() {
     # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
 
-    # Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
+    # 警告確認 → Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
     # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
+    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
@@ -415,7 +418,7 @@ test_only_option_runs_single_phase() {
     create_mock_gh_for_init "$mb"
 
     local exit_code
-    printf '' \
+    printf 'Y\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" --only 1 ) > /dev/null 2>&1
     exit_code=$?
@@ -445,7 +448,7 @@ test_only_phase2_creates_env_file() {
     create_mock_gh_for_init "$mb"
 
     local exit_code
-    printf 'Y\n1\nN\n' \
+    printf 'Y\nY\n1\nN\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" --only 2 ) > /dev/null 2>&1
     exit_code=$?
@@ -490,7 +493,7 @@ PAT_TOKEN_VALUE="ghp_faketoken"
 ENVEOF
 
     local exit_code
-    printf 'N\n' \
+    printf 'Y\nN\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" --only 9 ) > /dev/null 2>&1
     exit_code=$?
