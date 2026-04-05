@@ -17,6 +17,7 @@
 #   get_target_org [ALIAS]    ... 接続先組織エイリアスを解決
 #   check_force_dir           ... force-* ディレクトリ内か確認
 #   check_home_dir            ... ~/home/{owner}/{company}/ の正しい階層か確認し GITHUB_OWNER/COMPANY_NAME をセット
+#   check_gh_owner OWNER      ... gh 認証ユーザーが期待するオーナーと一致するか確認
 #   open_browser URL               ... OS を判定してブラウザを開く（WSL/Git Bash/macOS/Linux 対応）
 #   read_input VARNAME [PROMPT]    ... readline 対応インタラクティブ入力
 #   read_key VARNAME [PROMPT] [V]  ... 1文字即時入力（Enter 不要・空 Enter 無視）
@@ -359,6 +360,27 @@ get_target_org() {
 check_force_dir() {
     [[ "$(basename "$PWD")" =~ ^force- ]] && return $RET_OK
     return $RET_NG
+}
+
+# check_gh_owner - gh 認証ユーザーがリポジトリオーナーと一致するか確認する
+# ------------------------------------------------------------------------------
+# 【使い方】
+#   check_gh_owner "$GITHUB_OWNER"          # 失敗時は die で終了
+#   check_gh_owner "${REPO_FULL_NAME%%/*}"  # OWNER/REPO 形式からオーナーを抽出して渡す
+#
+# 【検証内容】
+#   - gh api user でログイン中のユーザー名を取得
+#   - 期待するオーナーと一致しない場合は die
+#   - gh コマンドが使えない場合はチェックをスキップ（ネットワーク障害等への配慮）
+# ------------------------------------------------------------------------------
+check_gh_owner() {
+    local expected_owner="$1"
+    local gh_user
+    gh_user=$(gh api user --jq '.login' 2>/dev/null || true)  # VAR=$(cmd) のため run 不使用
+    if [[ -n "$gh_user" && "$gh_user" != "$expected_owner" ]]; then
+        die "gh の認証ユーザー（${gh_user}）がリポジトリオーナー（${expected_owner}）と一致しません。
+  gh auth switch --user ${expected_owner} を実行してから再試行してください。"
+    fi
 }
 
 # check_home_dir - ~/home/{owner}/{company}/ の正しい階層か確認し変数をセットする

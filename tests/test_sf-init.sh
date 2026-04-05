@@ -69,7 +69,7 @@ case "$1 $2" in
         exit 0 ;;
     "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
     "secret set")  exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
-    "api user")    echo "${MOCK_GH_API_USER:-tama-create}" ;;
+    "api user")    echo "${MOCK_GH_API_USER:-${github_owner}}" ;;
     *) exit 0 ;;
 esac
 GHEOF

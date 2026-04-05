@@ -253,6 +253,7 @@ phase_sf_start() {
 log "HEADER" "作業環境セットアップを開始します (${SCRIPT_NAME}.sh)"
 
 check_home_dir            # GITHUB_OWNER / COMPANY_NAME をセット（失敗時は die）
+check_gh_owner "$GITHUB_OWNER"
 
 log "INFO" "中断するには q を入力してください。"
 
