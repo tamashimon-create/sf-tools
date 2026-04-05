@@ -196,7 +196,9 @@ case "$1 $2" in
         echo "${MOCK_SF_ORG_JSON:-{\"result\":{\"alias\":\"testorg\",\"id\":\"00D000000000001AAA\"}}}" \
             | sed 's/[,{]/&\n/g'
         exit "${MOCK_SF_ORG_DISPLAY_EXIT:-0}" ;;
-    "org login")    exit "${MOCK_SF_LOGIN_EXIT:-0}" ;;
+    "org login")
+        [[ "${MOCK_SF_LOGIN_EXIT:-0}" -eq 0 ]] && echo "Successfully authorized fake@example.com with org ID 00D000000000001AAA"
+        exit "${MOCK_SF_LOGIN_EXIT:-0}" ;;
     "org logout")   exit 0 ;;
     "org open")     exit 0 ;;
     "alias unset")  exit 0 ;;
@@ -266,6 +268,7 @@ case "$1 $2" in
     "repo create") exit "${MOCK_GH_REPO_CREATE_EXIT:-0}" ;;
     "secret set")   exit "${MOCK_GH_SECRET_SET_EXIT:-0}" ;;
     "variable set") exit "${MOCK_GH_VARIABLE_SET_EXIT:-0}" ;;
+    "variable get") echo "${MOCK_GH_VARIABLE_GET_VALUE:-fake@example.com}" ; exit "${MOCK_GH_VARIABLE_GET_EXIT:-0}" ;;
     "api user")    echo "${MOCK_GH_API_USER:-tama-create}" ;;
     *) exit 0 ;;
 esac

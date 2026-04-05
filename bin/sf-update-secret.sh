@@ -94,14 +94,22 @@ _test_jwt_login() {
     local consumer_key="$4" username="$5" instance_url="$6" key_file="$7"
 
     log "INFO" "JWT 接続テスト中: ${label}..."
-    # run 不使用: sf org login jwt は exit code が不安定な場合があるため直接確認
-    sf org login jwt \
+    log "INFO" "  sf org login jwt --client-id *** --jwt-key-file ${key_file} --username ${username} --instance-url ${instance_url} --alias ${org_alias}"
+
+    # exit code が不安定なため stdout/stderr をキャプチャして成否を判定する
+    local jwt_out
+    jwt_out=$(sf org login jwt \
         --client-id    "$consumer_key" \
         --jwt-key-file "$key_file" \
         --username     "$username" \
         --instance-url "$instance_url" \
-        --alias        "$org_alias" 2>/dev/null \
-        || die "JWT 接続テストに失敗しました（${label}）。\n  Connected App の設定・コンシューマーキー・ユーザー名を確認してください。"
+        --alias        "$org_alias" 2>&1) || true
+
+    log "INFO" "  ${jwt_out}"
+
+    if ! echo "$jwt_out" | grep -q "Successfully authorized"; then
+        die "JWT 接続テストに失敗しました（${label}）。"
+    fi
     log "SUCCESS" "JWT 接続テスト成功: ${label}"
 }
 
@@ -113,17 +121,35 @@ _select_org() {
     local -n _label_ref=$2
     local -n _alias_ref=$3
 
+    # branches.txt からブランチ数を取得（なければ 1 固定）
+    local branch_count=1
+    local branch_count_file="./sf-tools/config/branches.txt"
+    if [[ -f "$branch_count_file" ]]; then
+        branch_count=$(grep -v '^[[:space:]]*#' "$branch_count_file" \
+            | grep -v '^[[:space:]]*$' | wc -l | tr -d ' ')
+    fi
+    [[ $branch_count -gt 3 ]] && branch_count=3
+
+    # ブランチ数に応じたメニュー表示
     log "INFO" "対象組織を選択してください:"
     log "INFO" "  1) 本番組織（PROD）"
-    log "INFO" "  2) ステージング組織（STG）"
-    log "INFO" "  3) 開発組織（DEV）"
+    [[ $branch_count -ge 2 ]] && log "INFO" "  2) ステージング組織（STG）"
+    [[ $branch_count -ge 3 ]] && log "INFO" "  3) 開発組織（DEV）"
+
+    # 有効キーとプロンプトをブランチ数に合わせて動的構築
+    local valid="1"
+    [[ $branch_count -ge 2 ]] && valid="${valid}2"
+    [[ $branch_count -ge 3 ]] && valid="${valid}3"
+    local prompt="  選択してください [1/q]: "
+    [[ $branch_count -ge 2 ]] && prompt="  選択してください [1-${branch_count}/q]: "
 
     local key
-    read_key key "" "[123]"
+    read_key key "$prompt" "[${valid}Qq]"
     case "$key" in
         1) _suffix_ref="PROD"; _label_ref="本番組織";         _alias_ref="prod"    ;;
         2) _suffix_ref="STG";  _label_ref="ステージング組織"; _alias_ref="staging" ;;
         3) _suffix_ref="DEV";  _label_ref="開発組織";         _alias_ref="develop" ;;
+        q|Q) die "中断しました。" ;;
     esac
 }
 
@@ -167,14 +193,25 @@ _update_consumer_key() {
     local consumer_key
     read_or_quit consumer_key "  ${label}のコンシューマーキーを入力してください："
 
-    # 現在の username / instance_url を GitHub から取得（テスト用）
+    # SF_USERNAME_xxx は GitHub Variables に保存されているため gh variable get で取得可能
     local username instance_url
     # VAR=$(cmd) 形式のため run 不使用
-    username=$(gh secret list -R "$REPO_FULL_NAME" 2>/dev/null \
-        | grep "SF_USERNAME_${suffix}" | head -1 | awk '{print $1}' || true)
-    # GitHub Secrets の値は取得不可のため入力を要求
-    read_or_quit username     "  ${label}の接続ユーザー名を入力してください（接続テスト用）："
-    read_or_quit instance_url "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）："
+    username=$(gh variable get "SF_USERNAME_${suffix}" -R "$REPO_FULL_NAME" 2>/dev/null || true)
+    if [[ -n "$username" ]]; then
+        log "INFO" "  現在の接続ユーザー名: ${username}"
+        ask_yn "  このユーザー名で接続テストを実行しますか？" \
+            || read_or_quit username "  ${label}の接続ユーザー名を入力してください（接続テスト用）："
+    else
+        read_or_quit username "  ${label}の接続ユーザー名を入力してください（接続テスト用）："
+    fi
+
+    # 接続 URL: PROD は本番固定、STG/DEV は Sandbox か否かを選択
+    instance_url="https://login.salesforce.com"
+    if [[ "$suffix" != "PROD" ]]; then
+        ask_yn "  Sandbox ですか？" \
+            && instance_url="https://test.salesforce.com" \
+            || instance_url="https://login.salesforce.com"
+    fi
 
     _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
@@ -202,7 +239,14 @@ _update_username() {
     local consumer_key username instance_url
     read_or_quit consumer_key  "  ${label}のコンシューマーキーを入力してください（接続テスト用）："
     read_or_quit username      "  ${label}の新しい接続ユーザー名を入力してください："
-    read_or_quit instance_url  "  接続 URL を入力してください（https://login.salesforce.com または https://test.salesforce.com）："
+
+    # 接続 URL: PROD は本番固定、STG/DEV は Sandbox か否かを選択
+    instance_url="https://login.salesforce.com"
+    if [[ "$suffix" != "PROD" ]]; then
+        ask_yn "  Sandbox ですか？" \
+            && instance_url="https://test.salesforce.com" \
+            || instance_url="https://login.salesforce.com"
+    fi
 
     _test_jwt_login "$org_alias" "$suffix" "$label" "$consumer_key" "$username" "$instance_url" "$key_file"
 
