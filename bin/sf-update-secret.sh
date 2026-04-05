@@ -282,13 +282,14 @@ log "INFO" "  3) ユーザー名を更新（SF_USERNAME_xxx）"
 log "INFO" "  4) すべて更新"
 
 MENU_KEY=""
-read_key MENU_KEY "" "[1234]"
+read_key MENU_KEY "  選択してください [1-4/q]: " "[1234Qq]"
 
 case "$MENU_KEY" in
     1) _update_private_key  ;;
     2) _update_consumer_key ;;
     3) _update_username     ;;
     4) _update_all          ;;
+    q|Q) die "中断しました。" ;;
 esac
 
 log "SUCCESS" "JWT Secrets の更新が完了しました。"
