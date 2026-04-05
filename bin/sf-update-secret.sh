@@ -81,6 +81,8 @@ REPO_NAME=$(basename "$REPO_FULL_NAME")
 
 JWT_DIR="$HOME/.sf-jwt/${REPO_NAME}"
 
+check_gh_owner "${REPO_FULL_NAME%%/*}"
+
 log "HEADER" "GitHub Secrets（JWT 認証情報）を更新します (${SCRIPT_NAME}.sh)"
 log "INFO" "リポジトリ: ${REPO_FULL_NAME}"
 
