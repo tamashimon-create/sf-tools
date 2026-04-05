@@ -133,6 +133,15 @@ fi
 # ------------------------------------------------------------------------------
 log "HEADER" "新規 Salesforce プロジェクトの初期セットアップを開始します (${SCRIPT_NAME}.sh)"
 
+echo -e "${CLR_ERR}╔══════════════════════════════════════════════════════╗${CLR_RESET}" >&2
+echo -e "${CLR_ERR}║  !!  このコマンドは管理者専用です                    ║${CLR_RESET}" >&2
+echo -e "${CLR_ERR}║      管理者以外は絶対に実行しないでください          ║${CLR_RESET}" >&2
+echo -e "${CLR_ERR}║                                                      ║${CLR_RESET}" >&2
+echo -e "${CLR_ERR}║  新規 Salesforce リポジトリを GitHub に作成し        ║${CLR_RESET}" >&2
+echo -e "${CLR_ERR}║  初期セットアップを行います。                        ║${CLR_RESET}" >&2
+echo -e "${CLR_ERR}╚══════════════════════════════════════════════════════╝${CLR_RESET}" >&2
+ask_yn "続行しますか？" || die "中断しました。"
+
 check_home_dir  # GITHUB_OWNER / COMPANY_NAME をセット（失敗時は die）
 
 log "INFO" "セットアップ中は Ctrl+C が無効です。中断するにはターミナルを閉じてください。"

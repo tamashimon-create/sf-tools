@@ -109,14 +109,23 @@ gh auth switch --user tamashimon         # 完了後は必ず元に戻す
 
 ### 2.4 安全ガード（管理者向け警告）
 
-**本番デプロイ・Secrets更新などの危険な操作には、冒頭に赤い警告ボックス + `ask_yn` を配置すること。**
+**管理者向けコマンドには必ず冒頭に赤い警告ボックス + `ask_yn || die` を入れること。新規スクリプト追加・既存スクリプト変更時も同様。**
 
 | ルール | 内容 |
 |---|---|
 | 警告ボックス表示 | `CLR_ERR` (赤) + box-drawing chars で目立つ警告を表示 |
-| `ask_yn` の追加 | ローカル実行時に「本当に続行するか」を確認 |
+| `ask_yn \|\| die` | N/q で必ず中断すること（`|| die` 必須）|
 | GITHUB_ACTIONS スキップ | `GITHUB_ACTIONS=true` の場合は警告・確認をスキップして自動実行 |
 | 二重確認の防止 | `SF_DEPLOY_CONFIRMED=1` を export して呼び出し先の確認をスキップ |
+
+**管理者向けコマンド一覧（警告必須）:**
+
+| スクリプト | 状態 |
+|---|---|
+| `sf-init.sh` | ✅ 実装済み |
+| `sf-metasync.sh` | ✅ 実装済み |
+| `sf-update-secret.sh` | ✅ 実装済み |
+| `sf-release.sh`（`--release` 時） | ✅ 実装済み |
 
 > 警告ボックスの実装例は `doc/dev-reference.md` セクション 3.4 参照
 
