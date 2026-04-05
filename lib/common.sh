@@ -17,8 +17,6 @@
 #   get_target_org [ALIAS]    ... 接続先組織エイリアスを解決
 #   check_force_dir           ... force-* ディレクトリ内か確認
 #   check_home_dir            ... ~/home/{owner}/{company}/ の正しい階層か確認し GITHUB_OWNER/COMPANY_NAME をセット
-#   check_authorized_user     ... sf-tools 実行許可ユーザーか確認（マスター固定 + 外部ファイル）
-#   check_admin_user          ... 管理者権限ユーザーか確認（危険操作の実行許可。GITHUB_ACTIONS 時はスキップ）
 #   open_browser URL               ... OS を判定してブラウザを開く（WSL/Git Bash/macOS/Linux 対応）
 #   read_input VARNAME [PROMPT]    ... readline 対応インタラクティブ入力
 #   read_key VARNAME [PROMPT] [V]  ... 1文字即時入力（Enter 不要・空 Enter 無視）
@@ -448,84 +446,6 @@ is_protected_branch() {
     return $RET_NG
 }
 
-# check_authorized_user - sf-tools の実行許可ユーザーか確認する
-# ------------------------------------------------------------------------------
-# マスターユーザー（tama-create）は常に許可。
-# 追加ユーザーは ~/sf-tools/config/allowed-users.txt で管理する。
-#
-# 【使い方】
-#   check_authorized_user
-#
-# 【戻り値】
-#   許可ユーザーなら処理を続行。不許可なら die で即終了。
-# ------------------------------------------------------------------------------
-check_authorized_user() {
-    local master_user="tama-create"
-    local allowed_file="$HOME/sf-tools/config/allowed-users.txt"
-
-    log "INFO" "実行ユーザーを確認中..."
-    local current_user
-    current_user=$(gh api user --jq '.login') \
-        || die "GitHub ユーザー情報を取得できませんでした。"
-
-    # マスターユーザーは常に許可
-    if [[ "$current_user" == "$master_user" ]]; then
-        log "INFO" "実行ユーザーを確認しました（${current_user}）"
-        return $RET_OK
-    fi
-
-    # 外部ファイルの許可ユーザーをチェック
-    if [[ -f "$allowed_file" ]]; then
-        if grep -v '^[[:space:]]*#' "$allowed_file" | grep -qx "$current_user"; then
-            log "INFO" "実行ユーザーを確認しました（${current_user}）"
-            return $RET_OK
-        fi
-    fi
-
-    die "実行権限がありません（${current_user}）。~/sf-tools/config/allowed-users.txt にユーザーを追加してください。"
-}
-
-# check_admin_user - 管理者権限のあるユーザーか確認する
-# ------------------------------------------------------------------------------
-# 本番デプロイ・force操作・Secrets更新などの危険な操作は管理者のみ実行可能。
-# GITHUB_ACTIONS=true の場合はスキップ（WF実行時は常に許可）。
-# マスターユーザー（tama-create）は常に許可。
-# 追加管理者はプロジェクトローカルの ./sf-tools/config/admin-users.txt で管理する（force-* 内）。
-#
-# 【使い方】
-#   check_admin_user
-#
-# 【戻り値】
-#   管理者ユーザーなら処理を続行。非管理者なら die で即終了。
-# ------------------------------------------------------------------------------
-check_admin_user() {
-    # GitHub Actions 実行時はスキップ（WF からの実行は常に許可）
-    [[ "${GITHUB_ACTIONS:-false}" == "true" ]] && return $RET_OK
-
-    local master_user="tama-create"
-    local admin_file="./sf-tools/config/admin-users.txt"  # プロジェクトローカル（force-* 内）
-
-    log "INFO" "管理者権限を確認中..."
-    local current_user
-    current_user=$(gh api user --jq '.login') \
-        || die "GitHub ユーザー情報を取得できませんでした。"
-
-    # マスターユーザーは常に許可
-    if [[ "$current_user" == "$master_user" ]]; then
-        log "INFO" "管理者権限を確認しました（${current_user}）"
-        return $RET_OK
-    fi
-
-    # 管理者ファイルの許可ユーザーをチェック
-    if [[ -f "$admin_file" ]]; then
-        if grep -v '^[[:space:]]*#' "$admin_file" | grep -qx "$current_user"; then
-            log "INFO" "管理者権限を確認しました（${current_user}）"
-            return $RET_OK
-        fi
-    fi
-
-    die "この操作は管理者権限が必要です（現在のユーザー: ${current_user}）。./sf-tools/config/admin-users.txt に追加してください。"
-}
 
 # read_input - readline 対応インタラクティブ入力（矢印キー・BS 等が正常に動作する）
 # ------------------------------------------------------------------------------

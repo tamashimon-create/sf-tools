@@ -107,18 +107,18 @@ gh auth switch --user tamashimon         # 完了後は必ず元に戻す
 
 > `sf-launcher.sh` は `common.sh` を source しない standalone 設計のため例外。`read -rsn1` 直書き時は `|| { printf "\n"; exit 0; }` で EOF 対応を必ず付けること。
 
-### 2.4 安全ガード（管理者制限）
+### 2.4 安全ガード（管理者向け警告）
 
-**本番デプロイ・force操作・Secrets更新などの危険な操作には必ず `check_admin_user` を先頭に呼ぶこと。**
+**本番デプロイ・Secrets更新などの危険な操作には、冒頭に赤い警告ボックス + `ask_yn` を配置すること。**
 
 | ルール | 内容 |
 |---|---|
-| `check_admin_user` の呼び出し | 危険操作を持つスクリプトの処理開始直後に配置 |
+| 警告ボックス表示 | `CLR_ERR` (赤) + box-drawing chars で目立つ警告を表示 |
 | `ask_yn` の追加 | ローカル実行時に「本当に続行するか」を確認 |
-| GITHUB_ACTIONS スキップ | `GITHUB_ACTIONS=true` の場合はすべてのチェックをスキップ |
+| GITHUB_ACTIONS スキップ | `GITHUB_ACTIONS=true` の場合は警告・確認をスキップして自動実行 |
 | 二重確認の防止 | `SF_DEPLOY_CONFIRMED=1` を export して呼び出し先の確認をスキップ |
 
-> 詳細パターン（`admin-users.txt`・`SF_DEPLOY_CONFIRMED` 等）は `doc/dev-reference.md` セクション 3.4 参照
+> 警告ボックスの実装例は `doc/dev-reference.md` セクション 3.4 参照
 
 ### 2.5 冒頭コメント（仕様の正本）
 
