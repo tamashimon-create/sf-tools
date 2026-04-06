@@ -169,8 +169,9 @@ _update_private_key() {
 
     ask_yn "  SF_PRIVATE_KEY を更新してよいですか？" || { log "INFO" "スキップしました。"; return; }
 
-    # run 不使用: 秘密鍵の内容をログに記録しないため
-    gh secret set "SF_PRIVATE_KEY" < "$key_file" -R "$REPO_FULL_NAME" \
+    # run 不使用: 秘密鍵の内容をログに記録しないため直接実行
+    # tr -d '\r': Windows(Git Bash)環境で生成された PEM の CR を除去してから base64 エンコード
+    tr -d '\r' < "$key_file" | base64 -w 0 | gh secret set "SF_PRIVATE_KEY" -R "$REPO_FULL_NAME" \
         || die "SF_PRIVATE_KEY の更新に失敗しました。"
     log "SUCCESS" "SF_PRIVATE_KEY を更新しました。"
 }
@@ -279,8 +280,9 @@ _update_all() {
     log "INFO" "  秘密鍵: ${key_file}"
 
     ask_yn "  SF_PRIVATE_KEY を更新しますか？" && {
-        # run 不使用: 秘密鍵の内容をログに記録しないため
-        gh secret set "SF_PRIVATE_KEY" < "$key_file" -R "$REPO_FULL_NAME" \
+        # run 不使用: 秘密鍵の内容をログに記録しないため直接実行
+        # tr -d '\r': Windows(Git Bash)環境で生成された PEM の CR を除去してから base64 エンコード
+        tr -d '\r' < "$key_file" | base64 -w 0 | gh secret set "SF_PRIVATE_KEY" -R "$REPO_FULL_NAME" \
             || die "SF_PRIVATE_KEY の更新に失敗しました。"
         log "SUCCESS" "  SF_PRIVATE_KEY を更新しました。"
     }
