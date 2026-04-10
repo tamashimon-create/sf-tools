@@ -293,7 +293,7 @@ check_gh_owner "$GITHUB_OWNER"   # 認証ユーザーの一致確認
 - `sf-release.sh --release --force` のラッパー
 - `force-*` 以外では実行禁止
 - `main` / `staging` / `develop` ブランチでは実行禁止
-- **安全ガード:** 赤い警告ボックス + `--force` WARNING + `ask_yn || die` を実行してから `exec`（セクション 3.4 参照）
+- **安全ガード:** `log "WARNING"` で `--force` の意味を表示 → `ask_yn || die` で続行確認（**赤い警告ボックスなし**。赤いボックスは sf-init / sf-metasync / sf-update-secret / sf-release 直接実行のみ）
 - `export SF_DEPLOY_CONFIRMED=1` で sf-release.sh 側の二重確認を抑制
 
 ### 4.9 sf-upgrade.sh
@@ -327,7 +327,7 @@ GitHub Secrets / Variables の JWT 認証情報を再登録する。実行フロ
    - 1: 秘密鍵（`SF_PRIVATE_KEY` Secret）を更新
    - 2: コンシューマキー（`SF_CONSUMER_KEY_*` Secret）+ ユーザー名（`SF_USERNAME_*` Variable）+ インスタンス URL（`SF_INSTANCE_URL_*` Variable）を組織ごとに更新
    - 3: ユーザー名（`SF_USERNAME_*` Variable）を組織ごとに更新（現在値を `gh variable get` で自動取得して表示）
-   - 4: JWT 接続テスト
+   - 4: すべて更新（1〜3 を順に実行）
 6. 組織選択は `branches.txt` の有効行数（1〜3）に応じて動的に変化:
    - 1行: PROD のみ `[1/q]`
    - 2行: PROD + STG `[1-2/q]`
@@ -345,7 +345,16 @@ GitHub Secrets / Variables の JWT 認証情報を再登録する。実行フロ
 
 > Secret は暗号化されており `gh secret get` で値を読み取れないが、Variable は `gh variable get` で取得できる。ユーザー名はメニュー表示時に現在値を自動取得して表示する。
 
-**JWT 接続テスト:**
+**SF_PRIVATE_KEY の base64 エンコーディング:**
+GitHub Actions のワークフローは Secret から取得した値を `base64 -d` でデコードして使用する。そのため `SF_PRIVATE_KEY` は **base64 エンコード済みの文字列** として登録しなければならない。`sf-update-secret.sh` の `_update_private_key` は以下のパイプで登録する:
+
+```bash
+tr -d '\r' < "$key_file" | base64 -w 0 | gh secret set "SF_PRIVATE_KEY" -R "$REPO_FULL_NAME"
+```
+
+> `tr -d '\r'` は Windows 改行コード（CRLF）を除去するため。`-w 0` は base64 の折り返しなし（1行）。
+
+**JWT 接続テスト（内部処理）:**
 `sf org login jwt` は終了コードが不安定なため、終了コードではなく stdout の `Successfully authorized` 文字列で成功を判定する。実行コマンドと出力はログに記録する。
 
 ### 4.12 sf-hook.sh / sf-unhook.sh
