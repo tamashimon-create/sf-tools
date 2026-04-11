@@ -116,22 +116,24 @@ _stub_subscripts() {
 #   9. C01ABCDEFGH        (Slack チャンネル ID - read_or_quit)
 #  10. \n                 (press_enter - Bot 招待完了確認)
 # 入力順（Phase 10: JWT 認証）:
-#  11. \n                 (press_enter - Connected App 設定案内)
-#  12. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  11. 1                  (アプリ種別選択 - read_key [12Qq]。接続アプリケーションを選択。\n は buffer 残留)
+#  ★ \n は read_key [12Qq] が無効として読み飛ばし
+#  12. \n                 (press_enter - Connected App 設定案内)
+#  13. N                  (prod Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  13. fake_prod_key      (prod コンシューマーキー - read_or_quit)
-#  14. prod@example.com   (prod ユーザー名 - read_or_quit)
-#  15. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
+#  14. fake_prod_key      (prod コンシューマーキー - read_or_quit)
+#  15. prod@example.com   (prod ユーザー名 - read_or_quit)
+#  16. Y                  (staging Sandbox? - ask_yn read_key。\n は buffer 残留)
 #  ★ \n は read_or_quit が空行として無視
-#  16. fake_stg_key       (staging コンシューマーキー - read_or_quit)
-#  17. stg@example.com    (staging ユーザー名 - read_or_quit)
-#  18. Y                  (develop Sandbox? - ask_yn read_key)
-#  19. fake_dev_key       (develop コンシューマーキー - read_or_quit)
-#  20. dev@example.com    (develop ユーザー名 - read_or_quit)
-#  21. N                  (init フォルダ削除をスキップ)
+#  17. fake_stg_key       (staging コンシューマーキー - read_or_quit)
+#  18. stg@example.com    (staging ユーザー名 - read_or_quit)
+#  19. Y                  (develop Sandbox? - ask_yn read_key)
+#  20. fake_dev_key       (develop コンシューマーキー - read_or_quit)
+#  21. dev@example.com    (develop ユーザー名 - read_or_quit)
+#  22. N                  (init フォルダ削除をスキップ)
 # ==============================================================================
 _make_input_3branches() {
-    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
+    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n1\nN\nfake_prod_key\nprod@example.com\nY\nfake_stg_key\nstg@example.com\nY\nfake_dev_key\ndev@example.com\nN\n'
 }
 
 # ==============================================================================
@@ -268,10 +270,10 @@ test_sf_login_failure() {
     # JWT 接続テスト失敗をシミュレート
     export MOCK_SF_LOGIN_EXIT=1
 
-    # 警告確認 → Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
+    # 警告確認 → Phase2 confirm → ENV_TYPE選択 → Phase5 ブランチ選択 → PAT → Slack → Phase10 アプリ種別選択(1=接続アプリ) → Connected App press_enter → prod Sandbox? → consumer_key/username まで入力
     # （sf org login jwt で失敗するため以降は不要）
     local exit_code
-    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n\nN\nfake_prod_key\nprod@example.com\n' \
+    printf 'Y\nY\n1\n1\nghp_faketoken\n\nxoxb-faketoken\nC01ABCDEFGH\n\n1\nN\nfake_prod_key\nprod@example.com\n' \
         | ( cd "$init_dir" && HOME="$mock_home" PATH="$mb:$PATH" \
               bash "$mock_home/sf-tools/bin/sf-init.sh" ) > /dev/null 2>&1
     exit_code=$?
