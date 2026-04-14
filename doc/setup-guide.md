@@ -22,6 +22,8 @@
   - Salesforce Extension Pack (Expanded) を事前にインストールしておくこと
 - Slack — ワークフローの通知先
 
+> 各ツールの取得先・Windows でのインストール方法は `README.md` §1 を参照してください。
+
 ### 1.2. ☁️ Salesforce 環境
 
 - 開発用の Sandbox（Developer / Developer Pro）が作成済みであること

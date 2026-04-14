@@ -27,7 +27,14 @@
 
 ### 1.3 新規スクリプト追加・大きな変更後のチェック
 
-対応必須環境: **GitBash（Windows）/ WSL / macOS / Linux** の4環境で動作することを意識してレビューすること。
+**検証済み動作環境（必ず動くこと）:**
+
+- **ローカル: Windows + Git Bash**
+- **サーバー: Linux（GitHub Actions / Ubuntu ランナー）**
+
+**意識する動作環境（クロスプラットフォーム方針・検証はしない）:**
+
+- **macOS / WSL**
 
 - プラットフォーム固有コマンド（`powershell.exe` / `open` / `xdg-open` 等）は `command -v` で存在確認してから使うこと
 - `/proc/version` / `/proc/` 配下のファイルは macOS / GitBash に存在しないため `2>/dev/null` を付けること
