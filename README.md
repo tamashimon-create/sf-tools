@@ -234,7 +234,7 @@ sfl
 | 開発者 | `sf-push.sh` | カレント配下をコミット＆プッシュ | ランチャー |
 | 開発者 | `sf-start.sh` | 開発環境を起動 | ランチャー |
 | 開発者 | `sf-restart.sh` | 接続先 Sandbox の切り替え | ランチャー |
-| **管理者** | `sf-deploy.sh` | ⚠️ デプロイ実行（管理者のみ・確認あり） | ランチャー |
+| 開発者 | `sf-deploy.sh` | ⚠️ Sandbox への強制リリース（確認あり） | ランチャー |
 | 管理者 | `sf-init.sh` | 新規プロジェクト初期セットアップ | ランチャー外 |
 | 管理者 | `sf-hook.sh` / `sf-unhook.sh` | フックの有効化 / 削除 | ランチャー外 |
 | 管理者 | `sf-update-secret.sh` | ⚠️ GitHub Secrets の再登録（管理者のみ） | ランチャー外 |
@@ -421,7 +421,6 @@ sf-release.sh [オプション]
 - `--json`, `-j` で `sf` コマンド出力を JSON 形式で表示できます
 - `--verbose`, `-v` でコマンド出力をコンソールにも表示できます
 - `deploy-target.txt` に記述した `.cls` ファイルに `@isTest` アノテーションがあれば自動検出し、`--test-level RunSpecifiedTests --run-tests` を自動設定します（ユーザーが手動で指定する必要はありません）
-- `--release` をつけて**直接実行する場合は管理者権限が必要**です（`sf-deploy.sh` 経由の場合は `sf-deploy.sh` 側で管理者チェック済みのため不要）
 
 ### 4.7 `sf-deploy.sh`
 
@@ -429,9 +428,9 @@ sf-release.sh [オプション]
 sf-deploy.sh [オプション]
 ```
 
-`sf-release.sh --release --force` を簡単に呼ぶラッパーです。
+`sf-release.sh --release --force` を簡単に呼ぶラッパーです。Sandbox の乗り換え時などに、現在の開発物を接続中の組織へ強制リリースする用途で使用します。
 
-> ⚠️ **管理者専用**: 実行前に `--force` の WARNING 表示と確認プロンプト（Y/N/q）が表示されます。`N` または `q` で中断できます。
+> ⚠️ 実行前に `--force` の WARNING 表示と確認プロンプト（Y/N/q）が表示されます。`N` または `q` で中断できます。
 
 追加で使えるオプション:
 - `--no-open`, `-n`
