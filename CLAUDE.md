@@ -115,6 +115,7 @@ gh auth switch --user tamashimon         # 完了後は必ず元に戻す
 |---|---|
 | 警告ボックス表示 | `CLR_ERR` (赤) + box-drawing chars で目立つ警告を表示 |
 | `ask_yn \|\| die` | N/q で必ず中断すること（`|| die` 必須）|
+| `check_gh_owner "$OWNER"` | gh 認証ユーザーがリポジトリオーナーと一致するか確認（不一致時は `die`）|
 | GITHUB_ACTIONS スキップ | `GITHUB_ACTIONS=true` の場合は警告・確認をスキップして自動実行 |
 | 二重確認の防止 | `SF_DEPLOY_CONFIRMED=1` を export して呼び出し先の確認をスキップ |
 
