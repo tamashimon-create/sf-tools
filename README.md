@@ -9,18 +9,26 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 
 ## 1. 前提条件
 
+> ⚠️ **検証済み動作環境:**
+> - **ローカル:** Windows + Git Bash
+> - **サーバー:** Linux（GitHub Actions / Ubuntu ランナー）
+>
+> macOS / WSL でも動作するようクロスプラットフォームを意識して実装していますが、動作検証は行っていません。
+
 以下のコマンドが使えること。
 
-| ツール | 確認コマンド | 用途 |
-|---|---|---|
-| Git | `git --version` | Git Bash / フック / バージョン管理 |
-| Salesforce CLI | `sf --version` | 組織接続、デプロイ、retrieve |
-| GitHub CLI | `gh --version` | PR 作成・Secrets 登録・リポジトリ操作 |
-| Visual Studio Code | `code --version` | エディタ起動 |
-| Slack | — | デプロイ通知の受信 |
+| ツール | 確認コマンド | 用途 | 取得先 | Windows インストール方法 |
+|---|---|---|---|---|
+| Git (Git Bash) | `git --version` | Git Bash / フック / バージョン管理 | https://git-scm.com/download/win | インストーラ実行 |
+| Salesforce CLI | `sf --version` | 組織接続、デプロイ、retrieve | https://developer.salesforce.com/tools/salesforcecli | `winget install --id Salesforce.sf` または公式インストーラ |
+| GitHub CLI | `gh --version` | PR 作成・Secrets 登録・リポジトリ操作 | https://cli.github.com/ | `winget install --id GitHub.cli` |
+| Visual Studio Code | `code --version` | エディタ起動 | https://code.visualstudio.com/ | `winget install --id Microsoft.VisualStudioCode` |
+| Slack | — | デプロイ通知の受信 | https://slack.com/downloads/windows | インストーラ実行 |
+
+> Bash 4.3 以上が必須です（Git for Windows 2.x 以降の Git Bash に含まれています）。`bash --version` で確認してください。
 
 補足:
-- Windows では Git Bash での実行を前提とします
+- Git Bash で実行してください（PowerShell / コマンドプロンプトは非対応）
 - `sf-init.sh` を除くすべてのスクリプトは `force-*` ディレクトリ内から実行してください
 - `sf-init.sh` のみ `force-*` の**外**（親ディレクトリ）から実行します
 
@@ -31,7 +39,7 @@ Salesforce 開発で毎回発生する環境構築、デプロイ、事前チェ
 ### 2.1 sf-tools の配置
 
 ```bash
-git clone <sf-tools のリポジトリ URL> ~/sf-tools
+git clone https://github.com/tama-create/sf-tools.git ~/sf-tools
 ```
 
 ### 2.2 PATH の設定（推奨）
@@ -774,6 +782,6 @@ sf-tools/
 
 - シンプルなコマンドで毎日の作業を自動化する
 - 失敗時はログで原因を追いやすくする
-- 追加依存を減らし、GitBash / WSL / macOS / Linux の 4 環境で動く構成を維持する
+- 追加依存を減らし、Git Bash（Windows）と GitHub Actions（Ubuntu）を検証対象に、macOS / WSL でも動くクロスプラットフォーム構成を維持する
 - まず dry-run を基本にし、必要時のみ本番実行する
 - Bash 4.3 以上を必須とし、互換ハックより環境アップグレードを優先する（コード品質・メンテナンス性を守るため）
